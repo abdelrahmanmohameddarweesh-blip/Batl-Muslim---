@@ -13,6 +13,12 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.darweesh.batlmuslim"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "60bee372-e4a6-44e9-be18-4c3d59f746d9"
+      }
     }
   }
 }

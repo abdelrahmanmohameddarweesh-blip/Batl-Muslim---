@@ -16,7 +16,6 @@
     "@react-navigation/native": "^6.1.6",
     "@react-navigation/native-stack": "^6.9.12",
     "expo": "~54.0.35",
-    "expo-ads-admob": "11.0.3",
     "expo-av": "~16.0.8",
     "firebase": "9.22.0",
     "react": "19.1.0",

@@ -1,0 +1,22 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Install dependencies",
+      "type": "shell",
+      "command": "export PATH=\"$HOME/.local/node/bin:$PATH\" && npm install",
+      "problemMatcher": []
+    },
+    {
+      "label": "Start Expo",
+      "type": "shell",
+      "command": "export PATH=\"$HOME/.local/node/bin:$PATH\" && export CHOKIDAR_USEPOLLING=true && export CHOKIDAR_INTERVAL=1000 && npm run start",
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "panel": "shared"
+      }
+    }
+  ]
+}

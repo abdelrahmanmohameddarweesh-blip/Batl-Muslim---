@@ -4,7 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { AuthProvider } from './contexts/AuthContext';
-import { LanguageProvider } from './contexts/LanguageContext';
+import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { Colors } from './config/colors';
 
 import LoginScreen from './screens/LoginScreen';
@@ -41,6 +41,7 @@ function ChallengeHeroButton({ onPress }: any) {
 
 // Tab Navigator setup
 function TabNavigator() {
+  const { t } = useLanguage();
   return (
     <Tab.Navigator
       initialRouteName="Home"
@@ -57,7 +58,7 @@ function TabNavigator() {
         name="Profile"
         component={ProfileScreen}
         options={{
-          title: 'الملف',
+          title: t('profileTab'),
           tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>👤</Text>,
         }}
       />
@@ -65,7 +66,7 @@ function TabNavigator() {
         name="Voice"
         component={VoiceScreen}
         options={{
-          title: 'الصوت',
+          title: t('voiceTab'),
           tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>🎙️</Text>,
         }}
       />
@@ -73,7 +74,7 @@ function TabNavigator() {
         name="ChallengePicker"
         component={ChallengePickerScreen}
         options={{
-          title: 'تحدي',
+          title: t('challengeTab'),
           tabBarButton: (props) => <ChallengeHeroButton {...props} />,
         }}
       />
@@ -81,7 +82,7 @@ function TabNavigator() {
         name="Leaderboard"
         component={LeaderboardScreen}
         options={{
-          title: 'الترتيب',
+          title: t('leaderboardTab'),
           tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>🏆</Text>,
         }}
       />
@@ -89,7 +90,7 @@ function TabNavigator() {
         name="Home"
         component={HomeScreen}
         options={{
-          title: 'الرئيسية',
+          title: t('homeTab'),
           tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>🏡</Text>,
         }}
       />

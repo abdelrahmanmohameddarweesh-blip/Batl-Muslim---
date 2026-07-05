@@ -254,7 +254,8 @@ Join us in our daily journey towards Islamic knowledge! 🚀`;
           <Text style={styles.dateLabel}>{formattedDates.hijri} | {formattedDates.gregorian}</Text>
         </View>
 
-        {/* Level Badge Card */}
+        <View style={styles.bodyContent}>
+          {/* Level Badge Card */}
         <View style={styles.levelCard}>
           <View style={styles.levelRow}>
             <View style={styles.levelBadgeContainer}>
@@ -443,6 +444,7 @@ Join us in our daily journey towards Islamic knowledge! 🚀`;
             </View>
           </View>
         </Modal>
+        </View>
       </View>
     </ScrollView>
   );
@@ -458,8 +460,10 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    padding: 20,
     position: 'relative',
+  },
+  bodyContent: {
+    padding: 20,
   },
   topGlow: {
     position: 'absolute',
@@ -471,18 +475,29 @@ const styles = StyleSheet.create({
     backgroundColor: '#10B9811F',
   },
   mockupHeader: {
-    marginTop: 10,
-    marginBottom: 20,
+    width: '100%',
+    paddingTop: 50, // Avoid safe area overlay
+    paddingBottom: 24,
+    backgroundColor: '#0B2E21',
+    borderBottomLeftRadius: 36,
+    borderBottomRightRadius: 36,
+    borderBottomWidth: 3,
+    borderBottomColor: '#F59E0B', // Gold bottom border
     alignItems: 'center',
     position: 'relative',
-    width: '100%',
-    paddingBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 8,
+    marginBottom: 10,
   },
   headerBackgroundSvg: {
     position: 'absolute',
-    top: -20,
+    top: 0,
     left: 0,
     right: 0,
+    bottom: 0,
     zIndex: -1,
   },
   headerTopRow: {
@@ -490,8 +505,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     width: '100%',
-    paddingHorizontal: 4,
-    marginBottom: 8,
+    paddingHorizontal: 20,
+    marginBottom: 12,
   },
   notificationBtn: {
     width: 40,

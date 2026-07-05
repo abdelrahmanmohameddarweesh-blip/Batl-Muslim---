@@ -37,6 +37,11 @@ export const translations = {
     questVoice: 'أكمل تسجيل قراءة صوتية واحدة اليوم',
     questCompleted: 'تهانينا! لقد أكملت جميع المهام اليومية وحصلت على +٥٠ نقطة!',
     questProgress: 'مهام اليوم المكتملة',
+    homeTab: 'الرئيسية',
+    leaderboardTab: 'الترتيب',
+    challengeTab: 'تحدي',
+    voiceTab: 'الصوت',
+    profileTab: 'الملف',
   },
   en: {
     appName: 'Batl Muslim',
@@ -74,5 +79,10 @@ export const translations = {
     questVoice: 'Perform 1 voice recitation analysis today',
     questCompleted: 'Congratulations! Completed all daily quests and earned +50 XP!',
     questProgress: 'Completed Quests Today',
+    homeTab: 'Home',
+    leaderboardTab: 'Rank',
+    challengeTab: 'Challenge',
+    voiceTab: 'Voice',
+    profileTab: 'Profile',
   },
 };

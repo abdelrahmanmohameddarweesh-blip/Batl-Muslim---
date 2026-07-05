@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { BannerAd, BannerAdSize } from 'react-native-google-mobile-ads';
+import { View, StyleSheet, Text } from 'react-native';
+import { BannerAd, BannerAdSize, hasAdMob } from '../config/adsService';
 import { AdMobConfig } from '../config/ads';
 
 export default function AdBanner() {
@@ -8,6 +8,16 @@ export default function AdBanner() {
 
   if (hasError) {
     return null;
+  }
+
+  if (!hasAdMob || !BannerAd) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.demoBox}>
+          <Text style={styles.demoText}>مساحة إعلانية (بنر تجريبي)</Text>
+        </View>
+      </View>
+    );
   }
 
   return (
@@ -18,7 +28,7 @@ export default function AdBanner() {
         requestOptions={{
           requestNonPersonalizedAdsOnly: true,
         }}
-        onAdFailedToLoad={(error) => {
+        onAdFailedToLoad={(error: any) => {
           console.warn('Ad failed to load: ', error);
           setHasError(true);
         }}
@@ -33,5 +43,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginVertical: 12,
+  },
+  demoBox: {
+    width: '90%',
+    height: 50,
+    backgroundColor: '#eaeaea',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderStyle: 'dashed',
+  },
+  demoText: {
+    color: '#777',
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

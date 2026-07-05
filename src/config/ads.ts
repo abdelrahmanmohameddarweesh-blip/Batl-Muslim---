@@ -1,4 +1,4 @@
-import { TestIds } from 'react-native-google-mobile-ads';
+import { TestIds } from './adsService';
 
 export const AdMobConfig = {
   bannerAdUnitID: TestIds.BANNER,

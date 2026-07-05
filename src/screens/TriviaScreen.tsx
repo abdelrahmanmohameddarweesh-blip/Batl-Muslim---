@@ -4,7 +4,7 @@ import { questionBank, type Question } from '../data/questions';
 import { useAuth } from '../contexts/AuthContext';
 import { saveUserScore, getCurrentUserProfile } from '../firebase/auth';
 import { Colors } from '../config/colors';
-import { useInterstitialAd } from 'react-native-google-mobile-ads';
+import { useInterstitialAd } from '../config/adsService';
 import { AdMobConfig } from '../config/ads';
 import AdBanner from '../components/AdBanner';
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, Share } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { questionBank, type Question } from '../data/questions';
 import { useAuth } from '../contexts/AuthContext';
 import { saveUserScore, getCurrentUserProfile } from '../firebase/auth';
@@ -55,6 +56,11 @@ export default function TriviaScreen({ navigation }: any) {
         const profile = await getCurrentUserProfile(user.uid);
         const currentScore = profile?.score ?? 0;
         await saveUserScore(user.uid, currentScore + finalScore);
+
+        // Track daily trivia quest completion
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+        await AsyncStorage.setItem(`quest-trivia-played-${todayStr}`, 'true');
       } catch (err) {
         console.error(err);
       }

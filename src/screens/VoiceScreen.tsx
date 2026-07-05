@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Animated, ScrollView, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
 import { readers, type Reader } from '../data/readers';
 import { ayahs, type Ayah } from '../data/ayahs';
@@ -42,6 +43,16 @@ export default function VoiceScreen({ navigation }: any) {
         const profile = await getCurrentUserProfile(user.uid);
         const currentScore = profile?.score ?? 0;
         await saveUserScore(user.uid, currentScore + earnedPoints);
+
+        // Track daily voice quest completion
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+        await AsyncStorage.setItem(`quest-voice-done-${todayStr}`, 'true');
+
+        // Track total completed recitations count for badges
+        const count = await AsyncStorage.getItem('completed-recitations-count');
+        const nextCount = count ? parseInt(count, 10) + 1 : 1;
+        await AsyncStorage.setItem('completed-recitations-count', nextCount.toString());
       } catch (err) {
         console.error(err);
       }

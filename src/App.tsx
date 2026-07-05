@@ -4,6 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { AuthProvider } from './contexts/AuthContext';
+import { LanguageProvider } from './contexts/LanguageContext';
 import { Colors } from './config/colors';
 
 import LoginScreen from './screens/LoginScreen';
@@ -44,15 +45,12 @@ function TabNavigator() {
     <Tab.Navigator
       initialRouteName="Home"
       screenOptions={{
+        headerShown: false,
         tabBarShowLabel: true,
         tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.textSecondary,
         tabBarStyle: styles.tabBar,
         tabBarLabelStyle: styles.tabBarLabel,
-        headerStyle: styles.headerStyle,
-        headerTintColor: Colors.primary,
-        headerTitleStyle: styles.headerTitleStyle,
-        headerTitleAlign: 'center',
       }}
     >
       <Tab.Screen
@@ -102,8 +100,9 @@ function TabNavigator() {
 export default function App() {
   return (
     <AuthProvider>
-      <NavigationContainer>
-        <Stack.Navigator
+      <LanguageProvider>
+        <NavigationContainer>
+          <Stack.Navigator
           initialRouteName="Login"
           screenOptions={{
             headerStyle: styles.headerStyle,
@@ -163,6 +162,7 @@ export default function App() {
           />
         </Stack.Navigator>
       </NavigationContainer>
+      </LanguageProvider>
     </AuthProvider>
   );
 }

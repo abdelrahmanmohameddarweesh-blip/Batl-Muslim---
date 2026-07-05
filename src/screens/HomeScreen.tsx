@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView, Share } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView, Share, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, LinearGradient, Stop, Path } from 'react-native-svg';
 import { useAuth } from '../contexts/AuthContext';
-import { getCurrentUserProfile } from '../firebase/auth';
+import { useLanguage } from '../contexts/LanguageContext';
+import { getCurrentUserProfile, saveUserScore } from '../firebase/auth';
+import { shareAchievementWithImage } from '../utils/sharing';
 import AdBanner from '../components/AdBanner';
 import { Colors } from '../config/colors';
-
-const ONBOARDING_KEY = 'batl-muslim-onboarding-complete-v1';
 
 // Custom SVG Circular Progress Ring
 function CircularProgress({ size, strokeWidth, percent, emoji, label, color, ringColor }: any) {
@@ -25,7 +25,6 @@ function CircularProgress({ size, strokeWidth, percent, emoji, label, color, rin
               <Stop offset="100%" stopColor={color} />
             </LinearGradient>
           </Defs>
-          {/* Background Track Circle */}
           <Circle
             cx={size / 2}
             cy={size / 2}
@@ -34,7 +33,6 @@ function CircularProgress({ size, strokeWidth, percent, emoji, label, color, rin
             strokeWidth={strokeWidth}
             fill="transparent"
           />
-          {/* Progress Circle */}
           <Circle
             cx={size / 2}
             cy={size / 2}
@@ -48,7 +46,6 @@ function CircularProgress({ size, strokeWidth, percent, emoji, label, color, rin
             transform={`rotate(-90 ${size / 2} ${size / 2})`}
           />
         </Svg>
-        {/* Central Emoji */}
         <View style={styles.innerCircle}>
           <Text style={styles.innerEmoji}>{emoji}</Text>
         </View>
@@ -61,13 +58,20 @@ function CircularProgress({ size, strokeWidth, percent, emoji, label, color, rin
 
 export default function HomeScreen({ navigation }: any) {
   const { user } = useAuth();
+  const { t, language } = useLanguage();
   const [profile, setProfile] = useState<any>(null);
   const [showGuide, setShowGuide] = useState(false);
   
-  // Dynamic stats loaded from device
+  // Daily goals state
   const [prayersCompletedCount, setPrayersCompletedCount] = useState(0);
-  const [recitationMinutes, setRecitationMinutes] = useState(15); // Default mock matching mockup
-  const [streakDays, setStreakDays] = useState(7); // Default mock matching mockup
+  const [recitationMinutes, setRecitationMinutes] = useState(15);
+  const [streakDays, setStreakDays] = useState(7);
+
+  // Daily Quests State (Trivia, Prayer, Voice)
+  const [questTriviaPlayed, setQuestTriviaPlayed] = useState(false);
+  const [questPrayerLogged, setQuestPrayerLogged] = useState(false);
+  const [questVoiceDone, setQuestVoiceDone] = useState(false);
+  const [questBonusAwarded, setQuestBonusAwarded] = useState(false);
 
   const loadData = async () => {
     if (!user?.uid) return;
@@ -75,26 +79,55 @@ export default function HomeScreen({ navigation }: any) {
       const currentProfile = await getCurrentUserProfile(user.uid);
       setProfile(currentProfile);
 
-      // Load today's prayers status
       const today = new Date();
-      const todayStr = `prayer-tracker-${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
-      const stored = await AsyncStorage.getItem(todayStr);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        const count = Object.values(parsed).filter(Boolean).length;
-        setPrayersCompletedCount(count);
+      const todayStr = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+      
+      // 1. Load today's prayers status
+      const prayerKey = `prayer-tracker-${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+      const storedPrayers = await AsyncStorage.getItem(prayerKey);
+      let pCount = 0;
+      if (storedPrayers) {
+        const parsed = JSON.parse(storedPrayers);
+        pCount = Object.values(parsed).filter(Boolean).length;
+        setPrayersCompletedCount(pCount);
       } else {
         setPrayersCompletedCount(0);
       }
+
+      // 2. Check Daily Quests Completion Status
+      const triviaPlayed = await AsyncStorage.getItem(`quest-trivia-played-${todayStr}`);
+      const voiceDone = await AsyncStorage.getItem(`quest-voice-done-${todayStr}`);
+      const bonusGot = await AsyncStorage.getItem(`quest-daily-bonus-awarded-${todayStr}`);
+
+      setQuestTriviaPlayed(triviaPlayed === 'true');
+      setQuestPrayerLogged(pCount > 0);
+      setQuestVoiceDone(voiceDone === 'true');
+      setQuestBonusAwarded(bonusGot === 'true');
+
+      // 3. Handle awarding daily quest bonus automatically
+      if (triviaPlayed === 'true' && pCount > 0 && voiceDone === 'true' && bonusGot !== 'true') {
+        const nextScore = (currentProfile?.score ?? 0) + 50;
+        await saveUserScore(user.uid, nextScore);
+        await AsyncStorage.setItem(`quest-daily-bonus-awarded-${todayStr}`, 'true');
+        setQuestBonusAwarded(true);
+        Alert.alert(
+          language === 'ar' ? 'تهانينا! 🎉' : 'Congratulations! 🎉',
+          language === 'ar' 
+            ? 'لقد أكملت جميع المهام اليومية وحصلت على +٥٠ نقطة مكافأة!'
+            : 'You have completed all daily quests and earned +50 XP bonus points!'
+        );
+        // Reload profile to show new score
+        const updatedProfile = await getCurrentUserProfile(user.uid);
+        setProfile(updatedProfile);
+      }
+
     } catch (err) {
-      console.error(err);
+      console.error('Error loading home data:', err);
     }
   };
 
   useEffect(() => {
     loadData();
-
-    // Reload profile and stats whenever the user navigates back to HomeScreen
     const unsubscribe = navigation.addListener('focus', () => {
       loadData();
     });
@@ -114,11 +147,11 @@ export default function HomeScreen({ navigation }: any) {
   const currentScore = profile?.score ?? 0;
 
   const levelName = useMemo(() => {
-    if (currentScore >= 500) return 'البطل الأسطوري';
-    if (currentScore >= 200) return 'بطل ذهبي';
-    if (currentScore >= 80) return 'بطل فضي';
-    return 'بطل مبتدئ';
-  }, [currentScore]);
+    if (currentScore >= 500) return language === 'ar' ? 'البطل الأسطوري' : 'Legendary Hero';
+    if (currentScore >= 200) return language === 'ar' ? 'بطل ذهبي' : 'Gold Hero';
+    if (currentScore >= 80) return language === 'ar' ? 'بطل فضي' : 'Silver Hero';
+    return language === 'ar' ? 'بطل مبتدئ' : 'Novice Hero';
+  }, [currentScore, language]);
 
   const dismissGuide = async () => {
     await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
@@ -126,59 +159,99 @@ export default function HomeScreen({ navigation }: any) {
   };
 
   const handleShareAyah = async () => {
-    try {
-      const message = `📖 آية اليوم من تطبيق *بطل مسلم* 🌟
+    const message = language === 'ar' 
+      ? `📖 آية اليوم من تطبيق *بطل مسلم* 🌟
 
 { وَسَارِعُوا إِلَىٰ مَغْفِرَةٍ مِّن رَّبِّكُمْ وَجَنَّةٍ عَرْضُهَا السَّمَاوَاتُ وَالْأَرْضُ أُعَدَّتْ لِلْمُتَّقِينَ }
 [سورة آل عمران | 3:133]
 
 "And hasten to forgiveness from your Lord and a garden as wide as the heavens and the earth, prepared for the righteous."
 
-انضم إلينا في رحلة التنافس اليومي نحو المعرفة الإسلامية! 🚀`;
+انضم إلينا في رحلة التنافس اليومي نحو المعرفة الإسلامية! 🚀`
+      : `📖 Ayah of the Day from *Batl Muslim* App 🌟
 
-      await Share.share({ message });
-    } catch (err) {
-      console.error(err);
-    }
+"And hasten to forgiveness from your Lord and a garden as wide as the heavens and the earth, prepared for the righteous."
+[Surah Al-Imran | 3:133]
+
+Join us in our daily journey towards Islamic knowledge! 🚀`;
+
+    await shareAchievementWithImage(message);
   };
 
-  // Date Formatting (Gregorian & Hijri)
-  const gregorianDate = useMemo(() => {
+  // Date formatting
+  const formattedDates = useMemo(() => {
     const today = new Date();
-    return today.toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-  }, []);
+    const gregorian = today.toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    const hijri = new Intl.DateTimeFormat(language === 'ar' ? 'ar-SA-u-ca-islamic' : 'en-US-u-ca-islamic', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    }).format(today);
+    
+    return { gregorian, hijri };
+  }, [language]);
 
-  const hijriDate = useMemo(() => {
-    return new Intl.DateTimeFormat('ar-SA-u-ca-islamic', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
-  }, []);
-
-  // Compute percentages
   const prayerPercent = Math.round((prayersCompletedCount / 5) * 100);
   const recitationPercent = Math.round((recitationMinutes / 20) * 100);
+
+  // Daily quest progress calculation
+  const completedQuestsCount = [questTriviaPlayed, questPrayerLogged, questVoiceDone].filter(Boolean).length;
 
   return (
     <ScrollView style={styles.outerContainer} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
       <View style={styles.container}>
         <View style={styles.topGlow} />
 
-        {/* Welcome Header */}
-        <View style={styles.header}>
+        {/* Custom Glowing Emerald Header (exactly matching the mockup) */}
+        <View style={styles.mockupHeader}>
+          {/* Ceiling hanging stars & crescent layout design details */}
+          <Svg style={styles.headerBackgroundSvg} width="100%" height={150}>
+            <Defs>
+              <LinearGradient id="headerGlow" x1="0" y1="0" x2="0" y2="1">
+                <Stop offset="0%" stopColor="#0B3E2E" />
+                <Stop offset="50%" stopColor="#11231D" stopOpacity="0.8" />
+                <Stop offset="100%" stopColor="#09120F" stopOpacity="0" />
+              </LinearGradient>
+            </Defs>
+            <Circle cx="50%" cy="-30" r="140" fill="url(#headerGlow)" />
+            {/* Hanging Crescent Moon */}
+            <Path
+              d="M32 40 a12 12 0 1 0 10 18 a10 10 0 1 1 -10 -18"
+              fill="#FBBF24"
+              opacity="0.8"
+            />
+            {/* Hanging Star 1 */}
+            <Path d="M120 40 l2 4 l4 1 l-3 3 l1 4 l-4 -2 l-4 2 l1 -4 l-3 -3 l4 -1 z" fill="#FBBF24" opacity="0.6" />
+            {/* Hanging Star 2 */}
+            <Path d="M280 50 l1 3 l3 1 l-2 2 l0 3 l-3 -2 l-3 2 l0 -3 l-2 -2 l3 -1 z" fill="#FBBF24" opacity="0.5" />
+          </Svg>
+
           <View style={styles.headerTopRow}>
+            {/* Notifications Bell */}
             <TouchableOpacity style={styles.notificationBtn} activeOpacity={0.75}>
               <Text style={styles.notificationEmoji}>🔔</Text>
             </TouchableOpacity>
-            <View style={styles.headerTitleContainer}>
-              <View style={styles.titleWithIcon}>
-                <Text style={styles.title}>بطل مسلم</Text>
-                <Text style={styles.badgeIcon}>🛡️</Text>
+
+            {/* Central App Shield Logo */}
+            <View style={styles.logoBadgeContainer}>
+              <View style={styles.shieldLogo}>
+                <Text style={styles.shieldLogoText}>🌙</Text>
               </View>
-              <Text style={styles.subtitle}>وَفِي ذَلِكَ فَلْيَتَنَافَسِ الْمُتَنَافِسُونَ</Text>
+              <Text style={styles.appName}>{t('appName')}</Text>
             </View>
+
+            {/* Dynamic Local Clock */}
+            <Text style={styles.timeText}>
+              {new Date().toLocaleTimeString(language === 'ar' ? 'ar-SA' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+            </Text>
           </View>
           
-          <View style={styles.dateBadge}>
-            <Text style={styles.dateText}>{hijriDate} | {gregorianDate}</Text>
-          </View>
+          <Text style={styles.dateLabel}>{formattedDates.hijri} | {formattedDates.gregorian}</Text>
         </View>
 
         {/* Level Badge Card */}
@@ -187,23 +260,25 @@ export default function HomeScreen({ navigation }: any) {
             <View style={styles.levelBadgeContainer}>
               <Text style={styles.levelBadgeText}>{levelName}</Text>
             </View>
-            <Text style={styles.pointsText}>⭐ {currentScore} نقطة</Text>
+            <Text style={styles.pointsText}>⭐ {currentScore} {t('points')}</Text>
           </View>
           <View style={styles.levelProgressBarBackground}>
             <View style={[styles.levelProgressBarFill, { width: `${Math.min(currentScore, 100)}%` }]} />
           </View>
-          <Text style={styles.levelProgressLabel}>{Math.min(currentScore, 100)}% للترقية إلى الرتبة التالية</Text>
+          <Text style={styles.levelProgressLabel}>
+            {Math.min(currentScore, 100)}% {language === 'ar' ? 'للوصول للمستوى التالي' : 'to next level'}
+          </Text>
         </View>
 
         {/* Daily Goals Progress Dashboard */}
-        <Text style={styles.sectionTitle}>الأهداف اليومية</Text>
+        <Text style={styles.sectionTitle}>{t('dailyGoals')}</Text>
         <View style={styles.dailyGoalsRow}>
           <CircularProgress
             size={80}
             strokeWidth={7}
             percent={prayerPercent}
             emoji="🕌"
-            label="الصلوات"
+            label={t('prayers')}
             color="#10B981"
             ringColor="#34D399"
           />
@@ -212,7 +287,7 @@ export default function HomeScreen({ navigation }: any) {
             strokeWidth={7}
             percent={recitationPercent}
             emoji="🎙️"
-            label="التلاوة"
+            label={t('recitation')}
             color="#F59E0B"
             ringColor="#FBBF24"
           />
@@ -221,19 +296,64 @@ export default function HomeScreen({ navigation }: any) {
               <Text style={styles.streakFlame}>🔥</Text>
               <Text style={styles.streakCount}>{streakDays}</Text>
             </View>
-            <Text style={styles.percentText}>{streakDays} أيام</Text>
-            <Text style={styles.progressLabel}>سلسلة التحدي</Text>
+            <Text style={styles.percentText}>{streakDays} {t('days')}</Text>
+            <Text style={styles.progressLabel}>{t('streak')}</Text>
           </View>
         </View>
 
+        {/* Unified Daily Quests (Interlinking challenges) */}
+        <Text style={styles.sectionTitle}>{t('dailyQuestTitle')}</Text>
+        <View style={styles.questCard}>
+          <View style={styles.questProgressRow}>
+            <Text style={styles.questPercentText}>{completedQuestsCount}/3</Text>
+            <Text style={styles.questProgressLabel}>{t('questProgress')}</Text>
+          </View>
+          <View style={styles.questBarBackground}>
+            <View style={[styles.questBarFill, { width: `${(completedQuestsCount / 3) * 100}%` }]} />
+          </View>
+
+          <View style={styles.questsList}>
+            <View style={styles.questItem}>
+              <Text style={[styles.questCheckIcon, questTriviaPlayed && styles.questCheckIconActive]}>
+                {questTriviaPlayed ? '✓' : '○'}
+              </Text>
+              <Text style={[styles.questItemText, questTriviaPlayed && styles.questItemTextDone]}>
+                {t('questTrivia')}
+              </Text>
+            </View>
+            <View style={styles.questItem}>
+              <Text style={[styles.questCheckIcon, questPrayerLogged && styles.questCheckIconActive]}>
+                {questPrayerLogged ? '✓' : '○'}
+              </Text>
+              <Text style={[styles.questItemText, questPrayerLogged && styles.questItemTextDone]}>
+                {t('questPrayer')}
+              </Text>
+            </View>
+            <View style={styles.questItem}>
+              <Text style={[styles.questCheckIcon, questVoiceDone && styles.questCheckIconActive]}>
+                {questVoiceDone ? '✓' : '○'}
+              </Text>
+              <Text style={[styles.questItemText, questVoiceDone && styles.questItemTextDone]}>
+                {t('questVoice')}
+              </Text>
+            </View>
+          </View>
+
+          {questBonusAwarded && (
+            <View style={styles.questBonusBadge}>
+              <Text style={styles.questBonusText}>🎁 {t('questCompleted')}</Text>
+            </View>
+          )}
+        </View>
+
         {/* Ayah of the Day */}
-        <Text style={styles.sectionTitle}>آية اليوم</Text>
+        <Text style={styles.sectionTitle}>{t('ayahOfDay')}</Text>
         <View style={styles.ayahCard}>
           <View style={styles.ayahHeader}>
             <TouchableOpacity style={styles.shareBtn} onPress={handleShareAyah} activeOpacity={0.75}>
-              <Text style={styles.shareBtnText}>مشاركة 💬</Text>
+              <Text style={styles.shareBtnText}>{t('share')}</Text>
             </TouchableOpacity>
-            <Text style={styles.ayahTitle}>سورة آل عمران | 3:133</Text>
+            <Text style={styles.ayahTitle}>Surah Al-Imran | 3:133</Text>
           </View>
           <Text style={styles.ayahArabic}>
             {`﴿  وَسَارِعُوا إِلَىٰ مَغْفِرَةٍ مِّن رَّبِّكُمْ وَجَنَّةٍ عَرْضُهَا السَّمَاوَاتُ وَالْأَرْضُ أُعَدَّتْ لِلْمُتَّقِينَ  ﴾`}
@@ -244,7 +364,7 @@ export default function HomeScreen({ navigation }: any) {
         </View>
 
         {/* Today's Challenges Grid */}
-        <Text style={styles.sectionTitle}>التحديات المتاحة</Text>
+        <Text style={styles.sectionTitle}>{t('challenges')}</Text>
         <View style={styles.challengesGrid}>
           <TouchableOpacity
             style={[styles.challengeCard, { backgroundColor: '#10B9811A', borderColor: '#10B9814D' }]}
@@ -252,10 +372,10 @@ export default function HomeScreen({ navigation }: any) {
             activeOpacity={0.85}
           >
             <Text style={styles.challengeCardEmoji}>🧠</Text>
-            <Text style={styles.challengeCardTitle}>تحدي المعرفة</Text>
-            <Text style={styles.challengeCardDesc}>تخصيص كامل للأسئلة والفقه</Text>
+            <Text style={styles.challengeCardTitle}>{t('dailyTrivia')}</Text>
+            <Text style={styles.challengeCardDesc}>{t('dailyTriviaDesc')}</Text>
             <View style={styles.challengeCardBtn}>
-              <Text style={styles.challengeCardBtnText}>ابدأ اللعب ➔</Text>
+              <Text style={styles.challengeCardBtnText}>{t('startChallenge')}</Text>
             </View>
           </TouchableOpacity>
 
@@ -265,10 +385,10 @@ export default function HomeScreen({ navigation }: any) {
             activeOpacity={0.85}
           >
             <Text style={styles.challengeCardEmoji}>🎙️</Text>
-            <Text style={styles.challengeCardTitle}>محاكاة التلاوة</Text>
-            <Text style={styles.challengeCardDesc}>تحليل النغم ومحاكاة القراء</Text>
+            <Text style={styles.challengeCardTitle}>{t('recitationHub')}</Text>
+            <Text style={styles.challengeCardDesc}>{t('recitationHubDesc')}</Text>
             <View style={[styles.challengeCardBtn, { backgroundColor: '#FBBF24' }]}>
-              <Text style={[styles.challengeCardBtnText, { color: '#000000' }]}>سجّل الآن ➔</Text>
+              <Text style={[styles.challengeCardBtnText, { color: '#000000' }]}>{t('reciteNow')}</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -277,17 +397,17 @@ export default function HomeScreen({ navigation }: any) {
         <View style={styles.quickAccessList}>
           <TouchableOpacity style={styles.quickAccessItem} onPress={() => navigation.navigate('PrayerTracker')} activeOpacity={0.8}>
             <Text style={styles.quickAccessArrow}>➔</Text>
-            <Text style={styles.quickAccessText}>متابعة الصلوات اليومية 🕌</Text>
+            <Text style={styles.quickAccessText}>{t('prayerTrackerLink')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.quickAccessItem} onPress={() => navigation.navigate('Adhkar')} activeOpacity={0.8}>
             <Text style={styles.quickAccessArrow}>➔</Text>
-            <Text style={styles.quickAccessText}>الأذكار اليومية (الصباح والمساء) ☀️</Text>
+            <Text style={styles.quickAccessText}>{t('adhkarLink')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.quickAccessItem} onPress={() => navigation.navigate('Memorization')} activeOpacity={0.8}>
             <Text style={styles.quickAccessArrow}>➔</Text>
-            <Text style={styles.quickAccessText}>تحديات حفظ ومراجعة الآيات 🧠</Text>
+            <Text style={styles.quickAccessText}>{t('memorizationLink')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -350,62 +470,84 @@ const styles = StyleSheet.create({
     borderRadius: 125,
     backgroundColor: '#10B9811F',
   },
-  header: {
-    marginTop: 20,
+  mockupHeader: {
+    marginTop: 10,
     marginBottom: 20,
+    alignItems: 'center',
+    position: 'relative',
+    width: '100%',
+    paddingBottom: 10,
+  },
+  headerBackgroundSvg: {
+    position: 'absolute',
+    top: -20,
+    left: 0,
+    right: 0,
+    zIndex: -1,
   },
   headerTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    width: '100%',
+    paddingHorizontal: 4,
+    marginBottom: 8,
   },
   notificationBtn: {
-    width: 42,
-    height: 42,
+    width: 40,
+    height: 40,
     borderRadius: 12,
-    backgroundColor: Colors.surface,
+    backgroundColor: '#11231D80',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: '#1E3A2F',
   },
   notificationEmoji: {
-    fontSize: 18,
+    fontSize: 16,
   },
-  headerTitleContainer: {
-    alignItems: 'flex-end',
-  },
-  titleWithIcon: {
-    flexDirection: 'row-reverse',
+  logoBadgeContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
-  title: {
-    fontSize: 22,
+  shieldLogo: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#10B981',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#F59E0B',
+  },
+  shieldLogoText: {
+    fontSize: 18,
+    color: '#000000',
+  },
+  appName: {
+    fontSize: 20,
     fontWeight: '900',
     color: Colors.textPrimary,
   },
-  badgeIcon: {
-    fontSize: 20,
+  timeText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: Colors.textSecondary,
+    width: 60,
+    textAlign: 'center',
   },
-  subtitle: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: Colors.primary,
-    marginTop: 2,
-  },
-  dateBadge: {
-    alignSelf: 'flex-end',
-    backgroundColor: Colors.primaryLight,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 10,
-  },
-  dateText: {
+  dateLabel: {
     fontSize: 11,
     fontWeight: '800',
     color: Colors.primary,
+    marginTop: 6,
+    backgroundColor: '#152E2480',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#1E3A2F4D',
   },
   levelCard: {
     backgroundColor: Colors.surface,
@@ -529,6 +671,93 @@ const styles = StyleSheet.create({
     color: '#000000',
     position: 'absolute',
     top: 36,
+  },
+  questCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: 22,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: 24,
+  },
+  questProgressRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  questPercentText: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: Colors.primary,
+  },
+  questProgressLabel: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: Colors.textPrimary,
+  },
+  questBarBackground: {
+    height: 6,
+    backgroundColor: '#1E3A2F',
+    borderRadius: 3,
+    width: '100%',
+    marginBottom: 16,
+  },
+  questBarFill: {
+    height: 6,
+    backgroundColor: Colors.primary,
+    borderRadius: 3,
+  },
+  questsList: {
+    gap: 12,
+  },
+  questItem: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 10,
+  },
+  questCheckIcon: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    borderColor: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 18,
+    fontSize: 12,
+    fontWeight: '900',
+    color: Colors.textSecondary,
+  },
+  questCheckIconActive: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primary,
+    color: '#09120F',
+  },
+  questItemText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    flex: 1,
+    textAlign: 'right',
+  },
+  questItemTextDone: {
+    color: Colors.textSecondary,
+    textDecorationLine: 'line-through',
+  },
+  questBonusBadge: {
+    marginTop: 16,
+    backgroundColor: Colors.accentLight,
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: Colors.accent,
+  },
+  questBonusText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: Colors.accent,
+    textAlign: 'center',
+    lineHeight: 16,
   },
   ayahCard: {
     backgroundColor: Colors.surface,
@@ -712,3 +941,4 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
 });
+const ONBOARDING_KEY = 'batl-muslim-onboarding-complete-v1';

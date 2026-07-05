@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { memorizationExercises, type MemorizationExercise } from '../data/memorization';
 import { useAuth } from '../contexts/AuthContext';
 import { saveUserScore, getCurrentUserProfile } from '../firebase/auth';
@@ -40,6 +41,11 @@ export default function MemorizationScreen({ navigation }: any) {
           const profile = await getCurrentUserProfile(user.uid);
           const currentScore = profile?.score ?? 0;
           await saveUserScore(user.uid, currentScore + 20);
+
+          // Track total completed memorization count for badges
+          const count = await AsyncStorage.getItem('completed-memorization-count');
+          const nextCount = count ? parseInt(count, 10) + 1 : 1;
+          await AsyncStorage.setItem('completed-memorization-count', nextCount.toString());
         } catch (err) {
           console.error(err);
         }

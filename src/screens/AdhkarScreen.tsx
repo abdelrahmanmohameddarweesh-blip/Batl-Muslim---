@@ -5,6 +5,7 @@ import { morningAdhkar, eveningAdhkar, type Dhikr } from '../data/adhkar';
 import { useAuth } from '../contexts/AuthContext';
 import { saveUserScore, getCurrentUserProfile } from '../firebase/auth';
 import { Colors } from '../config/colors';
+import AdBanner from '../components/AdBanner';
 
 export default function AdhkarScreen({ navigation }: any) {
   const { user } = useAuth();
@@ -166,6 +167,7 @@ export default function AdhkarScreen({ navigation }: any) {
           </View>
         </ScrollView>
       )}
+      <AdBanner />
     </View>
   );
 }

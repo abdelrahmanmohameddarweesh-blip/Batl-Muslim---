@@ -4,6 +4,7 @@ import { memorizationExercises, type MemorizationExercise } from '../data/memori
 import { useAuth } from '../contexts/AuthContext';
 import { saveUserScore, getCurrentUserProfile } from '../firebase/auth';
 import { Colors } from '../config/colors';
+import AdBanner from '../components/AdBanner';
 
 export default function MemorizationScreen({ navigation }: any) {
   const { user } = useAuth();
@@ -183,6 +184,7 @@ export default function MemorizationScreen({ navigation }: any) {
           </View>
         )}
       </View>
+      <AdBanner />
     </ScrollView>
   );
 }

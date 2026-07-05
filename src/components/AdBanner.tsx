@@ -1,12 +1,28 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, StyleSheet } from 'react-native';
+import { BannerAd, BannerAdSize } from 'react-native-google-mobile-ads';
+import { AdMobConfig } from '../config/ads';
 
 export default function AdBanner() {
+  const [hasError, setHasError] = useState(false);
+
+  if (hasError) {
+    return null;
+  }
+
   return (
     <View style={styles.container}>
-      <View style={styles.fallbackBox}>
-        <Text style={styles.fallbackText}>الإعلان غير متوفر حالياً</Text>
-      </View>
+      <BannerAd
+        unitId={AdMobConfig.bannerAdUnitID}
+        size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
+        requestOptions={{
+          requestNonPersonalizedAdsOnly: true,
+        }}
+        onAdFailedToLoad={(error) => {
+          console.warn('Ad failed to load: ', error);
+          setHasError(true);
+        }}
+      />
     </View>
   );
 }
@@ -15,17 +31,7 @@ const styles = StyleSheet.create({
   container: {
     width: '100%',
     alignItems: 'center',
-    marginTop: 16,
-  },
-  fallbackBox: {
-    width: '100%',
-    paddingVertical: 18,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  fallbackText: {
-    color: '#555',
-    fontSize: 14,
+    justifyContent: 'center',
+    marginVertical: 12,
   },
 });

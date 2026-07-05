@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, Share } from 'react-native';
 import { questionBank, type Question } from '../data/questions';
 import { useAuth } from '../contexts/AuthContext';
 import { saveUserScore, getCurrentUserProfile } from '../firebase/auth';
 import { Colors } from '../config/colors';
+import { useInterstitialAd } from 'react-native-google-mobile-ads';
+import { AdMobConfig } from '../config/ads';
+import AdBanner from '../components/AdBanner';
 
 const tiers = ['Beginner', 'Intermediate', 'Advanced', 'Hero'] as const;
 type TierType = (typeof tiers)[number];
@@ -26,6 +29,44 @@ export default function TriviaScreen({ navigation }: any) {
   
   // Game states: 'config' | 'quiz' | 'completed'
   const [gameState, setGameState] = useState<'config' | 'quiz' | 'completed'>('config');
+  const [pendingScore, setPendingScore] = useState<number | null>(null);
+
+  // Interstitial Ad setup
+  const { isLoaded, isClosed, load, show } = useInterstitialAd(AdMobConfig.interstitialAdUnitID, {
+    requestNonPersonalizedAdsOnly: true,
+  });
+
+  // Load interstitial on mount
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  // Reload interstitial when closed
+  useEffect(() => {
+    if (isClosed) {
+      load();
+    }
+  }, [isClosed, load]);
+
+  const completeQuiz = async (finalScore: number) => {
+    setGameState('completed');
+    if (user?.uid) {
+      try {
+        const profile = await getCurrentUserProfile(user.uid);
+        const currentScore = profile?.score ?? 0;
+        await saveUserScore(user.uid, currentScore + finalScore);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (isClosed && pendingScore !== null) {
+      completeQuiz(pendingScore);
+      setPendingScore(null);
+    }
+  }, [isClosed, pendingScore]);
 
   // Config States
   const [selectedTier, setSelectedTier] = useState<TierType>('Beginner');
@@ -115,16 +156,12 @@ export default function TriviaScreen({ navigation }: any) {
     setAnswered(true);
 
     if (currentIndex + 1 >= questions.length) {
-      setTimeout(async () => {
-        setGameState('completed');
-        if (user?.uid) {
-          try {
-            const profile = await getCurrentUserProfile(user.uid);
-            const currentScore = profile?.score ?? 0;
-            await saveUserScore(user.uid, currentScore + nextScore);
-          } catch (err) {
-            console.error(err);
-          }
+      setPendingScore(nextScore);
+      setTimeout(() => {
+        if (isLoaded) {
+          show();
+        } else {
+          completeQuiz(nextScore);
         }
       }, 1000);
     }
@@ -385,6 +422,7 @@ export default function TriviaScreen({ navigation }: any) {
           </View>
         )}
       </View>
+      <AdBanner />
     </ScrollView>
   );
 }

@@ -7,12 +7,53 @@ import { generateReferenceProfile, analyzeVocalImitation } from '../data/voiceTe
 import { useAuth } from '../contexts/AuthContext';
 import { saveUserScore, getCurrentUserProfile } from '../firebase/auth';
 import { Colors } from '../config/colors';
+import { useInterstitialAd } from 'react-native-google-mobile-ads';
+import { AdMobConfig } from '../config/ads';
 
 export default function VoiceScreen({ navigation }: any) {
   const { user } = useAuth();
   
   // Navigation states: 'select-reader' | 'ready' | 'recording' | 'recorded' | 'analyzing' | 'scored'
   const [step, setStep] = useState<'select-reader' | 'ready' | 'recording' | 'recorded' | 'analyzing' | 'scored'>('select-reader');
+  
+  const [pendingScoreData, setPendingScoreData] = useState<{ results: any, earnedPoints: number } | null>(null);
+
+  // Interstitial Ad setup
+  const { isLoaded, isClosed, load, show } = useInterstitialAd(AdMobConfig.interstitialAdUnitID, {
+    requestNonPersonalizedAdsOnly: true,
+  });
+
+  // Load interstitial on mount
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  // Reload interstitial when closed
+  useEffect(() => {
+    if (isClosed) {
+      load();
+    }
+  }, [isClosed, load]);
+
+  const completeScoring = async (results: any, earnedPoints: number) => {
+    setStep('scored');
+    if (user?.uid && results.overall > 15) {
+      try {
+        const profile = await getCurrentUserProfile(user.uid);
+        const currentScore = profile?.score ?? 0;
+        await saveUserScore(user.uid, currentScore + earnedPoints);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (isClosed && pendingScoreData !== null) {
+      completeScoring(pendingScoreData.results, pendingScoreData.earnedPoints);
+      setPendingScoreData(null);
+    }
+  }, [isClosed, pendingScoreData]);
   
   const [selectedReader, setSelectedReader] = useState<Reader | null>(null);
   const [currentAyah, setCurrentAyah] = useState<Ayah | null>(null);
@@ -176,20 +217,14 @@ export default function VoiceScreen({ navigation }: any) {
       const results = analyzeVocalImitation(meteringHistory, recordingDuration, refProfile);
 
       setScoreBreakdown(results);
-      setStep('scored');
+      
+      const earnedPoints = Math.round((results.overall / 100) * 25);
+      setPendingScoreData({ results, earnedPoints });
 
-      // Save score to user database if results are successful
-      if (user?.uid && results.overall > 15) {
-        try {
-          const profile = await getCurrentUserProfile(user.uid);
-          const currentScore = profile?.score ?? 0;
-          
-          // Reward points proportional to performance: max +25 points
-          const earnedPoints = Math.round((results.overall / 100) * 25);
-          await saveUserScore(user.uid, currentScore + earnedPoints);
-        } catch (err) {
-          console.error(err);
-        }
+      if (isLoaded) {
+        show();
+      } else {
+        completeScoring(results, earnedPoints);
       }
     }, 2500);
   };

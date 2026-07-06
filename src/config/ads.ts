@@ -3,13 +3,13 @@ import { TestIds } from './adsService';
 
 const REAL_BANNER_ID = Platform.select({
   android: 'ca-app-pub-6157287197742359/6118582133',
-  ios: TestIds.BANNER, // Placeholder test ID for iOS
+  ios: 'ca-app-pub-6157287197742359/9595808042',
   default: TestIds.BANNER,
 });
 
 const REAL_INTERSTITIAL_ID = Platform.select({
   android: 'ca-app-pub-6157287197742359/4823893320',
-  ios: TestIds.INTERSTITIAL, // Placeholder test ID for iOS
+  ios: 'ca-app-pub-6157287197742359/6681834700',
   default: TestIds.INTERSTITIAL,
 });
 

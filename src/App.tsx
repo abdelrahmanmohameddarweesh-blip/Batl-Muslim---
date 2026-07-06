@@ -22,6 +22,7 @@ import MemorizationScreen from './screens/MemorizationScreen';
 import AdhkarScreen from './screens/AdhkarScreen';
 import HadithChallengeScreen from './screens/HadithChallengeScreen';
 import LiveDuelScreen from './screens/LiveDuelScreen';
+import CommunityFeedScreen from './screens/CommunityFeedScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -45,7 +46,7 @@ function ChallengeHeroButton({ onPress }: any) {
 
 // Tab Navigator setup
 function TabNavigator() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { colors } = useTheme();
   const styles = getStyles(colors);
 
@@ -70,10 +71,10 @@ function TabNavigator() {
         }}
       />
       <Tab.Screen
-        name="Voice"
-        component={VoiceScreen}
+        name="CommunityFeed"
+        component={CommunityFeedScreen}
         options={{
-          title: t('voiceTab'),
+          title: language === 'ar' ? 'منبر التلاوة' : 'Community Feed',
           tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>🎙️</Text>,
         }}
       />
@@ -107,6 +108,7 @@ function TabNavigator() {
 
 function NavigationWrapper() {
   const { colors } = useTheme();
+  const { language } = useLanguage();
   const styles = getStyles(colors);
 
   return (
@@ -173,6 +175,11 @@ function NavigationWrapper() {
           name="LiveDuel"
           component={LiveDuelScreen}
           options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Voice"
+          component={VoiceScreen}
+          options={{ title: language === 'ar' ? 'تحدي محاكاة التلاوة' : 'Recitation Challenge' }}
         />
       </Stack.Navigator>
     </NavigationContainer>

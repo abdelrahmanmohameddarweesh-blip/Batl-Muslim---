@@ -6,16 +6,21 @@ import { readers, type Reader } from '../data/readers';
 import { ayahs, type Ayah } from '../data/ayahs';
 import { generateReferenceProfile, analyzeVocalImitation } from '../data/voiceTemplates';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { saveUserScore, getCurrentUserProfile } from '../firebase/auth';
+import { addCommunityPost } from '../data/communityFeed';
 import { Colors } from '../config/colors';
 import { useInterstitialAd } from '../config/adsService';
 import { AdMobConfig } from '../config/ads';
 
 export default function VoiceScreen({ navigation }: any) {
   const { user } = useAuth();
+  const { colors, isLightMode } = useTheme();
+  const styles = getStyles(colors);
   
   // Navigation states: 'select-reader' | 'ready' | 'recording' | 'recorded' | 'analyzing' | 'scored'
   const [step, setStep] = useState<'select-reader' | 'ready' | 'recording' | 'recorded' | 'analyzing' | 'scored'>('select-reader');
+  const [hasShared, setHasShared] = useState(false);
   
   const [pendingScoreData, setPendingScoreData] = useState<{ results: any, earnedPoints: number } | null>(null);
 
@@ -247,7 +252,34 @@ export default function VoiceScreen({ navigation }: any) {
     setMeteringHistory([]);
     setRecordingDuration(0);
     setLiveVolume(0);
+    setHasShared(false);
     setStep('select-reader');
+  };
+
+  const handleShareToFeed = async () => {
+    if (!selectedReader || !currentAyah) return;
+    try {
+      const userProfile = user?.uid ? await getCurrentUserProfile(user.uid) : null;
+      await addCommunityPost({
+        userName: userProfile?.displayName || user?.displayName || 'بطل مسلم',
+        userLevel: Math.max(1, Math.floor((userProfile?.score ?? 0) / 100)),
+        countryCode: userProfile?.countryCode || 'EG',
+        surahName: currentAyah.surah,
+        ayahNumber: currentAyah.number,
+        readerId: selectedReader.id,
+        readerName: selectedReader.name,
+        matchPercentage: scoreBreakdown.overall,
+        style: recitationStyle,
+      });
+      setHasShared(true);
+      Alert.alert(
+        'تم النشر بنجاح! 🎉',
+        'لقد تم نشر تلاوتك في منبر التلاوة الجماعي ليراها ويتفاعل معها مجتمع الأبطال.'
+      );
+    } catch (err) {
+      console.error(err);
+      Alert.alert('خطأ', 'فشل في نشر التلاوة على Feed.');
+    }
   };
 
   return (
@@ -389,7 +421,7 @@ export default function VoiceScreen({ navigation }: any) {
         {/* STEP 5: Analyzing State */}
         {step === 'analyzing' && (
           <View style={styles.card}>
-            <ActivityIndicator size="large" color={Colors.primary} style={styles.loader} />
+            <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
             <Text style={styles.analyzingText}>جاري استخراج الخصائص الصوتية ومطابقتها مع تلاوة الشيخ...</Text>
             <Text style={styles.analyzingSub}>تحليل النبرة والطبقة، إيقاع القراءة، ومخارج المقاطع التجويدية</Text>
           </View>
@@ -447,6 +479,18 @@ export default function VoiceScreen({ navigation }: any) {
             )}
 
             <View style={styles.actionRow}>
+              {!hasShared && (
+                <TouchableOpacity 
+                  style={[styles.primaryButton, { backgroundColor: colors.accent, marginBottom: 12 }]} 
+                  onPress={handleShareToFeed} 
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.primaryButtonText, { color: '#09120F', fontWeight: '900' }]}>
+                    نشر في منبر التلاوة الجماعي 🌍
+                  </Text>
+                </TouchableOpacity>
+              )}
+
               <TouchableOpacity style={styles.primaryButton} onPress={handleReset} activeOpacity={0.85}>
                 <Text style={styles.primaryButtonText}>تحدي قارئ آخر 🔄</Text>
               </TouchableOpacity>
@@ -463,10 +507,10 @@ export default function VoiceScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any) => StyleSheet.create({
   outerContainer: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   scrollContent: {
     paddingBottom: 24,
@@ -482,24 +526,24 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '800',
-    color: Colors.primary,
+    color: colors.primary,
     textAlign: 'center',
     marginBottom: 6,
   },
   subtitle: {
     fontSize: 13,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 18,
     paddingHorizontal: 12,
   },
   card: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 24,
     padding: 20,
     borderWidth: 1,
-    borderColor: Colors.border,
-    shadowColor: Colors.shadow,
+    borderColor: colors.border,
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.03,
     shadowRadius: 8,
@@ -509,7 +553,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 15,
     fontWeight: '800',
-    color: Colors.textPrimary,
+    color: colors.textPrimary,
     marginBottom: 16,
     textAlign: 'right',
     width: '100%',
@@ -524,14 +568,14 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     backgroundColor: '#FAFCFB',
   },
   readerEmojiContainer: {
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: Colors.primaryLight,
+    backgroundColor: colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 14,
@@ -545,13 +589,13 @@ const styles = StyleSheet.create({
   readerName: {
     fontSize: 15,
     fontWeight: '800',
-    color: Colors.textPrimary,
+    color: colors.textPrimary,
     textAlign: 'right',
     marginBottom: 4,
   },
   readerDesc: {
     fontSize: 11,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'right',
     lineHeight: 15,
   },
@@ -584,17 +628,17 @@ const styles = StyleSheet.create({
   styleSelectorTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: Colors.textPrimary,
+    color: colors.textPrimary,
     textAlign: 'right',
     marginBottom: 8,
   },
   styleSelectorRow: {
     flexDirection: 'row-reverse',
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderRadius: 12,
     padding: 3,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   styleSelectorBtn: {
     flex: 1,
@@ -603,29 +647,29 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   styleSelectorBtnActive: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
   },
   styleSelectorText: {
     fontSize: 12,
     fontWeight: '700',
-    color: Colors.textPrimary,
+    color: colors.textPrimary,
   },
   styleSelectorTextActive: {
-    color: Colors.surface,
+    color: colors.surface,
   },
   verseBox: {
     width: '100%',
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderRadius: 18,
     padding: 18,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     marginBottom: 20,
     alignItems: 'center',
   },
   verseLabel: {
     fontSize: 11,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     fontWeight: '700',
     marginBottom: 10,
   },
@@ -633,12 +677,12 @@ const styles = StyleSheet.create({
     fontSize: 20,
     lineHeight: 30,
     fontWeight: '800',
-    color: Colors.primary,
+    color: colors.primary,
     textAlign: 'center',
   },
   statusHint: {
     fontSize: 13,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginBottom: 16,
     fontWeight: '600',
   },
@@ -646,10 +690,10 @@ const styles = StyleSheet.create({
     width: 76,
     height: 76,
     borderRadius: 38,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
@@ -657,12 +701,12 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   micButtonRecording: {
-    backgroundColor: Colors.error,
-    shadowColor: Colors.error,
+    backgroundColor: colors.error,
+    shadowColor: colors.error,
   },
   micIcon: {
     fontSize: 32,
-    color: Colors.surface,
+    color: colors.surface,
   },
   backButton: {
     marginTop: 8,
@@ -670,20 +714,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   backButtonText: {
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     fontSize: 13,
     fontWeight: '700',
   },
   recordingTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: Colors.error,
+    color: colors.error,
     marginBottom: 4,
   },
   timerText: {
     fontSize: 14,
     fontWeight: '700',
-    color: Colors.error,
+    color: colors.error,
     marginBottom: 18,
   },
   waveContainer: {
@@ -696,13 +740,13 @@ const styles = StyleSheet.create({
   },
   waveBar: {
     width: 6,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 3,
   },
   statusSuccess: {
     fontSize: 16,
     fontWeight: '800',
-    color: Colors.success,
+    color: colors.success,
     marginBottom: 8,
   },
   actionRow: {
@@ -711,28 +755,28 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   primaryButton: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: 'center',
     width: '100%',
   },
   primaryButtonText: {
-    color: Colors.surface,
+    color: colors.surface,
     fontWeight: '700',
     fontSize: 15,
   },
   secondaryButton: {
     backgroundColor: 'transparent',
     borderWidth: 1.5,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: 'center',
     width: '100%',
   },
   secondaryButtonText: {
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     fontWeight: '700',
     fontSize: 14,
   },
@@ -742,7 +786,7 @@ const styles = StyleSheet.create({
   analyzingText: {
     fontSize: 14,
     fontWeight: '800',
-    color: Colors.textPrimary,
+    color: colors.textPrimary,
     textAlign: 'center',
     marginBottom: 6,
     lineHeight: 20,
@@ -750,26 +794,26 @@ const styles = StyleSheet.create({
   },
   analyzingSub: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 16,
   },
   resultTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: Colors.primary,
+    color: colors.primary,
     marginBottom: 4,
   },
   resultSubtitle: {
     fontSize: 13,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginBottom: 12,
     textAlign: 'center',
   },
   overallScoreBox: {
     backgroundColor: '#F7F6EB',
     borderWidth: 1,
-    borderColor: Colors.accent + '44',
+    borderColor: colors.accent + '44',
     borderRadius: 20,
     paddingVertical: 20,
     paddingHorizontal: 30,
@@ -779,27 +823,27 @@ const styles = StyleSheet.create({
   },
   scoreBoxLow: {
     backgroundColor: '#FFF5F5',
-    borderColor: Colors.error + '44',
+    borderColor: colors.error + '44',
   },
   scoreBoxHigh: {
     backgroundColor: '#EBF7F3',
-    borderColor: Colors.success + '44',
+    borderColor: colors.success + '44',
   },
   overallVal: {
     fontSize: 36,
     fontWeight: '900',
-    color: Colors.accent,
+    color: colors.accent,
     marginBottom: 4,
   },
   textLow: {
-    color: Colors.error,
+    color: colors.error,
   },
   textHigh: {
-    color: Colors.success,
+    color: colors.success,
   },
   overallLbl: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     fontWeight: '700',
   },
   breakdownList: {
@@ -812,22 +856,22 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderColor: Colors.background,
+    borderColor: colors.background,
     paddingVertical: 8,
     paddingHorizontal: 4,
   },
   breakdownLabel: {
     fontSize: 13,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     fontWeight: '700',
   },
   breakdownPercent: {
     fontSize: 14,
-    color: Colors.textPrimary,
+    color: colors.textPrimary,
     fontWeight: '800',
   },
   rewardBox: {
-    backgroundColor: Colors.accentLight,
+    backgroundColor: colors.accentLight,
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 10,
@@ -836,15 +880,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   rewardBoxLow: {
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   rewardText: {
     fontSize: 13,
     fontWeight: '800',
-    color: Colors.accent,
+    color: colors.accent,
   },
   rewardTextLow: {
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     fontSize: 12,
     textAlign: 'center',
     lineHeight: 18,

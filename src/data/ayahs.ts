@@ -2,7 +2,7 @@ export type Ayah = {
   id: string;
   text: string;
   surah: string;
-  number: number;
+  number: number | string;
 };
 
 export const ayahs: Ayah[] = [

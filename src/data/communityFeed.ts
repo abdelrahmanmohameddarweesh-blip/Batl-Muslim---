@@ -6,7 +6,7 @@ export interface CommunityPost {
   userLevel: number;
   countryCode: string;
   surahName: string;
-  ayahNumber: number;
+  ayahNumber: number | string;
   readerId: string;
   readerName: string;
   matchPercentage: number;

@@ -8,6 +8,7 @@ import { generateReferenceProfile, analyzeVocalImitation } from '../data/voiceTe
 import { surahsList } from '../data/surahs';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { saveUserScore, getCurrentUserProfile } from '../firebase/auth';
 import { addCommunityPost } from '../data/communityFeed';
 import { Colors } from '../config/colors';
@@ -17,13 +18,16 @@ import { AdMobConfig } from '../config/ads';
 export default function VoiceScreen({ navigation }: any) {
   const { user } = useAuth();
   const { colors, isLightMode } = useTheme();
+  const { language } = useLanguage();
   const styles = getStyles(colors);
   
   // Navigation states: 'select-reader' | 'setup-ayah' | 'ready' | 'recording' | 'recorded' | 'analyzing' | 'scored'
   const [step, setStep] = useState<'select-reader' | 'setup-ayah' | 'ready' | 'recording' | 'recorded' | 'analyzing' | 'scored'>('select-reader');
   const [hasShared, setHasShared] = useState(false);
   const [selectedSurahNumber, setSelectedSurahNumber] = useState<number>(1);
-  const [selectedAyahNumber, setSelectedAyahNumber] = useState<number>(1);
+  const [startAyahNumber, setStartAyahNumber] = useState<number>(1);
+  const [endAyahNumber, setEndAyahNumber] = useState<number>(1);
+  const [recordWholeSurah, setRecordWholeSurah] = useState<boolean>(false);
   const [fetchingAyah, setFetchingAyah] = useState<boolean>(false);
   
   const [pendingScoreData, setPendingScoreData] = useState<{ results: any, earnedPoints: number } | null>(null);
@@ -282,32 +286,37 @@ export default function VoiceScreen({ navigation }: any) {
     }
   };
 
-  const loadSelectedAyah = async (surahNum: number, ayahNum: number) => {
+  const loadSelectedAyahRange = async (surahNum: number, startNum: number, endNum: number) => {
     setFetchingAyah(true);
     try {
-      const response = await fetch(`https://api.alquran.cloud/v1/ayah/${surahNum}:${ayahNum}/ar.alafasy`);
+      const response = await fetch(`https://api.alquran.cloud/v1/surah/${surahNum}/ar.alafasy`);
       const resJson = await response.json();
-      if (resJson?.data?.text) {
-        let cleanText = resJson.data.text;
+      if (resJson?.data?.ayahs) {
+        const allAyahs = resJson.data.ayahs;
+        const rangeAyahs = allAyahs.slice(startNum - 1, endNum);
+
+        let combinedText = rangeAyahs.map((a: any) => a.text).join(' ۞ ');
+
         const bismillah = 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ';
-        if (surahNum !== 1 && ayahNum === 1 && cleanText.startsWith(bismillah)) {
-          cleanText = cleanText.replace(bismillah, '').trim();
+        if (surahNum !== 1 && startNum === 1 && combinedText.startsWith(bismillah)) {
+          combinedText = combinedText.replace(bismillah, '').trim();
         }
+
         setCurrentAyah({
-          id: `dynamic-${surahNum}-${ayahNum}`,
-          text: cleanText,
+          id: `dynamic-${surahNum}-${startNum}-${endNum}`,
+          text: combinedText,
           surah: `سورة ${surahsList.find(s => s.number === surahNum)?.name || 'مخصصة'}`,
-          number: ayahNum,
+          number: startNum === endNum ? startNum : `${startNum} - ${endNum}`,
         });
         setStep('ready');
       } else {
-        throw new Error('Invalid API response');
+        throw new Error('Invalid response');
       }
     } catch (err) {
       console.error(err);
       Alert.alert(
         'خطأ في الشبكة 📡',
-        'فشل تحميل الآية من خوادم القرآن الكريم. الرجاء التأكد من اتصالك بالإنترنت.'
+        'فشل تحميل السورة أو الآيات من خوادم القرآن الكريم. الرجاء التأكد من اتصالك بالإنترنت.'
       );
     } finally {
       setFetchingAyah(false);
@@ -393,7 +402,9 @@ export default function VoiceScreen({ navigation }: any) {
                     ]}
                     onPress={() => {
                       setSelectedSurahNumber(s.number);
-                      setSelectedAyahNumber(1); // reset to ayah 1
+                      setStartAyahNumber(1);
+                      setEndAyahNumber(1);
+                      setRecordWholeSurah(false);
                     }}
                     activeOpacity={0.7}
                   >
@@ -408,41 +419,97 @@ export default function VoiceScreen({ navigation }: any) {
               </View>
             </ScrollView>
 
-            {/* Ayah Number Picker */}
-            <Text style={styles.pickerLabel}>اختر رقم الآية (السورة بها {surahsList.find(s => s.number === selectedSurahNumber)?.totalAyahs} آية):</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.ayahNumberScroll}>
-              {Array.from(
-                { length: surahsList.find(s => s.number === selectedSurahNumber)?.totalAyahs || 7 },
-                (_, i) => i + 1
-              ).map((num) => (
-                <TouchableOpacity
-                  key={num}
-                  style={[
-                    styles.ayahNumBadge,
-                    selectedAyahNumber === num && styles.ayahNumBadgeActive
-                  ]}
-                  onPress={() => setSelectedAyahNumber(num)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[
-                    styles.ayahNumBadgeText,
-                    selectedAyahNumber === num && styles.ayahNumBadgeTextActive
-                  ]}>
-                    {num}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            {/* Record Whole Surah Toggle Option */}
+            <TouchableOpacity 
+              style={[styles.wholeSurahToggleRow, recordWholeSurah && styles.wholeSurahToggleRowActive]}
+              onPress={() => {
+                const total = surahsList.find(s => s.number === selectedSurahNumber)?.totalAyahs || 1;
+                setRecordWholeSurah(!recordWholeSurah);
+                if (!recordWholeSurah) {
+                  setStartAyahNumber(1);
+                  setEndAyahNumber(total);
+                } else {
+                  setStartAyahNumber(1);
+                  setEndAyahNumber(1);
+                }
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.wholeSurahToggleText, recordWholeSurah && styles.wholeSurahToggleTextActive]}>
+                {language === 'ar' ? '📖 تلاوة السورة كاملة' : '📖 Record Entire Surah'}
+              </Text>
+            </TouchableOpacity>
+
+            {!recordWholeSurah && (
+              <View style={{ width: '100%' }}>
+                {/* Start Ayah Picker */}
+                <Text style={styles.pickerLabel}>آية البداية:</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.ayahNumberScroll}>
+                  {Array.from(
+                    { length: surahsList.find(s => s.number === selectedSurahNumber)?.totalAyahs || 7 },
+                    (_, i) => i + 1
+                  ).map((num) => (
+                    <TouchableOpacity
+                      key={`start-${num}`}
+                      style={[
+                        styles.ayahNumBadge,
+                        startAyahNumber === num && styles.ayahNumBadgeActive
+                      ]}
+                      onPress={() => {
+                        setStartAyahNumber(num);
+                        if (endAyahNumber < num) {
+                          setEndAyahNumber(num);
+                        }
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[
+                        styles.ayahNumBadgeText,
+                        startAyahNumber === num && styles.ayahNumBadgeTextActive
+                      ]}>
+                        {num}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+
+                {/* End Ayah Picker */}
+                <Text style={styles.pickerLabel}>آية النهاية:</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.ayahNumberScroll}>
+                  {Array.from(
+                    { length: (surahsList.find(s => s.number === selectedSurahNumber)?.totalAyahs || 7) - startAyahNumber + 1 },
+                    (_, i) => i + startAyahNumber
+                  ).map((num) => (
+                    <TouchableOpacity
+                      key={`end-${num}`}
+                      style={[
+                        styles.ayahNumBadge,
+                        endAyahNumber === num && styles.ayahNumBadgeActive
+                      ]}
+                      onPress={() => setEndAyahNumber(num)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[
+                        styles.ayahNumBadgeText,
+                        endAyahNumber === num && styles.ayahNumBadgeTextActive
+                      ]}>
+                        {num}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
 
             {fetchingAyah ? (
               <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: 20 }} />
             ) : (
               <TouchableOpacity
                 style={styles.loadAyahBtn}
-                onPress={() => loadSelectedAyah(selectedSurahNumber, selectedAyahNumber)}
+                onPress={() => loadSelectedAyahRange(selectedSurahNumber, startAyahNumber, endAyahNumber)}
                 activeOpacity={0.85}
               >
-                <Text style={styles.loadAyahBtnText}>تحميل الآية ومتابعة التحدي 📖</Text>
+                <Text style={styles.loadAyahBtnText}>تحميل الآيات ومتابعة التحدي 📖</Text>
               </TouchableOpacity>
             )}
 
@@ -1146,5 +1213,28 @@ const getStyles = (colors: any) => StyleSheet.create({
     color: '#09120F',
     fontWeight: '900',
     fontSize: 15,
+  },
+  wholeSurahToggleRow: {
+    width: '100%',
+    backgroundColor: '#09120F',
+    borderWidth: 1.5,
+    borderColor: '#1E3A2F',
+    paddingVertical: 12,
+    borderRadius: 14,
+    alignItems: 'center',
+    marginVertical: 10,
+  },
+  wholeSurahToggleRowActive: {
+    backgroundColor: '#1E3A2F',
+    borderColor: colors.primary,
+  },
+  wholeSurahToggleText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: colors.textSecondary,
+  },
+  wholeSurahToggleTextActive: {
+    color: colors.textPrimary,
+    fontWeight: '900',
   },
 });

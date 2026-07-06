@@ -113,9 +113,41 @@ const readerModifiers: Record<string, ReaderModifier> = {
 export function generateReferenceProfile(
   ayahId: string,
   readerId: string,
-  recitationStyle: 'murattal' | 'mujawwad'
+  recitationStyle: 'murattal' | 'mujawwad',
+  customText?: string
 ): ReferenceProfile {
-  const base = ayahTemplates[ayahId] || ayahTemplates.a1;
+  let base = ayahTemplates[ayahId];
+
+  if (!base) {
+    const text = customText || 'قُلْ هُوَ اللَّهُ أَحَدٌ';
+    const wordCount = text.split(/\s+/).filter(Boolean).length;
+    const baseDurationMs = Math.max(4000, Math.min(22000, wordCount * 1400));
+
+    const baseEnvelope = Array.from({ length: 20 }, (_, i) => {
+      const progress = i / 19;
+      const wave = 0.4 + 0.35 * Math.sin(progress * Math.PI * Math.max(1, wordCount / 1.5));
+      return Math.max(0.1, Math.min(0.9, wave));
+    });
+
+    const vowelMaddIndices: number[] = [];
+    const searchChars = ['ا', 'و', 'ي', 'أ', 'إ', 'ى'];
+    for (let i = 0; i < Math.min(30, text.length); i++) {
+      if (searchChars.includes(text[i])) {
+        const idx = Math.floor((i / text.length) * 20);
+        if (!vowelMaddIndices.includes(idx)) {
+          vowelMaddIndices.push(idx);
+        }
+      }
+    }
+
+    base = {
+      ayahId: ayahId || 'dynamic',
+      baseDurationMs,
+      baseEnvelope,
+      vowelMaddIndices,
+    };
+  }
+
   const mod = readerModifiers[readerId] || readerModifiers.husary;
 
   let speedFactor = mod.speedModifier;

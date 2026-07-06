@@ -5,6 +5,7 @@ import { Audio } from 'expo-av';
 import { readers, type Reader } from '../data/readers';
 import { ayahs, type Ayah } from '../data/ayahs';
 import { generateReferenceProfile, analyzeVocalImitation } from '../data/voiceTemplates';
+import { surahsList } from '../data/surahs';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { saveUserScore, getCurrentUserProfile } from '../firebase/auth';
@@ -18,9 +19,12 @@ export default function VoiceScreen({ navigation }: any) {
   const { colors, isLightMode } = useTheme();
   const styles = getStyles(colors);
   
-  // Navigation states: 'select-reader' | 'ready' | 'recording' | 'recorded' | 'analyzing' | 'scored'
-  const [step, setStep] = useState<'select-reader' | 'ready' | 'recording' | 'recorded' | 'analyzing' | 'scored'>('select-reader');
+  // Navigation states: 'select-reader' | 'setup-ayah' | 'ready' | 'recording' | 'recorded' | 'analyzing' | 'scored'
+  const [step, setStep] = useState<'select-reader' | 'setup-ayah' | 'ready' | 'recording' | 'recorded' | 'analyzing' | 'scored'>('select-reader');
   const [hasShared, setHasShared] = useState(false);
+  const [selectedSurahNumber, setSelectedSurahNumber] = useState<number>(1);
+  const [selectedAyahNumber, setSelectedAyahNumber] = useState<number>(1);
+  const [fetchingAyah, setFetchingAyah] = useState<boolean>(false);
   
   const [pendingScoreData, setPendingScoreData] = useState<{ results: any, earnedPoints: number } | null>(null);
 
@@ -132,11 +136,7 @@ export default function VoiceScreen({ navigation }: any) {
 
   const handleSelectReader = (reader: Reader) => {
     setSelectedReader(reader);
-    
-    // Choose a random Ayah
-    const randomIndex = Math.floor(Math.random() * ayahs.length);
-    setCurrentAyah(ayahs[randomIndex]);
-    setStep('ready');
+    setStep('setup-ayah');
   };
 
   const handleStartRecording = async () => {
@@ -229,7 +229,7 @@ export default function VoiceScreen({ navigation }: any) {
     
     setTimeout(async () => {
       // Calculate dynamic vocal matching using the updated Pearson correlation matching engine
-      const refProfile = generateReferenceProfile(currentAyah.id, selectedReader.id, recitationStyle);
+      const refProfile = generateReferenceProfile(currentAyah.id, selectedReader.id, recitationStyle, currentAyah.text);
       const results = analyzeVocalImitation(meteringHistory, recordingDuration, refProfile);
 
       setScoreBreakdown(results);
@@ -282,6 +282,38 @@ export default function VoiceScreen({ navigation }: any) {
     }
   };
 
+  const loadSelectedAyah = async (surahNum: number, ayahNum: number) => {
+    setFetchingAyah(true);
+    try {
+      const response = await fetch(`https://api.alquran.cloud/v1/ayah/${surahNum}:${ayahNum}/ar.alafasy`);
+      const resJson = await response.json();
+      if (resJson?.data?.text) {
+        let cleanText = resJson.data.text;
+        const bismillah = 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ';
+        if (surahNum !== 1 && ayahNum === 1 && cleanText.startsWith(bismillah)) {
+          cleanText = cleanText.replace(bismillah, '').trim();
+        }
+        setCurrentAyah({
+          id: `dynamic-${surahNum}-${ayahNum}`,
+          text: cleanText,
+          surah: `سورة ${surahsList.find(s => s.number === surahNum)?.name || 'مخصصة'}`,
+          number: ayahNum,
+        });
+        setStep('ready');
+      } else {
+        throw new Error('Invalid API response');
+      }
+    } catch (err) {
+      console.error(err);
+      Alert.alert(
+        'خطأ في الشبكة 📡',
+        'فشل تحميل الآية من خوادم القرآن الكريم. الرجاء التأكد من اتصالك بالإنترنت.'
+      );
+    } finally {
+      setFetchingAyah(false);
+    }
+  };
+
   return (
     <ScrollView style={styles.outerContainer} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
       <View style={styles.container}>
@@ -314,6 +346,109 @@ export default function VoiceScreen({ navigation }: any) {
                 </TouchableOpacity>
               ))}
             </View>
+          </View>
+        )}
+
+        {/* STEP 1.5: Setup Ayah Selection */}
+        {step === 'setup-ayah' && selectedReader && (
+          <View style={styles.card}>
+            <View style={styles.qariHeader}>
+              <Text style={styles.qariName}>المحاكاة المطلوبة: {selectedReader.name}</Text>
+              <Text style={styles.qariAdvice}>💡 نصيحة النبرة: {selectedReader.tuneAdvice}</Text>
+            </View>
+
+            <Text style={styles.sectionTitle}>اختر الآية الكريمة للتحدي:</Text>
+
+            {/* Path A: Quick Select Popular Verses */}
+            <Text style={styles.subSectionTitle}>⚡ آيات سريعة مقترحة:</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.quickAyahScroll}>
+              {ayahs.map((a) => (
+                <TouchableOpacity
+                  key={a.id}
+                  style={styles.quickAyahBadge}
+                  onPress={() => {
+                    setCurrentAyah(a);
+                    setStep('ready');
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.quickAyahBadgeText}>{a.surah}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {/* Path B: Select from Quran */}
+            <Text style={styles.subSectionTitle}>🌍 تصفح المصحف الشريف كاملاً:</Text>
+
+            {/* Surah Picker Container */}
+            <Text style={styles.pickerLabel}>اختر السورة:</Text>
+            <ScrollView style={styles.pickerScrollView} nestedScrollEnabled={true}>
+              <View style={styles.pickerGrid}>
+                {surahsList.map((s) => (
+                  <TouchableOpacity
+                    key={s.number}
+                    style={[
+                      styles.pickerGridItem,
+                      selectedSurahNumber === s.number && styles.pickerGridItemActive
+                    ]}
+                    onPress={() => {
+                      setSelectedSurahNumber(s.number);
+                      setSelectedAyahNumber(1); // reset to ayah 1
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[
+                      styles.pickerGridItemText,
+                      selectedSurahNumber === s.number && styles.pickerGridItemTextActive
+                    ]}>
+                      {s.number}. {s.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+
+            {/* Ayah Number Picker */}
+            <Text style={styles.pickerLabel}>اختر رقم الآية (السورة بها {surahsList.find(s => s.number === selectedSurahNumber)?.totalAyahs} آية):</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.ayahNumberScroll}>
+              {Array.from(
+                { length: surahsList.find(s => s.number === selectedSurahNumber)?.totalAyahs || 7 },
+                (_, i) => i + 1
+              ).map((num) => (
+                <TouchableOpacity
+                  key={num}
+                  style={[
+                    styles.ayahNumBadge,
+                    selectedAyahNumber === num && styles.ayahNumBadgeActive
+                  ]}
+                  onPress={() => setSelectedAyahNumber(num)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[
+                    styles.ayahNumBadgeText,
+                    selectedAyahNumber === num && styles.ayahNumBadgeTextActive
+                  ]}>
+                    {num}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {fetchingAyah ? (
+              <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: 20 }} />
+            ) : (
+              <TouchableOpacity
+                style={styles.loadAyahBtn}
+                onPress={() => loadSelectedAyah(selectedSurahNumber, selectedAyahNumber)}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.loadAyahBtnText}>تحميل الآية ومتابعة التحدي 📖</Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity style={styles.backButton} onPress={handleReset}>
+              <Text style={styles.backButtonText}>تغيير القارئ</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -892,5 +1027,124 @@ const getStyles = (colors: any) => StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
     lineHeight: 18,
+  },
+  subSectionTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.textPrimary,
+    marginTop: 14,
+    marginBottom: 8,
+    textAlign: 'right',
+    width: '100%',
+  },
+  quickAyahScroll: {
+    width: '100%',
+    flexDirection: 'row',
+    marginBottom: 10,
+  },
+  quickAyahBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: '#09120F',
+    borderWidth: 1,
+    borderColor: '#1E3A2F',
+    marginRight: 8,
+  },
+  quickAyahBadgeText: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    fontWeight: '800',
+  },
+  pickerLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: colors.textSecondary,
+    marginTop: 10,
+    marginBottom: 6,
+    textAlign: 'right',
+    width: '100%',
+  },
+  pickerScrollView: {
+    width: '100%',
+    maxHeight: 140,
+    backgroundColor: '#09120F',
+    borderRadius: 14,
+    padding: 10,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    marginBottom: 12,
+  },
+  pickerGrid: {
+    flexDirection: 'row-reverse',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  pickerGridItem: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  pickerGridItemActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  pickerGridItemText: {
+    fontSize: 10,
+    color: colors.textSecondary,
+    fontWeight: '800',
+  },
+  pickerGridItemTextActive: {
+    color: '#09120F',
+    fontWeight: '900',
+  },
+  ayahNumberScroll: {
+    width: '100%',
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
+  ayahNumBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#09120F',
+    borderWidth: 1,
+    borderColor: '#1E3A2F',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  ayahNumBadgeActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  ayahNumBadgeText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontWeight: '800',
+  },
+  ayahNumBadgeTextActive: {
+    color: '#09120F',
+    fontWeight: '900',
+  },
+  loadAyahBtn: {
+    backgroundColor: colors.accent,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+    width: '100%',
+    marginVertical: 12,
+    shadowColor: colors.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+  },
+  loadAyahBtnText: {
+    color: '#09120F',
+    fontWeight: '900',
+    fontSize: 15,
   },
 });

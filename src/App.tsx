@@ -20,6 +20,7 @@ import ReadingChallengeScreen from './screens/ReadingChallengeScreen';
 import MemorizationScreen from './screens/MemorizationScreen';
 import AdhkarScreen from './screens/AdhkarScreen';
 import HadithChallengeScreen from './screens/HadithChallengeScreen';
+import LiveDuelScreen from './screens/LiveDuelScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -160,6 +161,11 @@ export default function App() {
             name="HadithChallenge"
             component={HadithChallengeScreen}
             options={{ title: 'تحدي الحديث الشريف' }}
+          />
+          <Stack.Screen
+            name="LiveDuel"
+            component={LiveDuelScreen}
+            options={{ headerShown: false }}
           />
         </Stack.Navigator>
       </NavigationContainer>

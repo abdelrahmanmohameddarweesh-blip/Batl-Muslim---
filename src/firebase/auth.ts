@@ -5,6 +5,8 @@ export type AppUser = {
   displayName: string;
   score: number;
   lastPlayedAt?: string;
+  country?: string;
+  countryCode?: string;
 };
 
 export const auth = null;
@@ -96,7 +98,30 @@ export async function getTopPlayers() {
   return players.sort((a, b) => b.score - a.score).slice(0, 10);
 }
 
+export async function getAllPlayers() {
+  const players = Object.values(await readPlayers());
+  return players.sort((a, b) => b.score - a.score);
+}
+
 export async function getCurrentUserProfile(uid: string) {
   const players = await readPlayers();
   return players[uid] ?? null;
+}
+
+export async function updateUserCountry(uid: string, country: string, countryCode: string) {
+  const players = await readPlayers();
+  const existing = players[uid];
+  if (!existing) return;
+  const updatedUser: AppUser = {
+    ...existing,
+    country,
+    countryCode,
+  };
+  players[uid] = updatedUser;
+  await writePlayers(players);
+  
+  const currentUser = await readCurrentUser();
+  if (currentUser && currentUser.uid === uid) {
+    await AsyncStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updatedUser));
+  }
 }

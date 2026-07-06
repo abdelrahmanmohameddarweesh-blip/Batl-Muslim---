@@ -2,10 +2,20 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { getCurrentUserProfile } from '../firebase/auth';
+import { getCurrentUserProfile, updateUserCountry } from '../firebase/auth';
 import { badgesCatalog, checkUnlockedBadges } from '../data/badges';
 import AdBanner from '../components/AdBanner';
 import { Colors } from '../config/colors';
+
+const countriesList = [
+  { code: 'EG', nameAr: 'مصر 🇪🇬', nameEn: 'Egypt' },
+  { code: 'SA', nameAr: 'السعودية 🇸🇦', nameEn: 'Saudi Arabia' },
+  { code: 'JO', nameAr: 'الأردن 🇯🇴', nameEn: 'Jordan' },
+  { code: 'PS', nameAr: 'فلسطين 🇵🇸', nameEn: 'Palestine' },
+  { code: 'AE', nameAr: 'الإمارات 🇦🇪', nameEn: 'UAE' },
+  { code: 'MA', nameAr: 'المغرب 🇲🇦', nameEn: 'Morocco' },
+  { code: 'OTH', nameAr: 'أخرى 🌍', nameEn: 'Other' },
+];
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
@@ -167,6 +177,33 @@ export default function ProfileScreen() {
                   </TouchableOpacity>
                 </View>
                 <Text style={styles.detailLabel}>{t('langToggle')}</Text>
+              </View>
+
+              {/* Country Selection */}
+              <View style={styles.detailRowCol}>
+                <Text style={styles.detailLabelCol}>{t('selectCountry')}</Text>
+                <View style={styles.countryListContainer}>
+                  {countriesList.map((c) => {
+                    const isSelected = profile?.countryCode === c.code;
+                    return (
+                      <TouchableOpacity
+                        key={c.code}
+                        style={[styles.countryBadgeBtn, isSelected && styles.countryBadgeBtnActive]}
+                        onPress={async () => {
+                          if (user?.uid) {
+                            await updateUserCountry(user.uid, c.nameEn, c.code);
+                            loadProfile();
+                          }
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.countryBadgeText, isSelected && styles.countryBadgeTextActive]}>
+                          {language === 'ar' ? c.nameAr : c.nameEn}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
               </View>
 
               <View style={styles.progressBarSection}>
@@ -405,6 +442,45 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textPrimary,
     fontWeight: '800',
+  },
+  detailRowCol: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderColor: '#1E3A2F4D',
+  },
+  detailLabelCol: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    fontWeight: '700',
+    marginBottom: 8,
+    textAlign: 'right',
+  },
+  countryListContainer: {
+    flexDirection: 'row-reverse',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 4,
+  },
+  countryBadgeBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    backgroundColor: '#09120F',
+    borderWidth: 1,
+    borderColor: '#1E3A2F',
+  },
+  countryBadgeBtnActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  countryBadgeText: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+    fontWeight: '800',
+  },
+  countryBadgeTextActive: {
+    color: '#09120F',
+    fontWeight: '900',
   },
   langSwitchContainer: {
     flexDirection: 'row',

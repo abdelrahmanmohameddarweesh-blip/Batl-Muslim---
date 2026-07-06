@@ -1,68 +1,147 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
-import { getTopPlayers } from '../firebase/auth';
+import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
+import { getAllPlayers, getCurrentUserProfile } from '../firebase/auth';
 import AdBanner from '../components/AdBanner';
 import { Colors } from '../config/colors';
 
-export default function LeaderboardScreen() {
-  const [players, setPlayers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+const getFlagEmoji = (code?: string) => {
+  if (!code) return '🌍';
+  switch (code) {
+    case 'EG': return '🇪🇬';
+    case 'SA': return '🇸🇦';
+    case 'JO': return '🇯🇴';
+    case 'PS': return '🇵🇸';
+    case 'AE': return '🇦🇪';
+    case 'MA': return '🇲🇦';
+    default: return '🌍';
+  }
+};
 
-  const loadPlayers = async () => {
+export default function LeaderboardScreen() {
+  const { user } = useAuth();
+  const { t, language } = useLanguage();
+
+  const [allPlayers, setAllPlayers] = useState<any[]>([]);
+  const [currentUserProfile, setCurrentUserProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [filterMode, setFilterMode] = useState<'worldwide' | 'country'>('worldwide');
+
+  const loadData = async () => {
     setLoading(true);
     try {
-      const topPlayers = await getTopPlayers();
-      setPlayers(topPlayers);
+      const topPlayers = await getAllPlayers();
+      setAllPlayers(topPlayers);
+
+      if (user?.uid) {
+        const profile = await getCurrentUserProfile(user.uid);
+        setCurrentUserProfile(profile);
+      }
+    } catch (err) {
+      console.error('Error loading leaderboard:', err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadPlayers();
-  }, []);
+    loadData();
+  }, [user?.uid]);
 
-  // Split players into top 3 (podium) and rest
-  const firstPlace = players[0] || null;
-  const secondPlace = players[1] || null;
-  const thirdPlace = players[2] || null;
-  const remainingPlayers = players.slice(3);
+  const filteredPlayers = useMemo(() => {
+    if (filterMode === 'worldwide') {
+      return allPlayers.slice(0, 10);
+    }
+    const code = currentUserProfile?.countryCode;
+    if (!code) return [];
+    return allPlayers.filter((p) => p.countryCode === code).slice(0, 10);
+  }, [allPlayers, filterMode, currentUserProfile]);
+
+  const firstPlace = filteredPlayers[0] || null;
+  const secondPlace = filteredPlayers[1] || null;
+  const thirdPlace = filteredPlayers[2] || null;
+  const remainingPlayers = filteredPlayers.slice(3);
+
+  const hasCountryCode = !!currentUserProfile?.countryCode;
 
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>ترتيب أبطال المعرفة</Text>
-        <Text style={styles.subtitle}>أعلى النتائج المحققة بين المنافسين</Text>
+        <Text style={styles.title}>
+          {language === 'ar' ? 'ترتيب أبطال المعرفة' : 'Knowledge Heroes Rank'}
+        </Text>
+        <Text style={styles.subtitle}>
+          {language === 'ar' ? 'أعلى النتائج المحققة بين المنافسين' : 'Highest scores achieved by competitors'}
+        </Text>
+      </View>
+
+      {/* Worldwide vs. Country Filter Selector */}
+      <View style={styles.tabsContainer}>
+        <TouchableOpacity
+          style={[styles.tabBtn, filterMode === 'worldwide' && styles.tabBtnActive]}
+          onPress={() => setFilterMode('worldwide')}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.tabBtnText, filterMode === 'worldwide' && styles.tabBtnTextActive]}>
+            {t('worldwide')}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabBtn, filterMode === 'country' && styles.tabBtnActive]}
+          onPress={() => setFilterMode('country')}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.tabBtnText, filterMode === 'country' && styles.tabBtnTextActive]}>
+            {t('localCountry')}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Refresh Button */}
-      <TouchableOpacity style={styles.refreshButton} onPress={loadPlayers} disabled={loading} activeOpacity={0.85}>
+      <TouchableOpacity style={styles.refreshButton} onPress={loadData} disabled={loading} activeOpacity={0.85}>
         {loading ? (
           <ActivityIndicator size="small" color={Colors.surface} />
         ) : (
-          <Text style={styles.refreshButtonText}>تحديث الترتيب 🔄</Text>
+          <Text style={styles.refreshButtonText}>
+            {language === 'ar' ? 'تحديث الترتيب 🔄' : 'Refresh Leaderboard 🔄'}
+          </Text>
         )}
       </TouchableOpacity>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {players.length === 0 && !loading ? (
+        {loading ? (
+          <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 40 }} />
+        ) : filterMode === 'country' && !hasCountryCode ? (
+          <View style={styles.warningContainer}>
+            <Text style={styles.warningEmoji}>⚠️</Text>
+            <Text style={styles.warningText}>
+              {language === 'ar'
+                ? 'الرجاء تحديد دولتك من صفحة الملف الشخصي لتفعيل الترتيب المحلي لرؤية منافسيك في نفس البلد!'
+                : 'Please select your country in the Profile screen to activate the local leaderboard and see rivals in your country!'}
+            </Text>
+          </View>
+        ) : filteredPlayers.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyStateEmoji}>🌱</Text>
-            <Text style={styles.emptyStateText}>لا توجد لوحة صدارة بعد. كن البطل الأول وابدأ اللعب!</Text>
+            <Text style={styles.emptyStateText}>
+              {language === 'ar'
+                ? 'لا توجد نتائج في لوحة الصدارة هذه بعد. كن البطل الأول وابدأ اللعب!'
+                : 'No scores in this leaderboard yet. Be the first hero and start playing!'}
+            </Text>
           </View>
         ) : (
           <>
             {/* Top 3 Podium Section */}
             <View style={styles.podiumContainer}>
-              
               {/* 2nd Place (Left) */}
               <View style={[styles.podiumCol, styles.podiumColSide]}>
                 <View style={[styles.avatarFrame, styles.avatarSilver]}>
                   <Text style={styles.avatarEmoji}>🥈</Text>
                 </View>
                 <Text style={styles.podiumName} numberOfLines={1}>
-                  {secondPlace ? secondPlace.displayName : 'شاغر'}
+                  {secondPlace ? secondPlace.displayName : 'شاغر'} {secondPlace && getFlagEmoji(secondPlace.countryCode)}
                 </Text>
                 <Text style={styles.podiumScore}>
                   {secondPlace ? `${secondPlace.score} ن` : '-'}
@@ -78,7 +157,7 @@ export default function LeaderboardScreen() {
                   <Text style={styles.avatarEmoji}>🏆</Text>
                 </View>
                 <Text style={[styles.podiumName, styles.podiumNameGold]} numberOfLines={1}>
-                  {firstPlace ? firstPlace.displayName : 'شاغر'}
+                  {firstPlace ? firstPlace.displayName : 'شاغر'} {firstPlace && getFlagEmoji(firstPlace.countryCode)}
                 </Text>
                 <Text style={styles.podiumScoreGold}>
                   {firstPlace ? `${firstPlace.score} ن` : '-'}
@@ -94,7 +173,7 @@ export default function LeaderboardScreen() {
                   <Text style={styles.avatarEmoji}>🥉</Text>
                 </View>
                 <Text style={styles.podiumName} numberOfLines={1}>
-                  {thirdPlace ? thirdPlace.displayName : 'شاغر'}
+                  {thirdPlace ? thirdPlace.displayName : 'شاغر'} {thirdPlace && getFlagEmoji(thirdPlace.countryCode)}
                 </Text>
                 <Text style={styles.podiumScore}>
                   {thirdPlace ? `${thirdPlace.score} ن` : '-'}
@@ -103,7 +182,6 @@ export default function LeaderboardScreen() {
                   <Text style={styles.podiumRankText}>٣</Text>
                 </View>
               </View>
-
             </View>
 
             {/* Remaining Players List */}
@@ -111,10 +189,14 @@ export default function LeaderboardScreen() {
               <View style={styles.listContainer}>
                 {remainingPlayers.map((player, index) => (
                   <View key={player.uid} style={styles.playerRow}>
-                    <Text style={styles.playerScore}>{player.score ?? 0} نقطة</Text>
+                    <Text style={styles.playerScore}>{player.score ?? 0} {language === 'ar' ? 'نقطة' : 'Pts'}</Text>
                     <View style={styles.playerInfo}>
-                      <Text style={styles.playerName}>{player.displayName || 'ضيف'}</Text>
-                      <Text style={styles.playerRankHint}>الترتيب #{index + 4}</Text>
+                      <Text style={styles.playerName}>
+                        {player.displayName || 'ضيف'} {getFlagEmoji(player.countryCode)}
+                      </Text>
+                      <Text style={styles.playerRankHint}>
+                        {language === 'ar' ? `الترتيب #${index + 4}` : `Rank #${index + 4}`}
+                      </Text>
                     </View>
                     <View style={styles.rankBadge}>
                       <Text style={styles.rankBadgeText}>{index + 4}</Text>
@@ -126,7 +208,6 @@ export default function LeaderboardScreen() {
           </>
         )}
       </ScrollView>
-
       <View style={styles.adWrapper}>
         <AdBanner />
       </View>
@@ -144,6 +225,53 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     marginBottom: 16,
+  },
+  tabsContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#09120F',
+    borderRadius: 14,
+    padding: 3,
+    borderWidth: 1,
+    borderColor: '#1E3A2F',
+    marginBottom: 14,
+  },
+  tabBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 12,
+  },
+  tabBtnActive: {
+    backgroundColor: Colors.primary,
+  },
+  tabBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: Colors.textSecondary,
+  },
+  tabBtnTextActive: {
+    color: '#09120F',
+    fontWeight: '900',
+  },
+  warningContainer: {
+    backgroundColor: Colors.primaryLight,
+    borderWidth: 1,
+    borderColor: '#1E3A2F33',
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  warningEmoji: {
+    fontSize: 32,
+    marginBottom: 8,
+  },
+  warningText: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: Colors.primary,
+    textAlign: 'center',
+    fontWeight: '700',
   },
   title: {
     fontSize: 24,

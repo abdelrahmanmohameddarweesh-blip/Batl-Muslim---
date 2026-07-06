@@ -61,6 +61,7 @@ export default function HomeScreen({ navigation }: any) {
   const { t, language } = useLanguage();
   const [profile, setProfile] = useState<any>(null);
   const [showGuide, setShowGuide] = useState(false);
+  const [activePath, setActivePath] = useState<'solo' | 'live'>('solo');
   
   // Daily goals state
   const [prayersCompletedCount, setPrayersCompletedCount] = useState(0);
@@ -255,162 +256,262 @@ Join us in our daily journey towards Islamic knowledge! 🚀`;
         </View>
 
         <View style={styles.bodyContent}>
-          {/* Level Badge Card */}
-        <View style={styles.levelCard}>
-          <View style={styles.levelRow}>
-            <View style={styles.levelBadgeContainer}>
-              <Text style={styles.levelBadgeText}>{levelName}</Text>
-            </View>
-            <Text style={styles.pointsText}>⭐ {currentScore} {t('points')}</Text>
-          </View>
-          <View style={styles.levelProgressBarBackground}>
-            <View style={[styles.levelProgressBarFill, { width: `${Math.min(currentScore, 100)}%` }]} />
-          </View>
-          <Text style={styles.levelProgressLabel}>
-            {Math.min(currentScore, 100)}% {language === 'ar' ? 'للوصول للمستوى التالي' : 'to next level'}
-          </Text>
-        </View>
 
-        {/* Daily Goals Progress Dashboard */}
-        <Text style={styles.sectionTitle}>{t('dailyGoals')}</Text>
-        <View style={styles.dailyGoalsRow}>
-          <CircularProgress
-            size={80}
-            strokeWidth={7}
-            percent={prayerPercent}
-            emoji="🕌"
-            label={t('prayers')}
-            color="#10B981"
-            ringColor="#34D399"
-          />
-          <CircularProgress
-            size={80}
-            strokeWidth={7}
-            percent={recitationPercent}
-            emoji="🎙️"
-            label={t('recitation')}
-            color="#F59E0B"
-            ringColor="#FBBF24"
-          />
-          <View style={styles.streakContainer}>
-            <View style={styles.streakFlameWrapper}>
-              <Text style={styles.streakFlame}>🔥</Text>
-              <Text style={styles.streakCount}>{streakDays}</Text>
-            </View>
-            <Text style={styles.percentText}>{streakDays} {t('days')}</Text>
-            <Text style={styles.progressLabel}>{t('streak')}</Text>
-          </View>
-        </View>
-
-        {/* Unified Daily Quests (Interlinking challenges) */}
-        <Text style={styles.sectionTitle}>{t('dailyQuestTitle')}</Text>
-        <View style={styles.questCard}>
-          <View style={styles.questProgressRow}>
-            <Text style={styles.questPercentText}>{completedQuestsCount}/3</Text>
-            <Text style={styles.questProgressLabel}>{t('questProgress')}</Text>
-          </View>
-          <View style={styles.questBarBackground}>
-            <View style={[styles.questBarFill, { width: `${(completedQuestsCount / 3) * 100}%` }]} />
-          </View>
-
-          <View style={styles.questsList}>
-            <View style={styles.questItem}>
-              <Text style={[styles.questCheckIcon, questTriviaPlayed && styles.questCheckIconActive]}>
-                {questTriviaPlayed ? '✓' : '○'}
-              </Text>
-              <Text style={[styles.questItemText, questTriviaPlayed && styles.questItemTextDone]}>
-                {t('questTrivia')}
-              </Text>
-            </View>
-            <View style={styles.questItem}>
-              <Text style={[styles.questCheckIcon, questPrayerLogged && styles.questCheckIconActive]}>
-                {questPrayerLogged ? '✓' : '○'}
-              </Text>
-              <Text style={[styles.questItemText, questPrayerLogged && styles.questItemTextDone]}>
-                {t('questPrayer')}
-              </Text>
-            </View>
-            <View style={styles.questItem}>
-              <Text style={[styles.questCheckIcon, questVoiceDone && styles.questCheckIconActive]}>
-                {questVoiceDone ? '✓' : '○'}
-              </Text>
-              <Text style={[styles.questItemText, questVoiceDone && styles.questItemTextDone]}>
-                {t('questVoice')}
-              </Text>
-            </View>
-          </View>
-
-          {questBonusAwarded && (
-            <View style={styles.questBonusBadge}>
-              <Text style={styles.questBonusText}>🎁 {t('questCompleted')}</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Ayah of the Day */}
-        <Text style={styles.sectionTitle}>{t('ayahOfDay')}</Text>
-        <View style={styles.ayahCard}>
-          <View style={styles.ayahHeader}>
-            <TouchableOpacity style={styles.shareBtn} onPress={handleShareAyah} activeOpacity={0.75}>
-              <Text style={styles.shareBtnText}>{t('share')}</Text>
-            </TouchableOpacity>
-            <Text style={styles.ayahTitle}>Surah Al-Imran | 3:133</Text>
-          </View>
-          <Text style={styles.ayahArabic}>
-            {`﴿  وَسَارِعُوا إِلَىٰ مَغْفِرَةٍ مِّن رَّبِّكُمْ وَجَنَّةٍ عَرْضُهَا السَّمَاوَاتُ وَالْأَرْضُ أُعَدَّتْ لِلْمُتَّقِينَ  ﴾`}
-          </Text>
-          <Text style={styles.ayahEnglish}>
-            "And hasten to forgiveness from your Lord and a garden as wide as the heavens and the earth, prepared for the righteous."
-          </Text>
-        </View>
-
-        {/* Today's Challenges Grid */}
-        <Text style={styles.sectionTitle}>{t('challenges')}</Text>
-        <View style={styles.challengesGrid}>
+        {/* Dual Path Selector */}
+        <View style={styles.dualPathContainer}>
           <TouchableOpacity
-            style={[styles.challengeCard, { backgroundColor: '#10B9811A', borderColor: '#10B9814D' }]}
-            onPress={() => navigation.navigate('Trivia')}
+            style={[styles.pathCard, activePath === 'solo' && styles.pathCardActive]}
+            onPress={() => setActivePath('solo')}
             activeOpacity={0.85}
           >
-            <Text style={styles.challengeCardEmoji}>🧠</Text>
-            <Text style={styles.challengeCardTitle}>{t('dailyTrivia')}</Text>
-            <Text style={styles.challengeCardDesc}>{t('dailyTriviaDesc')}</Text>
-            <View style={styles.challengeCardBtn}>
-              <Text style={styles.challengeCardBtnText}>{t('startChallenge')}</Text>
-            </View>
+            <Text style={styles.pathIcon}>🌱</Text>
+            <Text style={[styles.pathTitle, activePath === 'solo' && styles.pathTitleActive]}>
+              {language === 'ar' ? 'المهام الفردية' : 'Solo Quests'}
+            </Text>
+            <Text style={styles.pathSubtitle}>
+              {language === 'ar' ? 'نقاط، أوراد وتحديات' : 'Habits, trivia & stickers'}
+            </Text>
           </TouchableOpacity>
-
+          
           <TouchableOpacity
-            style={[styles.challengeCard, { backgroundColor: '#F59E0B1A', borderColor: '#F59E0B4D' }]}
-            onPress={() => navigation.navigate('Voice')}
+            style={[styles.pathCard, activePath === 'live' && styles.pathCardActive]}
+            onPress={() => setActivePath('live')}
             activeOpacity={0.85}
           >
-            <Text style={styles.challengeCardEmoji}>🎙️</Text>
-            <Text style={styles.challengeCardTitle}>{t('recitationHub')}</Text>
-            <Text style={styles.challengeCardDesc}>{t('recitationHubDesc')}</Text>
-            <View style={[styles.challengeCardBtn, { backgroundColor: '#FBBF24' }]}>
-              <Text style={[styles.challengeCardBtnText, { color: '#000000' }]}>{t('reciteNow')}</Text>
+            <Text style={styles.pathIcon}>⚔️</Text>
+            <Text style={[styles.pathTitle, activePath === 'live' && styles.pathTitleActive]}>
+              {language === 'ar' ? 'المبارزة المباشرة' : 'Live Arena'}
+            </Text>
+            <Text style={styles.pathSubtitle}>
+              {language === 'ar' ? 'تحدَّ غريمك في الساحة' : 'Speed 1v1 quiz battles'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {activePath === 'live' ? (
+          <View style={styles.livePathContainer}>
+            {/* Rival Face-off card */}
+            <Text style={styles.sectionTitle}>{language === 'ar' ? 'مواجهة الغريم المباشرة ⚡' : 'Rival Face-Off ⚡'}</Text>
+            <View style={styles.rivalCard}>
+              <View style={styles.rivalHeader}>
+                <Text style={styles.rivalHeaderTitle}>
+                  {language === 'ar' ? 'الترتيب الفرعي للساحة' : 'Arena Match Standing'}
+                </Text>
+                <View style={styles.liveIndicator}>
+                  <View style={styles.liveDot} />
+                  <Text style={styles.liveText}>{language === 'ar' ? 'مباشر' : 'LIVE'}</Text>
+                </View>
+              </View>
+              
+              <View style={styles.rivalMatchupRow}>
+                <View style={styles.rivalMatchupPlayer}>
+                  <View style={[styles.rivalAvatar, { backgroundColor: '#10B98133', borderColor: '#10B981' }]}>
+                    <Text style={styles.rivalAvatarText}>👤</Text>
+                  </View>
+                  <Text style={styles.rivalPlayerName} numberOfLines={1}>
+                    {profile?.displayName || (language === 'ar' ? 'أنت' : 'You')}
+                  </Text>
+                  <Text style={styles.rivalPlayerXP}>{currentScore} XP</Text>
+                </View>
+                
+                <Text style={styles.rivalMatchupVS}>VS</Text>
+                
+                <View style={styles.rivalMatchupPlayer}>
+                  <View style={[styles.rivalAvatar, { backgroundColor: '#EF444433', borderColor: '#EF4444' }]}>
+                    <Text style={styles.rivalAvatarText}>⚔️</Text>
+                  </View>
+                  <Text style={styles.rivalPlayerName} numberOfLines={1}>
+                    {language === 'ar' ? 'خالد (غريمك)' : 'Khalid (Rival)'}
+                  </Text>
+                  <Text style={styles.rivalPlayerXP}>{currentScore + 40} XP</Text>
+                </View>
+              </View>
+
+              <Text style={styles.rivalMatchupHint}>
+                {language === 'ar' 
+                  ? 'خالد يسبقك بـ ٤٠ نقطة! انتصر في مبارزة لتتجاوزه في الترتيب.'
+                  : 'Khalid is ahead by 40 XP! Win a Live Duel to overtake him.'}
+              </Text>
+
+              <TouchableOpacity
+                style={styles.overtakeBtn}
+                onPress={() => navigation.navigate('LiveDuel')}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.overtakeBtnText}>
+                  {language === 'ar' ? 'تحدَّ الآن في الساحة المباشرة ⚔️' : 'Duel Now in Live Arena ⚔️'}
+                </Text>
+              </TouchableOpacity>
             </View>
-          </TouchableOpacity>
-        </View>
 
-        {/* Quick Access List */}
-        <View style={styles.quickAccessList}>
-          <TouchableOpacity style={styles.quickAccessItem} onPress={() => navigation.navigate('PrayerTracker')} activeOpacity={0.8}>
-            <Text style={styles.quickAccessArrow}>➔</Text>
-            <Text style={styles.quickAccessText}>{t('prayerTrackerLink')}</Text>
-          </TouchableOpacity>
+            {/* Community Co-op Boss Raid */}
+            <Text style={styles.sectionTitle}>{language === 'ar' ? 'مداهمة الغفلة (تحدي جماعي) 🛡️' : 'Defeat Negligence (Co-op Raid) 🛡️'}</Text>
+            <View style={styles.raidCard}>
+              <View style={styles.raidHeader}>
+                <Text style={styles.raidTitle}>{language === 'ar' ? 'الوحش اليومي: الغفلة' : 'Daily Boss: Ghaflah'}</Text>
+                <Text style={styles.raidSub}>HP: 34,200 / 50,000</Text>
+              </View>
 
-          <TouchableOpacity style={styles.quickAccessItem} onPress={() => navigation.navigate('Adhkar')} activeOpacity={0.8}>
-            <Text style={styles.quickAccessArrow}>➔</Text>
-            <Text style={styles.quickAccessText}>{t('adhkarLink')}</Text>
-          </TouchableOpacity>
+              <View style={styles.raidProgressBg}>
+                <View style={[styles.raidProgressFill, { width: '68.4%' }]} />
+              </View>
 
-          <TouchableOpacity style={styles.quickAccessItem} onPress={() => navigation.navigate('Memorization')} activeOpacity={0.8}>
-            <Text style={styles.quickAccessArrow}>➔</Text>
-            <Text style={styles.quickAccessText}>{t('memorizationLink')}</Text>
-          </TouchableOpacity>
-        </View>
+              <Text style={styles.raidDesc}>
+                {language === 'ar'
+                  ? 'كل صلاة تسجلها وكل تلاوة أو اختبار تقوم به، يلحق ضرراً بالوحش اليومي! تعاون مع الأبطال لهزيمته اليوم.'
+                  : 'Every prayer logged and trivia completed deals damage to the daily boss! Cooperate with all heroes to defeat him today.'}
+              </Text>
+
+              <View style={styles.raidBonusRow}>
+                <Text style={styles.raidBonusVal}>+20 XP {language === 'ar' ? 'لكل بطل مشارك' : 'for each active hero'}</Text>
+                <Text style={styles.raidBonusLabel}>🎁 {language === 'ar' ? 'المكافأة المشتركة' : 'Co-op Reward'}</Text>
+              </View>
+            </View>
+          </View>
+        ) : (
+          <>
+            {/* Daily Goals Progress Dashboard */}
+            <Text style={styles.sectionTitle}>{t('dailyGoals')}</Text>
+            <View style={styles.dailyGoalsRow}>
+              <CircularProgress
+                size={80}
+                strokeWidth={7}
+                percent={prayerPercent}
+                emoji="🕌"
+                label={t('prayers')}
+                color="#10B981"
+                ringColor="#34D399"
+              />
+              <CircularProgress
+                size={80}
+                strokeWidth={7}
+                percent={recitationPercent}
+                emoji="🎙️"
+                label={t('recitation')}
+                color="#F59E0B"
+                ringColor="#FBBF24"
+              />
+              <View style={styles.streakContainer}>
+                <View style={styles.streakFlameWrapper}>
+                  <Text style={styles.streakFlame}>🔥</Text>
+                  <Text style={styles.streakCount}>{streakDays}</Text>
+                </View>
+                <Text style={styles.percentText}>{streakDays} {t('days')}</Text>
+                <Text style={styles.progressLabel}>{t('streak')}</Text>
+              </View>
+            </View>
+
+            {/* Unified Daily Quests (Interlinking challenges) */}
+            <Text style={styles.sectionTitle}>{t('dailyQuestTitle')}</Text>
+            <View style={styles.questCard}>
+              <View style={styles.questProgressRow}>
+                <Text style={styles.questPercentText}>{completedQuestsCount}/3</Text>
+                <Text style={styles.questProgressLabel}>{t('questProgress')}</Text>
+              </View>
+              <View style={styles.questBarBackground}>
+                <View style={[styles.questBarFill, { width: `${(completedQuestsCount / 3) * 100}%` }]} />
+              </View>
+
+              <View style={styles.questsList}>
+                <View style={styles.questItem}>
+                  <Text style={[styles.questCheckIcon, questTriviaPlayed && styles.questCheckIconActive]}>
+                    {questTriviaPlayed ? '✓' : '○'}
+                  </Text>
+                  <Text style={[styles.questItemText, questTriviaPlayed && styles.questItemTextDone]}>
+                    {t('questTrivia')}
+                  </Text>
+                </View>
+                <View style={styles.questItem}>
+                  <Text style={[styles.questCheckIcon, questPrayerLogged && styles.questCheckIconActive]}>
+                    {questPrayerLogged ? '✓' : '○'}
+                  </Text>
+                  <Text style={[styles.questItemText, questPrayerLogged && styles.questItemTextDone]}>
+                    {t('questPrayer')}
+                  </Text>
+                </View>
+                <View style={styles.questItem}>
+                  <Text style={[styles.questCheckIcon, questVoiceDone && styles.questCheckIconActive]}>
+                    {questVoiceDone ? '✓' : '○'}
+                  </Text>
+                  <Text style={[styles.questItemText, questVoiceDone && styles.questItemTextDone]}>
+                    {t('questVoice')}
+                  </Text>
+                </View>
+              </View>
+
+              {questBonusAwarded && (
+                <View style={styles.questBonusBadge}>
+                  <Text style={styles.questBonusText}>🎁 {t('questCompleted')}</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Ayah of the Day */}
+            <Text style={styles.sectionTitle}>{t('ayahOfDay')}</Text>
+            <View style={styles.ayahCard}>
+              <View style={styles.ayahHeader}>
+                <TouchableOpacity style={styles.shareBtn} onPress={handleShareAyah} activeOpacity={0.75}>
+                  <Text style={styles.shareBtnText}>{t('share')}</Text>
+                </TouchableOpacity>
+                <Text style={styles.ayahTitle}>Surah Al-Imran | 3:133</Text>
+              </View>
+              <Text style={styles.ayahArabic}>
+                {`﴿  وَسَارِعُوا إِلَىٰ مَغْفِرَةٍ مِّن رَّبِّكُمْ وَجَنَّةٍ عَرْضُهَا السَّمَاوَاتُ وَالْأَرْضُ أُعَدَّتْ لِلْمُتَّقِينَ  ﴾`}
+              </Text>
+              <Text style={styles.ayahEnglish}>
+                "And hasten to forgiveness from your Lord and a garden as wide as the heavens and the earth, prepared for the righteous."
+              </Text>
+            </View>
+
+            {/* Today's Challenges Grid */}
+            <Text style={styles.sectionTitle}>{t('challenges')}</Text>
+            <View style={styles.challengesGrid}>
+              <TouchableOpacity
+                style={[styles.challengeCard, { backgroundColor: '#10B9811A', borderColor: '#10B9814D' }]}
+                onPress={() => navigation.navigate('Trivia')}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.challengeCardEmoji}>🧠</Text>
+                <Text style={styles.challengeCardTitle}>{t('dailyTrivia')}</Text>
+                <Text style={styles.challengeCardDesc}>{t('dailyTriviaDesc')}</Text>
+                <View style={styles.challengeCardBtn}>
+                  <Text style={styles.challengeCardBtnText}>{t('startChallenge')}</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.challengeCard, { backgroundColor: '#F59E0B1A', borderColor: '#F59E0B4D' }]}
+                onPress={() => navigation.navigate('Voice')}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.challengeCardEmoji}>🎙️</Text>
+                <Text style={styles.challengeCardTitle}>{t('recitationHub')}</Text>
+                <Text style={styles.challengeCardDesc}>{t('recitationHubDesc')}</Text>
+                <View style={[styles.challengeCardBtn, { backgroundColor: '#FBBF24' }]}>
+                  <Text style={[styles.challengeCardBtnText, { color: '#000000' }]}>{t('reciteNow')}</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            {/* Quick Access List */}
+            <View style={styles.quickAccessList}>
+              <TouchableOpacity style={styles.quickAccessItem} onPress={() => navigation.navigate('PrayerTracker')} activeOpacity={0.8}>
+                <Text style={styles.quickAccessArrow}>➔</Text>
+                <Text style={styles.quickAccessText}>{t('prayerTrackerLink')}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.quickAccessItem} onPress={() => navigation.navigate('Adhkar')} activeOpacity={0.8}>
+                <Text style={styles.quickAccessArrow}>➔</Text>
+                <Text style={styles.quickAccessText}>{t('adhkarLink')}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.quickAccessItem} onPress={() => navigation.navigate('Memorization')} activeOpacity={0.8}>
+                <Text style={styles.quickAccessArrow}>➔</Text>
+                <Text style={styles.quickAccessText}>{t('memorizationLink')}</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
 
         {/* Ad Banner */}
         <View style={styles.adWrapper}>
@@ -464,6 +565,225 @@ const styles = StyleSheet.create({
   },
   bodyContent: {
     padding: 20,
+  },
+  dualPathContainer: {
+    flexDirection: 'row-reverse',
+    gap: 12,
+    marginBottom: 24,
+  },
+  pathCard: {
+    flex: 1,
+    backgroundColor: Colors.surface,
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  pathCardActive: {
+    borderColor: Colors.primary,
+    backgroundColor: '#0F2C21',
+  },
+  pathIcon: {
+    fontSize: 28,
+    marginBottom: 8,
+  },
+  pathTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: Colors.textSecondary,
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  pathTitleActive: {
+    color: Colors.primary,
+    fontWeight: '900',
+  },
+  pathSubtitle: {
+    fontSize: 9,
+    color: '#86A59780',
+    textAlign: 'center',
+    fontWeight: '700',
+  },
+  livePathContainer: {
+    gap: 16,
+  },
+  rivalCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+  },
+  rivalHeader: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderColor: '#1E3A2F4D',
+    paddingBottom: 12,
+    marginBottom: 16,
+  },
+  rivalHeaderTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: Colors.textPrimary,
+  },
+  liveIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#EF44441F',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#EF44444D',
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#EF4444',
+  },
+  liveText: {
+    fontSize: 9,
+    color: '#EF4444',
+    fontWeight: '900',
+  },
+  rivalMatchupRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    marginBottom: 16,
+  },
+  rivalMatchupPlayer: {
+    alignItems: 'center',
+    flex: 1.2,
+  },
+  rivalAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    marginBottom: 8,
+  },
+  rivalAvatarText: {
+    fontSize: 22,
+  },
+  rivalPlayerName: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: Colors.textPrimary,
+    marginBottom: 2,
+    textAlign: 'center',
+    width: 90,
+  },
+  rivalPlayerXP: {
+    fontSize: 11,
+    color: Colors.primary,
+    fontWeight: '700',
+  },
+  rivalMatchupVS: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: Colors.accent,
+    fontStyle: 'italic',
+  },
+  rivalMatchupHint: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 16,
+    marginBottom: 16,
+    fontWeight: '700',
+  },
+  overtakeBtn: {
+    backgroundColor: Colors.primary,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  overtakeBtnText: {
+    color: '#09120F',
+    fontWeight: '900',
+    fontSize: 13,
+  },
+  raidCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    marginBottom: 16,
+  },
+  raidHeader: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  raidTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: Colors.textPrimary,
+  },
+  raidSub: {
+    fontSize: 11,
+    color: Colors.accent,
+    fontWeight: '800',
+  },
+  raidProgressBg: {
+    height: 10,
+    backgroundColor: '#09120F',
+    borderRadius: 5,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#1E3A2F4D',
+    marginBottom: 12,
+  },
+  raidProgressFill: {
+    height: '100%',
+    backgroundColor: '#EF4444',
+    borderRadius: 5,
+  },
+  raidDesc: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+    lineHeight: 18,
+    textAlign: 'right',
+    marginBottom: 16,
+    fontWeight: '700',
+  },
+  raidBonusRow: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderColor: '#1E3A2F33',
+    paddingTop: 12,
+  },
+  raidBonusLabel: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+    fontWeight: '700',
+  },
+  raidBonusVal: {
+    fontSize: 11,
+    color: Colors.primary,
+    fontWeight: '800',
   },
   topGlow: {
     position: 'absolute',

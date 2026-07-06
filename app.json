@@ -21,11 +21,13 @@
       }
     },
     "plugins": [
-      "react-native-google-mobile-ads"
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-6157287197742359~8744745472",
+          "iosAppId": "ca-app-pub-6157287197742359~4434945318"
+        }
+      ]
     ]
-  },
-  "react-native-google-mobile-ads": {
-    "android_app_id": "ca-app-pub-6157287197742359~8744745472",
-    "ios_app_id": "ca-app-pub-6157287197742359~4434945318"
   }
 }

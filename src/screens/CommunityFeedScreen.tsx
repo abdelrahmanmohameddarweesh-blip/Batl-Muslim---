@@ -29,7 +29,7 @@ const countriesList = [
   { code: 'MA', nameAr: 'المغرب 🇲🇦', nameEn: 'Morocco' },
 ];
 
-export default function CommunityFeedScreen() {
+export default function CommunityFeedScreen({ navigation }: any) {
   const { colors, isLightMode } = useTheme();
   const { language } = useLanguage();
   const styles = getStyles(colors);
@@ -57,30 +57,21 @@ export default function CommunityFeedScreen() {
   };
 
   useEffect(() => {
-    loadFeed();
-  }, []);
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadFeed();
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   // Dynamic filtering logic
   const filteredPosts = useMemo(() => {
     return posts.filter(post => {
-      // 1. Qari Filter
-      if (filterReader !== 'ALL' && post.readerId !== filterReader) {
-        return false;
-      }
-      // 2. Country Filter
-      if (filterCountry !== 'ALL' && post.countryCode !== filterCountry) {
-        return false;
-      }
-      // 3. Style Filter
-      if (filterStyle !== 'ALL' && post.style !== filterStyle) {
-        return false;
-      }
-      // 4. Accuracy Filter
+      if (filterReader !== 'ALL' && post.readerId !== filterReader) return false;
+      if (filterCountry !== 'ALL' && post.countryCode !== filterCountry) return false;
+      if (filterStyle !== 'ALL' && post.style !== filterStyle) return false;
       if (filterAccuracy !== 'ALL') {
         const threshold = parseInt(filterAccuracy, 10);
-        if (post.matchPercentage < threshold) {
-          return false;
-        }
+        if (post.matchPercentage < threshold) return false;
       }
       return true;
     });
@@ -111,71 +102,74 @@ export default function CommunityFeedScreen() {
     await saveCommunityPosts(updated);
   };
 
+  const getReaderAvatarSymbol = (readerId: string) => {
+    switch (readerId) {
+      case 'abdulbasit': return '🕌';
+      case 'minshawi': return '📖';
+      case 'husary': return '💡';
+      case 'sudais': return '🕋';
+      default: return '🎙️';
+    }
+  };
+
   return (
     <View style={styles.container}>
       {/* Feed Header */}
       <View style={styles.feedHeader}>
         <Text style={styles.feedTitle}>
-          {language === 'ar' ? 'منبر التلاوة الجماعي 🎙️' : 'Community Recitation Feed 🎙️'}
+          {language === 'ar' ? 'منبر التلاوة 🎙️' : 'Recitation Feed 🎙️'}
         </Text>
         <Text style={styles.feedSubtitle}>
           {language === 'ar' 
-            ? 'تصفح تلاوات زملائك، تفاعل معها، وتعلم من محاكاتهم للقراء' 
-            : 'Explore recitations shared by other heroes, upvote, and learn'}
+            ? 'تفاعل مع تلاوات زملائك، وقارن تطابق تلاوتك مع كبار القراء' 
+            : 'Listen to recitations, react to top voices, and share your own'}
         </Text>
       </View>
 
-      {/* Filter Action Row */}
-      <View style={styles.filterActionRow}>
+      {/* Floating Action / Filter Top Bar */}
+      <View style={styles.topActionsBar}>
+        <TouchableOpacity
+          style={styles.recordActionBtn}
+          onPress={() => navigation.navigate('Voice')}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.recordActionBtnText}>🎙️ {language === 'ar' ? 'سجّل تلاوتك' : 'Record Recitation'}</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity
           style={[styles.filterToggleBtn, showFilters && styles.filterToggleBtnActive]}
           onPress={() => setShowFilters(!showFilters)}
           activeOpacity={0.8}
         >
           <Text style={[styles.filterToggleBtnText, showFilters && styles.filterToggleBtnTextActive]}>
-            {showFilters 
-              ? (language === 'ar' ? 'إغلاق الفلاتر ✖️' : 'Close Filters ✖️') 
-              : (language === 'ar' ? 'تصفية وتخصيص البحث 🔍' : 'Filter & Search 🔍')}
+            🔍 {language === 'ar' ? 'تصفية' : 'Filters'}
           </Text>
         </TouchableOpacity>
       </View>
 
-      {/* Expandable Filter Sheet */}
+      {/* Modern Filter Sheet */}
       {showFilters && (
         <View style={styles.filterSheet}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
-            {/* 1. Recitation Style (Murattal / Mujawwad) */}
+            {/* Style Filter */}
             <View style={styles.filterGroup}>
               <Text style={styles.filterGroupLabel}>{language === 'ar' ? 'طريقة التلاوة:' : 'Style:'}</Text>
               <View style={styles.badgeRow}>
-                <TouchableOpacity
-                  style={[styles.filterBadge, filterStyle === 'ALL' && styles.filterBadgeActive]}
-                  onPress={() => setFilterStyle('ALL')}
-                >
-                  <Text style={[styles.filterBadgeText, filterStyle === 'ALL' && styles.filterBadgeTextActive]}>
-                    {language === 'ar' ? 'الكل' : 'All'}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.filterBadge, filterStyle === 'murattal' && styles.filterBadgeActive]}
-                  onPress={() => setFilterStyle('murattal')}
-                >
-                  <Text style={[styles.filterBadgeText, filterStyle === 'murattal' && styles.filterBadgeTextActive]}>
-                    {language === 'ar' ? 'مرتل 📖' : 'Murattal'}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.filterBadge, filterStyle === 'mujawwad' && styles.filterBadgeActive]}
-                  onPress={() => setFilterStyle('mujawwad')}
-                >
-                  <Text style={[styles.filterBadgeText, filterStyle === 'mujawwad' && styles.filterBadgeTextActive]}>
-                    {language === 'ar' ? 'مجوّد 🎨' : 'Mujawwad'}
-                  </Text>
-                </TouchableOpacity>
+                {['ALL', 'murattal', 'mujawwad'].map(styleOption => (
+                  <TouchableOpacity
+                    key={styleOption}
+                    style={[styles.filterBadge, filterStyle === styleOption && styles.filterBadgeActive]}
+                    onPress={() => setFilterStyle(styleOption)}
+                  >
+                    <Text style={[styles.filterBadgeText, filterStyle === styleOption && styles.filterBadgeTextActive]}>
+                      {styleOption === 'ALL' ? (language === 'ar' ? 'الكل' : 'All') : styleOption === 'murattal' ? (language === 'ar' ? 'مرتل 📖' : 'Murattal') : (language === 'ar' ? 'مجوّد 🎨' : 'Mujawwad')}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </View>
             </View>
 
-            {/* 2. Accuracy Threshold */}
+            {/* Accuracy Match Filter */}
             <View style={styles.filterGroup}>
               <Text style={styles.filterGroupLabel}>{language === 'ar' ? 'نسبة التطابق:' : 'Accuracy:'}</Text>
               <View style={styles.badgeRow}>
@@ -193,7 +187,7 @@ export default function CommunityFeedScreen() {
               </View>
             </View>
 
-            {/* 3. Imitated Qari (Reader) */}
+            {/* Qari Filter */}
             <View style={styles.filterGroup}>
               <Text style={styles.filterGroupLabel}>{language === 'ar' ? 'القارئ المحاكى:' : 'Qari:'}</Text>
               <View style={styles.badgeRow}>
@@ -219,7 +213,7 @@ export default function CommunityFeedScreen() {
               </View>
             </View>
 
-            {/* 4. Country Code */}
+            {/* Country Filter */}
             <View style={styles.filterGroup}>
               <Text style={styles.filterGroupLabel}>{language === 'ar' ? 'حسب البلد:' : 'Country:'}</Text>
               <View style={styles.badgeRow}>
@@ -249,31 +243,38 @@ export default function CommunityFeedScreen() {
             <Text style={styles.emptyStateEmoji}>🍂</Text>
             <Text style={styles.emptyStateText}>
               {language === 'ar' 
-                ? 'لا توجد تسجيلات تطابق خيارات التصفية هذه. جرّب تعديل الفلاتر أو كن البطل الأول الذي ينشر!'
-                : 'No recitations found matching these filters. Try modifying your filter choices!'}
+                ? 'لا توجد تسجيلات تطابق خيارات التصفية هذه. جرّب تعديل الفلاتر أو سجل تلاوتك لتنشرها!'
+                : 'No recitations found matching these filters. Try modifying your filter choices or record a new one!'}
             </Text>
           </View>
         ) : (
           filteredPosts.map(post => (
             <View key={post.id} style={styles.postCard}>
-              {/* Profile details */}
+              {/* Profile details header matching UI mockup */}
               <View style={styles.profileRow}>
+                <TouchableOpacity style={styles.moreIcon} activeOpacity={0.7}>
+                  <Text style={styles.moreIconText}>•••</Text>
+                </TouchableOpacity>
+
                 <View style={styles.profileMeta}>
                   <Text style={styles.postUserName}>
                     {post.userName} {getFlagEmoji(post.countryCode)}
                   </Text>
-                  <Text style={styles.postUserLevel}>
-                    {language === 'ar' ? `المستوى ${post.userLevel}` : `Level ${post.userLevel}`}
-                  </Text>
+                  <View style={styles.levelBadgePill}>
+                    <Text style={styles.levelBadgeText}>Level {post.userLevel}</Text>
+                  </View>
                 </View>
+                
                 <View style={styles.profileAvatar}>
-                  <Text style={styles.profileAvatarText}>{post.userName[0]}</Text>
+                  <Text style={styles.profileAvatarText}>
+                    {getReaderAvatarSymbol(post.readerId)}
+                  </Text>
                 </View>
               </View>
 
               {/* Quranic Text details */}
               <View style={styles.quranCard}>
-                <Text style={styles.ayahSurah}>{post.surahName} (الآية {post.ayahNumber})</Text>
+                <Text style={styles.ayahSurah}>{post.surahName}</Text>
                 <Text style={styles.ayahTextCalligraphy}>
                   {post.surahName === 'سورة الكهف' && '﴿ إِنَّهُمْ فِتْيَةٌ آمَنُوا بِرَبِّهِمْ وَزِدْنَاهُمْ هُدًى ﴾'}
                   {post.surahName === 'سورة يس' && '﴿ يس ﴾'}
@@ -294,7 +295,7 @@ export default function CommunityFeedScreen() {
                   </View>
                 </View>
 
-                {/* Simulated Audio Progress Waveform */}
+                {/* Simulated Audio Progress Waveform matching generated mockup */}
                 <View style={styles.waveformContainer}>
                   <TouchableOpacity style={styles.playBtn} activeOpacity={0.8}>
                     <Text style={styles.playBtnIcon}>▶️</Text>
@@ -308,16 +309,24 @@ export default function CommunityFeedScreen() {
                 </View>
               </View>
 
-              {/* Social Reactions Upvote Buttons */}
+              {/* Views, comments counter sub-row */}
+              <View style={styles.countersSubRow}>
+                <Text style={styles.countersSubText}>
+                  1,420 Views  •  12 Comments  •  23 Shares
+                </Text>
+              </View>
+
+              {/* Social Reactions Upvote Buttons with overlapping badges */}
               <View style={styles.reactionActionRow}>
                 <TouchableOpacity
                   style={[styles.reactionBtn, post.hasVotedMashallah && styles.reactionBtnActive]}
                   onPress={() => handleVote(post.id, 'mashallah')}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.reactionLabel}>
-                    ⭐ {language === 'ar' ? 'ما شاء الله' : 'Mashallah'} ({post.mashallahCount})
-                  </Text>
+                  <View style={styles.reactionBadgeCount}>
+                    <Text style={styles.reactionBadgeCountText}>{post.mashallahCount}</Text>
+                  </View>
+                  <Text style={styles.reactionLabel}>⭐ {language === 'ar' ? 'ما شاء الله' : 'Mashallah'}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -325,9 +334,10 @@ export default function CommunityFeedScreen() {
                   onPress={() => handleVote(post.id, 'subhanallah')}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.reactionLabel}>
-                    📿 {language === 'ar' ? 'سبحان الله' : 'Subhanallah'} ({post.subhanallahCount})
-                  </Text>
+                  <View style={styles.reactionBadgeCount}>
+                    <Text style={styles.reactionBadgeCountText}>{post.subhanallahCount}</Text>
+                  </View>
+                  <Text style={styles.reactionLabel}>📿 {language === 'ar' ? 'سبحان الله' : 'Subhanallah'}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -354,32 +364,52 @@ const getStyles = (colors: any) => StyleSheet.create({
     marginBottom: 14,
   },
   feedTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '900',
     color: colors.primary,
     textAlign: 'center',
     marginBottom: 4,
   },
   feedSubtitle: {
-    fontSize: 11,
+    fontSize: 12,
     color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 16,
     paddingHorizontal: 12,
   },
-  filterActionRow: {
-    marginBottom: 10,
+  topActionsBar: {
+    flexDirection: 'row-reverse',
+    gap: 12,
+    marginBottom: 14,
+  },
+  recordActionBtn: {
+    flex: 1.8,
+    backgroundColor: colors.primary,
+    paddingVertical: 12,
+    borderRadius: 14,
+    alignItems: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  recordActionBtnText: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#09120F',
   },
   filterToggleBtn: {
-    backgroundColor: '#09120F',
+    flex: 1,
+    backgroundColor: colors.surface,
     borderWidth: 1.5,
-    borderColor: '#1E3A2F',
-    paddingVertical: 10,
+    borderColor: colors.border,
+    paddingVertical: 12,
     borderRadius: 14,
     alignItems: 'center',
   },
   filterToggleBtnActive: {
-    backgroundColor: colors.primary,
+    backgroundColor: '#0F2C21',
     borderColor: colors.primary,
   },
   filterToggleBtnText: {
@@ -388,14 +418,14 @@ const getStyles = (colors: any) => StyleSheet.create({
     color: colors.textSecondary,
   },
   filterToggleBtnTextActive: {
-    color: '#09120F',
+    color: colors.primary,
     fontWeight: '900',
   },
   filterSheet: {
     backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 14,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.border,
     marginBottom: 14,
   },
@@ -479,6 +509,15 @@ const getStyles = (colors: any) => StyleSheet.create({
     marginBottom: 12,
     gap: 12,
   },
+  moreIcon: {
+    marginRight: 'auto',
+    paddingHorizontal: 6,
+  },
+  moreIconText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontWeight: '900',
+  },
   profileMeta: {
     alignItems: 'flex-end',
   },
@@ -487,16 +526,23 @@ const getStyles = (colors: any) => StyleSheet.create({
     fontWeight: '800',
     color: colors.textPrimary,
   },
-  postUserLevel: {
-    fontSize: 10,
-    color: colors.textSecondary,
-    fontWeight: '700',
-    marginTop: 2,
+  levelBadgePill: {
+    backgroundColor: colors.accentLight,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 8,
+    marginTop: 4,
+    alignSelf: 'flex-end',
+  },
+  levelBadgeText: {
+    fontSize: 9,
+    color: colors.accent,
+    fontWeight: '900',
   },
   profileAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
@@ -504,31 +550,29 @@ const getStyles = (colors: any) => StyleSheet.create({
     borderColor: colors.primary,
   },
   profileAvatarText: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: colors.primary,
+    fontSize: 22,
   },
   quranCard: {
     backgroundColor: '#09120F',
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1.5,
     borderColor: '#1E3A2F4D',
-    gap: 10,
-    marginBottom: 14,
+    gap: 12,
+    marginBottom: 10,
   },
   ayahSurah: {
-    fontSize: 10,
-    color: colors.accent,
-    fontWeight: '700',
+    fontSize: 11,
+    color: colors.textSecondary,
+    fontWeight: '800',
     textAlign: 'right',
   },
   ayahTextCalligraphy: {
-    fontSize: 15,
+    fontSize: 16,
     color: colors.textPrimary,
-    lineHeight: 22,
+    lineHeight: 24,
     textAlign: 'right',
-    fontWeight: '800',
+    fontWeight: '900',
   },
   scoreRow: {
     flexDirection: 'row-reverse',
@@ -571,15 +615,15 @@ const getStyles = (colors: any) => StyleSheet.create({
     marginTop: 6,
   },
   playBtn: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: colors.accent,
     justifyContent: 'center',
     alignItems: 'center',
   },
   playBtnIcon: {
-    fontSize: 10,
+    fontSize: 11,
     marginLeft: 1,
   },
   barsRow: {
@@ -599,6 +643,16 @@ const getStyles = (colors: any) => StyleSheet.create({
     color: colors.textSecondary,
     fontWeight: '800',
   },
+  countersSubRow: {
+    marginBottom: 14,
+    paddingHorizontal: 4,
+  },
+  countersSubText: {
+    fontSize: 10,
+    color: colors.textSecondary,
+    fontWeight: '700',
+    textAlign: 'right',
+  },
   reactionActionRow: {
     flexDirection: 'row-reverse',
     gap: 12,
@@ -611,6 +665,7 @@ const getStyles = (colors: any) => StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 12,
     alignItems: 'center',
+    position: 'relative',
   },
   reactionBtnActive: {
     backgroundColor: colors.primaryLight,
@@ -620,6 +675,23 @@ const getStyles = (colors: any) => StyleSheet.create({
     fontSize: 11,
     fontWeight: '800',
     color: colors.textPrimary,
+  },
+  reactionBadgeCount: {
+    position: 'absolute',
+    top: -8,
+    right: 12,
+    backgroundColor: colors.accent,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#09120F',
+    zIndex: 1,
+  },
+  reactionBadgeCountText: {
+    fontSize: 8,
+    fontWeight: '900',
+    color: '#09120F',
   },
   adWrapper: {
     marginTop: 10,

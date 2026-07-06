@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { getCurrentUserProfile, updateUserCountry } from '../firebase/auth';
 import { badgesCatalog, checkUnlockedBadges } from '../data/badges';
 import AdBanner from '../components/AdBanner';
@@ -20,6 +21,8 @@ const countriesList = [
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const { t, language, setLanguage } = useLanguage();
+  const { theme, colors, toggleTheme, isLightMode } = useTheme();
+  const styles = getStyles(colors);
   
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -79,7 +82,7 @@ export default function ProfileScreen() {
         <Text style={styles.title}>{t('profileTitle')}</Text>
         
         {loading ? (
-          <ActivityIndicator size="large" color={Colors.primary} style={styles.loader} />
+          <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
         ) : (
           <>
             {/* Profile Card Header */}
@@ -188,7 +191,7 @@ export default function ProfileScreen() {
                     return (
                       <TouchableOpacity
                         key={c.code}
-                        style={[styles.countryBadgeBtn, isSelected && styles.countryBadgeBtnActive]}
+                        style={[styles.countryBadge, isSelected && styles.countryBadgeActive]}
                         onPress={async () => {
                           if (user?.uid) {
                             await updateUserCountry(user.uid, c.nameEn, c.code);
@@ -219,6 +222,25 @@ export default function ProfileScreen() {
               </View>
             </View>
 
+            {/* Theme Toggle Card */}
+            <View style={styles.themeToggleCard}>
+              <View style={styles.themeHeader}>
+                <Text style={styles.themeTitle}>
+                  {language === 'ar' ? 'مظهر التطبيق' : 'App Theme'}
+                </Text>
+                <Text style={styles.themeSub}>
+                  {language === 'ar' 
+                    ? (isLightMode ? 'مظهر مضيء ☀️' : 'مظهر داكن 🌙') 
+                    : (isLightMode ? 'Light Mode ☀️' : 'Dark Mode 🌙')}
+                </Text>
+              </View>
+              <TouchableOpacity style={styles.themeToggleBtn} onPress={toggleTheme} activeOpacity={0.8}>
+                <Text style={styles.themeToggleBtnText}>
+                  {language === 'ar' ? 'تغيير المظهر 🔄' : 'Change Theme 🔄'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
             {/* Motivational Note */}
             <View style={styles.noteCard}>
               <Text style={styles.noteText}>
@@ -243,10 +265,10 @@ export default function ProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any) => StyleSheet.create({
   outerContainer: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   scrollContent: {
     paddingBottom: 24,
@@ -258,7 +280,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: '900',
-    color: Colors.textPrimary,
+    color: colors.textPrimary,
     textAlign: 'center',
     marginBottom: 20,
   },
@@ -266,13 +288,13 @@ const styles = StyleSheet.create({
     marginTop: 40,
   },
   profileHeaderCard: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 24,
     paddingVertical: 24,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: Colors.border,
-    shadowColor: Colors.shadow,
+    borderColor: colors.border,
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.03,
     shadowRadius: 8,
@@ -283,9 +305,9 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: Colors.primaryLight,
+    backgroundColor: colors.primaryLight,
     borderWidth: 2,
-    borderColor: Colors.primary,
+    borderColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
@@ -293,16 +315,16 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 32,
     fontWeight: '800',
-    color: Colors.primary,
+    color: colors.primary,
   },
   profileName: {
     fontSize: 18,
     fontWeight: '800',
-    color: Colors.textPrimary,
+    color: colors.textPrimary,
     marginBottom: 8,
   },
   levelBadge: {
-    backgroundColor: Colors.accentLight,
+    backgroundColor: colors.accentLight,
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 999,
@@ -312,7 +334,7 @@ const styles = StyleSheet.create({
   levelBadgeText: {
     fontSize: 11,
     fontWeight: '800',
-    color: Colors.accent,
+    color: colors.accent,
   },
   statsGrid: {
     flexDirection: 'row-reverse',
@@ -321,34 +343,34 @@ const styles = StyleSheet.create({
   },
   statBox: {
     flex: 1,
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   statVal: {
     fontSize: 22,
     fontWeight: '900',
-    color: Colors.primary,
+    color: colors.primary,
     marginBottom: 4,
   },
   statLbl: {
     fontSize: 11,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     fontWeight: '700',
   },
   sectionTitle: {
     fontSize: 15,
     fontWeight: '900',
-    color: Colors.textPrimary,
+    color: colors.textPrimary,
     textAlign: 'right',
     marginBottom: 4,
   },
   sectionSubtitle: {
     fontSize: 11,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'right',
     marginBottom: 16,
     fontWeight: '700',
@@ -366,7 +388,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1.5,
     alignItems: 'center',
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
   },
   badgeCardLocked: {
     borderColor: '#1E3A2F',
@@ -377,7 +399,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: Colors.primaryLight,
+    backgroundColor: colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
@@ -394,15 +416,15 @@ const styles = StyleSheet.create({
   badgeTitle: {
     fontSize: 13,
     fontWeight: '800',
-    color: Colors.textPrimary,
+    color: colors.textPrimary,
     marginBottom: 4,
   },
   badgeTitleLocked: {
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   badgeDesc: {
     fontSize: 9,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 12,
     fontWeight: '700',
@@ -411,17 +433,17 @@ const styles = StyleSheet.create({
     color: '#86A59780',
   },
   detailsCard: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 20,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     marginBottom: 16,
   },
   cardTitle: {
     fontSize: 14,
     fontWeight: '900',
-    color: Colors.textPrimary,
+    color: colors.textPrimary,
     marginBottom: 16,
     textAlign: 'right',
   },
@@ -435,12 +457,12 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     fontWeight: '700',
   },
   detailValue: {
     fontSize: 12,
-    color: Colors.textPrimary,
+    color: colors.textPrimary,
     fontWeight: '800',
   },
   detailRowCol: {
@@ -450,7 +472,7 @@ const styles = StyleSheet.create({
   },
   detailLabelCol: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     fontWeight: '700',
     marginBottom: 8,
     textAlign: 'right',
@@ -459,23 +481,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row-reverse',
     flexWrap: 'wrap',
     gap: 8,
+    justifyContent: 'flex-start',
     marginTop: 4,
   },
-  countryBadgeBtn: {
+  countryBadge: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 10,
     backgroundColor: '#09120F',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#1E3A2F',
   },
-  countryBadgeBtnActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+  countryBadgeActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   countryBadgeText: {
     fontSize: 11,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     fontWeight: '800',
   },
   countryBadgeTextActive: {
@@ -496,11 +519,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   langBtnActive: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
   },
   langBtnText: {
     fontSize: 11,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     fontWeight: '800',
   },
   langBtnTextActive: {
@@ -517,12 +540,12 @@ const styles = StyleSheet.create({
   },
   progressLabel: {
     fontSize: 11,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     fontWeight: '700',
   },
   progressVal: {
     fontSize: 11,
-    color: Colors.primary,
+    color: colors.primary,
     fontWeight: '800',
   },
   progressBarBg: {
@@ -535,11 +558,11 @@ const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 4,
   },
   noteCard: {
-    backgroundColor: Colors.primaryLight,
+    backgroundColor: colors.primaryLight,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
@@ -549,7 +572,7 @@ const styles = StyleSheet.create({
   noteText: {
     fontSize: 12,
     lineHeight: 18,
-    color: Colors.primary,
+    color: colors.primary,
     textAlign: 'right',
     fontWeight: '700',
   },
@@ -562,11 +585,48 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logoutButtonText: {
-    color: Colors.error,
+    color: colors.error,
     fontWeight: '800',
     fontSize: 14,
   },
   adWrapper: {
     marginTop: 20,
+  },
+  themeToggleCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  themeHeader: {
+    alignItems: 'flex-start',
+  },
+  themeTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: colors.textPrimary,
+    textAlign: 'right',
+  },
+  themeSub: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 2,
+    textAlign: 'right',
+  },
+  themeToggleBtn: {
+    backgroundColor: colors.primary,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+  },
+  themeToggleBtnText: {
+    color: '#09120F',
+    fontWeight: '800',
+    fontSize: 12,
   },
 });

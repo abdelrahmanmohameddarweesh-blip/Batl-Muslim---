@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getAllPlayers, getCurrentUserProfile } from '../firebase/auth';
 import AdBanner from '../components/AdBanner';
+import { useTheme } from '../contexts/ThemeContext';
 import { Colors } from '../config/colors';
 
 const getFlagEmoji = (code?: string) => {
@@ -22,6 +23,8 @@ const getFlagEmoji = (code?: string) => {
 export default function LeaderboardScreen() {
   const { user } = useAuth();
   const { t, language } = useLanguage();
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
 
   const [allPlayers, setAllPlayers] = useState<any[]>([]);
   const [currentUserProfile, setCurrentUserProfile] = useState<any>(null);
@@ -102,7 +105,7 @@ export default function LeaderboardScreen() {
       {/* Refresh Button */}
       <TouchableOpacity style={styles.refreshButton} onPress={loadData} disabled={loading} activeOpacity={0.85}>
         {loading ? (
-          <ActivityIndicator size="small" color={Colors.surface} />
+          <ActivityIndicator size="small" color={colors.surface} />
         ) : (
           <Text style={styles.refreshButtonText}>
             {language === 'ar' ? 'تحديث الترتيب 🔄' : 'Refresh Leaderboard 🔄'}
@@ -112,7 +115,7 @@ export default function LeaderboardScreen() {
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {loading ? (
-          <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 40 }} />
+          <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
         ) : filterMode === 'country' && !hasCountryCode ? (
           <View style={styles.warningContainer}>
             <Text style={styles.warningEmoji}>⚠️</Text>
@@ -215,12 +218,12 @@ export default function LeaderboardScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 20,
     paddingTop: 20,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   header: {
     alignItems: 'center',
@@ -242,19 +245,19 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   tabBtnActive: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
   },
   tabBtnText: {
     fontSize: 12,
     fontWeight: '800',
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   tabBtnTextActive: {
     color: '#09120F',
     fontWeight: '900',
   },
   warningContainer: {
-    backgroundColor: Colors.primaryLight,
+    backgroundColor: colors.primaryLight,
     borderWidth: 1,
     borderColor: '#1E3A2F33',
     borderRadius: 16,
@@ -269,36 +272,36 @@ const styles = StyleSheet.create({
   warningText: {
     fontSize: 13,
     lineHeight: 20,
-    color: Colors.primary,
+    color: colors.primary,
     textAlign: 'center',
     fontWeight: '700',
   },
   title: {
     fontSize: 24,
     fontWeight: '800',
-    color: Colors.primary,
+    color: colors.primary,
     textAlign: 'center',
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 13,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   refreshButton: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     paddingVertical: 12,
     borderRadius: 14,
     alignItems: 'center',
     marginBottom: 16,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
   },
   refreshButtonText: {
-    color: Colors.surface,
+    color: colors.surface,
     fontWeight: '700',
     fontSize: 14,
   },
@@ -318,7 +321,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   emptyStateText: {
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 20,
@@ -328,13 +331,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row-reverse',
     alignItems: 'flex-end',
     justifyContent: 'center',
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 24,
     paddingVertical: 24,
     paddingHorizontal: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   podiumCol: {
     alignItems: 'center',
@@ -376,25 +379,25 @@ const styles = StyleSheet.create({
   podiumName: {
     fontSize: 13,
     fontWeight: '700',
-    color: Colors.textPrimary,
+    color: colors.textPrimary,
     textAlign: 'center',
     marginBottom: 2,
     width: 80,
   },
   podiumNameGold: {
     fontSize: 15,
-    color: Colors.primary,
+    color: colors.primary,
     fontWeight: '800',
   },
   podiumScore: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     fontWeight: '600',
     marginBottom: 8,
   },
   podiumScoreGold: {
     fontSize: 14,
-    color: Colors.accent,
+    color: colors.accent,
     fontWeight: '800',
     marginBottom: 8,
   },
@@ -425,7 +428,7 @@ const styles = StyleSheet.create({
   podiumRankText: {
     fontSize: 14,
     fontWeight: '800',
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   podiumRankTextGold: {
     fontSize: 16,
@@ -433,30 +436,30 @@ const styles = StyleSheet.create({
     color: '#F59E0B',
   },
   listContainer: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 12,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   playerRow: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderColor: Colors.background,
+    borderColor: colors.background,
     paddingHorizontal: 8,
   },
   playerName: {
     fontSize: 15,
     fontWeight: '700',
-    color: Colors.textPrimary,
+    color: colors.textPrimary,
     textAlign: 'right',
   },
   playerScore: {
     fontSize: 14,
     fontWeight: '800',
-    color: Colors.primary,
+    color: colors.primary,
   },
   playerInfo: {
     flex: 1,
@@ -464,7 +467,7 @@ const styles = StyleSheet.create({
   },
   playerRankHint: {
     fontSize: 11,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'right',
     marginTop: 2,
   },
@@ -472,14 +475,14 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
   },
   rankBadgeText: {
     fontSize: 12,
     fontWeight: '700',
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   adWrapper: {
     marginTop: 12,

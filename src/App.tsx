@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { AuthProvider } from './contexts/AuthContext';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
+import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { Colors } from './config/colors';
 
 import LoginScreen from './screens/LoginScreen';
@@ -27,6 +28,8 @@ const Tab = createBottomTabNavigator();
 
 // Custom central elevated tab bar button
 function ChallengeHeroButton({ onPress }: any) {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   return (
     <TouchableOpacity
       style={styles.heroButtonOuter}
@@ -43,14 +46,17 @@ function ChallengeHeroButton({ onPress }: any) {
 // Tab Navigator setup
 function TabNavigator() {
   const { t } = useLanguage();
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
+
   return (
     <Tab.Navigator
       initialRouteName="Home"
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: true,
-        tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.textSecondary,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textSecondary,
         tabBarStyle: styles.tabBar,
         tabBarLabelStyle: styles.tabBarLabel,
       }}
@@ -99,86 +105,97 @@ function TabNavigator() {
   );
 }
 
+function NavigationWrapper() {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
+
+  return (
+    <NavigationContainer>
+      <Stack.Navigator
+        initialRouteName="Login"
+        screenOptions={{
+          headerStyle: styles.headerStyle,
+          headerTintColor: colors.primary,
+          headerTitleStyle: styles.headerTitleStyle,
+          headerTitleAlign: 'center',
+          headerBackTitleVisible: false,
+        }}
+      >
+        {/* Main flow stack */}
+        <Stack.Screen
+          name="Login"
+          component={LoginScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="HomeTabs"
+          component={TabNavigator}
+          options={{ headerShown: false }}
+        />
+
+        {/* Sub challenges stack */}
+        <Stack.Screen
+          name="Trivia"
+          component={TriviaScreen}
+          options={{ title: 'تحدي المعرفة' }}
+        />
+        <Stack.Screen
+          name="PrayerTracker"
+          component={PrayerTrackerScreen}
+          options={{ title: 'الصلوات الخمس' }}
+        />
+        <Stack.Screen
+          name="FajrChallenge"
+          component={FajrChallengeScreen}
+          options={{ title: 'تحدي صلاة الفجر' }}
+        />
+        <Stack.Screen
+          name="ReadingChallenge"
+          component={ReadingChallengeScreen}
+          options={{ title: 'تحدي القراءة والفهم' }}
+        />
+        <Stack.Screen
+          name="Memorization"
+          component={MemorizationScreen}
+          options={{ title: 'تحدي حفظ الآيات' }}
+        />
+        <Stack.Screen
+          name="Adhkar"
+          component={AdhkarScreen}
+          options={{ title: 'أذكار اليوم والمساء' }}
+        />
+        <Stack.Screen
+          name="HadithChallenge"
+          component={HadithChallengeScreen}
+          options={{ title: 'تحدي الحديث الشريف' }}
+        />
+        <Stack.Screen
+          name="LiveDuel"
+          component={LiveDuelScreen}
+          options={{ headerShown: false }}
+        />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+}
+
 export default function App() {
   return (
     <AuthProvider>
-      <LanguageProvider>
-        <NavigationContainer>
-          <Stack.Navigator
-          initialRouteName="Login"
-          screenOptions={{
-            headerStyle: styles.headerStyle,
-            headerTintColor: Colors.primary,
-            headerTitleStyle: styles.headerTitleStyle,
-            headerTitleAlign: 'center',
-            headerBackTitleVisible: false,
-          }}
-        >
-          {/* Main flow stack */}
-          <Stack.Screen
-            name="Login"
-            component={LoginScreen}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="HomeTabs"
-            component={TabNavigator}
-            options={{ headerShown: false }}
-          />
-
-          {/* Sub challenges stack */}
-          <Stack.Screen
-            name="Trivia"
-            component={TriviaScreen}
-            options={{ title: 'تحدي المعرفة' }}
-          />
-          <Stack.Screen
-            name="PrayerTracker"
-            component={PrayerTrackerScreen}
-            options={{ title: 'الصلوات الخمس' }}
-          />
-          <Stack.Screen
-            name="FajrChallenge"
-            component={FajrChallengeScreen}
-            options={{ title: 'تحدي صلاة الفجر' }}
-          />
-          <Stack.Screen
-            name="ReadingChallenge"
-            component={ReadingChallengeScreen}
-            options={{ title: 'تحدي القراءة والفهم' }}
-          />
-          <Stack.Screen
-            name="Memorization"
-            component={MemorizationScreen}
-            options={{ title: 'تحدي حفظ الآيات' }}
-          />
-          <Stack.Screen
-            name="Adhkar"
-            component={AdhkarScreen}
-            options={{ title: 'أذكار اليوم والمساء' }}
-          />
-          <Stack.Screen
-            name="HadithChallenge"
-            component={HadithChallengeScreen}
-            options={{ title: 'تحدي الحديث الشريف' }}
-          />
-          <Stack.Screen
-            name="LiveDuel"
-            component={LiveDuelScreen}
-            options={{ headerShown: false }}
-          />
-        </Stack.Navigator>
-      </NavigationContainer>
-      </LanguageProvider>
+      <ThemeProvider>
+        <LanguageProvider>
+          <NavigationWrapper />
+        </LanguageProvider>
+      </ThemeProvider>
     </AuthProvider>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any) => StyleSheet.create({
   tabBar: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
+    borderTopColor: colors.border,
     height: 60,
     paddingBottom: 6,
     paddingTop: 6,
@@ -188,16 +205,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   headerStyle: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: colors.border,
     elevation: 0,
     shadowOpacity: 0,
   },
   headerTitleStyle: {
     fontWeight: '800',
     fontSize: 16,
-    color: Colors.primary,
+    color: colors.primary,
   },
   heroButtonOuter: {
     top: -16,
@@ -208,19 +225,19 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: Colors.accent,
+    shadowColor: colors.accent,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
     elevation: 5,
     borderWidth: 3,
-    borderColor: Colors.surface,
+    borderColor: colors.surface,
   },
   heroButtonEmoji: {
     fontSize: 22,
-    color: Colors.surface,
+    color: colors.surface,
   },
 });

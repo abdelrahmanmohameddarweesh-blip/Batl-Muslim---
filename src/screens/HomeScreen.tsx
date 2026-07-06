@@ -7,10 +7,13 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { getCurrentUserProfile, saveUserScore } from '../firebase/auth';
 import { shareAchievementWithImage } from '../utils/sharing';
 import AdBanner from '../components/AdBanner';
+import { useTheme } from '../contexts/ThemeContext';
 import { Colors } from '../config/colors';
 
 // Custom SVG Circular Progress Ring
 function CircularProgress({ size, strokeWidth, percent, emoji, label, color, ringColor }: any) {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
   const strokeDashoffset = circumference - (percent / 100) * circumference;
@@ -59,6 +62,8 @@ function CircularProgress({ size, strokeWidth, percent, emoji, label, color, rin
 export default function HomeScreen({ navigation }: any) {
   const { user } = useAuth();
   const { t, language } = useLanguage();
+  const { colors, isLightMode } = useTheme();
+  const styles = getStyles(colors);
   const [profile, setProfile] = useState<any>(null);
   const [showGuide, setShowGuide] = useState(false);
   const [activePath, setActivePath] = useState<'solo' | 'live'>('solo');
@@ -551,10 +556,10 @@ Join us in our daily journey towards Islamic knowledge! 🚀`;
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any) => StyleSheet.create({
   outerContainer: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   scrollContent: {
     paddingBottom: 24,
@@ -573,11 +578,11 @@ const styles = StyleSheet.create({
   },
   pathCard: {
     flex: 1,
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 16,
     borderWidth: 1.5,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -586,7 +591,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   pathCardActive: {
-    borderColor: Colors.primary,
+    borderColor: colors.primary,
     backgroundColor: '#0F2C21',
   },
   pathIcon: {
@@ -596,12 +601,12 @@ const styles = StyleSheet.create({
   pathTitle: {
     fontSize: 14,
     fontWeight: '800',
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginBottom: 4,
     textAlign: 'center',
   },
   pathTitleActive: {
-    color: Colors.primary,
+    color: colors.primary,
     fontWeight: '900',
   },
   pathSubtitle: {
@@ -614,11 +619,11 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   rivalCard: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 20,
     borderWidth: 1.5,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   rivalHeader: {
     flexDirection: 'row-reverse',
@@ -632,7 +637,7 @@ const styles = StyleSheet.create({
   rivalHeaderTitle: {
     fontSize: 13,
     fontWeight: '800',
-    color: Colors.textPrimary,
+    color: colors.textPrimary,
   },
   liveIndicator: {
     flexDirection: 'row',
@@ -681,36 +686,36 @@ const styles = StyleSheet.create({
   rivalPlayerName: {
     fontSize: 13,
     fontWeight: '800',
-    color: Colors.textPrimary,
+    color: colors.textPrimary,
     marginBottom: 2,
     textAlign: 'center',
     width: 90,
   },
   rivalPlayerXP: {
     fontSize: 11,
-    color: Colors.primary,
+    color: colors.primary,
     fontWeight: '700',
   },
   rivalMatchupVS: {
     fontSize: 18,
     fontWeight: '900',
-    color: Colors.accent,
+    color: colors.accent,
     fontStyle: 'italic',
   },
   rivalMatchupHint: {
     fontSize: 11,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 16,
     marginBottom: 16,
     fontWeight: '700',
   },
   overtakeBtn: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     paddingVertical: 14,
     borderRadius: 14,
     alignItems: 'center',
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 6,
@@ -722,11 +727,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   raidCard: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 20,
     borderWidth: 1.5,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     marginBottom: 16,
   },
   raidHeader: {
@@ -738,11 +743,11 @@ const styles = StyleSheet.create({
   raidTitle: {
     fontSize: 13,
     fontWeight: '800',
-    color: Colors.textPrimary,
+    color: colors.textPrimary,
   },
   raidSub: {
     fontSize: 11,
-    color: Colors.accent,
+    color: colors.accent,
     fontWeight: '800',
   },
   raidProgressBg: {
@@ -761,7 +766,7 @@ const styles = StyleSheet.create({
   },
   raidDesc: {
     fontSize: 11,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     lineHeight: 18,
     textAlign: 'right',
     marginBottom: 16,
@@ -777,12 +782,12 @@ const styles = StyleSheet.create({
   },
   raidBonusLabel: {
     fontSize: 11,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     fontWeight: '700',
   },
   raidBonusVal: {
     fontSize: 11,
-    color: Colors.primary,
+    color: colors.primary,
     fontWeight: '800',
   },
   topGlow: {
@@ -863,19 +868,19 @@ const styles = StyleSheet.create({
   appName: {
     fontSize: 20,
     fontWeight: '900',
-    color: Colors.textPrimary,
+    color: colors.textPrimary,
   },
   timeText: {
     fontSize: 12,
     fontWeight: '800',
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     width: 60,
     textAlign: 'center',
   },
   dateLabel: {
     fontSize: 11,
     fontWeight: '800',
-    color: Colors.primary,
+    color: colors.primary,
     marginTop: 6,
     backgroundColor: '#152E2480',
     paddingHorizontal: 12,
@@ -885,11 +890,11 @@ const styles = StyleSheet.create({
     borderColor: '#1E3A2F4D',
   },
   levelCard: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     marginBottom: 24,
   },
   levelRow: {
@@ -899,20 +904,20 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   levelBadgeContainer: {
-    backgroundColor: Colors.primaryLight,
+    backgroundColor: colors.primaryLight,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
   },
   levelBadgeText: {
-    color: Colors.primary,
+    color: colors.primary,
     fontSize: 12,
     fontWeight: '800',
   },
   pointsText: {
     fontSize: 14,
     fontWeight: '800',
-    color: Colors.accent,
+    color: colors.accent,
   },
   levelProgressBarBackground: {
     height: 8,
@@ -923,19 +928,19 @@ const styles = StyleSheet.create({
   },
   levelProgressBarFill: {
     height: 8,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 4,
   },
   levelProgressLabel: {
     fontSize: 10,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'right',
     fontWeight: '700',
   },
   sectionTitle: {
     fontSize: 15,
     fontWeight: '900',
-    color: Colors.textPrimary,
+    color: colors.textPrimary,
     textAlign: 'right',
     marginBottom: 12,
     marginTop: 8,
@@ -944,12 +949,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row-reverse',
     justifyContent: 'space-around',
     alignItems: 'center',
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 22,
     paddingVertical: 16,
     paddingHorizontal: 10,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     marginBottom: 24,
   },
   circularProgressContainer: {
@@ -977,13 +982,13 @@ const styles = StyleSheet.create({
   percentText: {
     fontSize: 12,
     fontWeight: '800',
-    color: Colors.textPrimary,
+    color: colors.textPrimary,
     marginTop: 6,
   },
   progressLabel: {
     fontSize: 10,
     fontWeight: '700',
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 2,
   },
   streakContainer: {
@@ -1008,11 +1013,11 @@ const styles = StyleSheet.create({
     top: 36,
   },
   questCard: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 22,
     padding: 18,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     marginBottom: 24,
   },
   questProgressRow: {
@@ -1024,12 +1029,12 @@ const styles = StyleSheet.create({
   questPercentText: {
     fontSize: 14,
     fontWeight: '900',
-    color: Colors.primary,
+    color: colors.primary,
   },
   questProgressLabel: {
     fontSize: 13,
     fontWeight: '800',
-    color: Colors.textPrimary,
+    color: colors.textPrimary,
   },
   questBarBackground: {
     height: 6,
@@ -1040,7 +1045,7 @@ const styles = StyleSheet.create({
   },
   questBarFill: {
     height: 6,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 3,
   },
   questsList: {
@@ -1056,50 +1061,50 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     borderWidth: 1.5,
-    borderColor: Colors.textSecondary,
+    borderColor: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 18,
     fontSize: 12,
     fontWeight: '900',
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   questCheckIconActive: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primary,
+    borderColor: colors.primary,
+    backgroundColor: colors.primary,
     color: '#09120F',
   },
   questItemText: {
     fontSize: 12,
     fontWeight: '700',
-    color: Colors.textPrimary,
+    color: colors.textPrimary,
     flex: 1,
     textAlign: 'right',
   },
   questItemTextDone: {
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textDecorationLine: 'line-through',
   },
   questBonusBadge: {
     marginTop: 16,
-    backgroundColor: Colors.accentLight,
+    backgroundColor: colors.accentLight,
     borderRadius: 10,
     padding: 10,
     borderWidth: 1,
-    borderColor: Colors.accent,
+    borderColor: colors.accent,
   },
   questBonusText: {
     fontSize: 11,
     fontWeight: '800',
-    color: Colors.accent,
+    color: colors.accent,
     textAlign: 'center',
     lineHeight: 16,
   },
   ayahCard: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 22,
     padding: 18,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     marginBottom: 24,
   },
   ayahHeader: {
@@ -1115,27 +1120,27 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   shareBtnText: {
-    color: Colors.primary,
+    color: colors.primary,
     fontSize: 11,
     fontWeight: '800',
   },
   ayahTitle: {
     fontSize: 11,
     fontWeight: '800',
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   ayahArabic: {
     fontSize: 16,
     lineHeight: 28,
     fontWeight: '700',
-    color: Colors.primary,
+    color: colors.primary,
     textAlign: 'center',
     marginBottom: 12,
   },
   ayahEnglish: {
     fontSize: 11,
     lineHeight: 16,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   challengesGrid: {
@@ -1158,18 +1163,18 @@ const styles = StyleSheet.create({
   challengeCardTitle: {
     fontSize: 14,
     fontWeight: '800',
-    color: Colors.textPrimary,
+    color: colors.textPrimary,
     marginBottom: 4,
   },
   challengeCardDesc: {
     fontSize: 10,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: 12,
     height: 30,
   },
   challengeCardBtn: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 10,
@@ -1177,7 +1182,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   challengeCardBtnText: {
-    color: Colors.surface,
+    color: colors.surface,
     fontSize: 11,
     fontWeight: '800',
   },
@@ -1186,24 +1191,24 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   quickAccessItem: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 14,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   quickAccessArrow: {
-    color: Colors.primary,
+    color: colors.primary,
     fontSize: 12,
     fontWeight: '800',
   },
   quickAccessText: {
     fontSize: 13,
     fontWeight: '700',
-    color: Colors.textPrimary,
+    color: colors.textPrimary,
   },
   adWrapper: {
     marginTop: 8,
@@ -1217,13 +1222,13 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalCard: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 24,
     padding: 24,
     width: '100%',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   modalEmoji: {
     fontSize: 48,
@@ -1232,12 +1237,12 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: Colors.textPrimary,
+    color: colors.textPrimary,
     marginBottom: 4,
   },
   modalSubtitle: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginBottom: 20,
   },
   guideStep: {
@@ -1249,7 +1254,7 @@ const styles = StyleSheet.create({
   stepNumber: {
     fontSize: 18,
     fontWeight: '800',
-    color: Colors.primary,
+    color: colors.primary,
     width: 24,
     textAlign: 'center',
     marginLeft: 12,
@@ -1258,11 +1263,11 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     lineHeight: 18,
-    color: Colors.textPrimary,
+    color: colors.textPrimary,
     textAlign: 'right',
   },
   modalButton: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 14,
     paddingVertical: 12,
     paddingHorizontal: 24,
@@ -1271,7 +1276,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   modalButtonText: {
-    color: Colors.surface,
+    color: colors.surface,
     fontSize: 14,
     fontWeight: '800',
   },

@@ -352,121 +352,6 @@ Join us in our daily journey towards Islamic knowledge! 🚀`;
                   : (language === 'ar' ? '📿 ساهم بـ +١٠ صلوات على النبي (+٥ نقاط)' : '📿 Contribute +10 Salawat (+5 XP)')}
               </Text>
             </TouchableOpacity>
-          </View>
-
-        {/* Dual Path Selector */}
-        <View style={styles.dualPathContainer}>
-          <TouchableOpacity
-            style={[styles.pathCard, activePath === 'solo' && styles.pathCardActive]}
-            onPress={() => setActivePath('solo')}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.pathIcon}>🌱</Text>
-            <Text style={[styles.pathTitle, activePath === 'solo' && styles.pathTitleActive]}>
-              {language === 'ar' ? 'المهام الفردية' : 'Solo Quests'}
-            </Text>
-            <Text style={styles.pathSubtitle}>
-              {language === 'ar' ? 'نقاط، أوراد وتحديات' : 'Habits, trivia & stickers'}
-            </Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[styles.pathCard, activePath === 'live' && styles.pathCardActive]}
-            onPress={() => setActivePath('live')}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.pathIcon}>⚔️</Text>
-            <Text style={[styles.pathTitle, activePath === 'live' && styles.pathTitleActive]}>
-              {language === 'ar' ? 'المبارزة المباشرة' : 'Live Arena'}
-            </Text>
-            <Text style={styles.pathSubtitle}>
-              {language === 'ar' ? 'تحدَّ غريمك في الساحة' : 'Speed 1v1 quiz battles'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {activePath === 'live' ? (
-          <View style={styles.livePathContainer}>
-            {/* Rival Face-off card */}
-            <Text style={styles.sectionTitle}>{language === 'ar' ? 'مواجهة الغريم المباشرة ⚡' : 'Rival Face-Off ⚡'}</Text>
-            <View style={styles.rivalCard}>
-              <View style={styles.rivalHeader}>
-                <Text style={styles.rivalHeaderTitle}>
-                  {language === 'ar' ? 'الترتيب الفرعي للساحة' : 'Arena Match Standing'}
-                </Text>
-                <View style={styles.liveIndicator}>
-                  <View style={styles.liveDot} />
-                  <Text style={styles.liveText}>{language === 'ar' ? 'مباشر' : 'LIVE'}</Text>
-                </View>
-              </View>
-              
-              <View style={styles.rivalMatchupRow}>
-                <View style={styles.rivalMatchupPlayer}>
-                  <View style={[styles.rivalAvatar, { backgroundColor: '#10B98133', borderColor: '#10B981' }]}>
-                    <Text style={styles.rivalAvatarText}>👤</Text>
-                  </View>
-                  <Text style={styles.rivalPlayerName} numberOfLines={1}>
-                    {profile?.displayName || (language === 'ar' ? 'أنت' : 'You')}
-                  </Text>
-                  <Text style={styles.rivalPlayerXP}>{currentScore} XP</Text>
-                </View>
-                
-                <Text style={styles.rivalMatchupVS}>VS</Text>
-                
-                <View style={styles.rivalMatchupPlayer}>
-                  <View style={[styles.rivalAvatar, { backgroundColor: '#EF444433', borderColor: '#EF4444' }]}>
-                    <Text style={styles.rivalAvatarText}>⚔️</Text>
-                  </View>
-                  <Text style={styles.rivalPlayerName} numberOfLines={1}>
-                    {language === 'ar' ? 'خالد (غريمك)' : 'Khalid (Rival)'}
-                  </Text>
-                  <Text style={styles.rivalPlayerXP}>{currentScore + 40} XP</Text>
-                </View>
-              </View>
-
-              <Text style={styles.rivalMatchupHint}>
-                {language === 'ar' 
-                  ? 'خالد يسبقك بـ ٤٠ نقطة! انتصر في مبارزة لتتجاوزه في الترتيب.'
-                  : 'Khalid is ahead by 40 XP! Win a Live Duel to overtake him.'}
-              </Text>
-
-              <TouchableOpacity
-                style={styles.overtakeBtn}
-                onPress={() => navigation.navigate('LiveDuel')}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.overtakeBtnText}>
-                  {language === 'ar' ? 'تحدَّ الآن في الساحة المباشرة ⚔️' : 'Duel Now in Live Arena ⚔️'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Community Co-op Boss Raid */}
-            <Text style={styles.sectionTitle}>{language === 'ar' ? 'مداهمة الغفلة (تحدي جماعي) 🛡️' : 'Defeat Negligence (Co-op Raid) 🛡️'}</Text>
-            <View style={styles.raidCard}>
-              <View style={styles.raidHeader}>
-                <Text style={styles.raidTitle}>{language === 'ar' ? 'الوحش اليومي: الغفلة' : 'Daily Boss: Ghaflah'}</Text>
-                <Text style={styles.raidSub}>HP: 34,200 / 50,000</Text>
-              </View>
-
-              <View style={styles.raidProgressBg}>
-                <View style={[styles.raidProgressFill, { width: '68.4%' }]} />
-              </View>
-
-              <Text style={styles.raidDesc}>
-                {language === 'ar'
-                  ? 'كل صلاة تسجلها وكل تلاوة أو اختبار تقوم به، يلحق ضرراً بالوحش اليومي! تعاون مع الأبطال لهزيمته اليوم.'
-                  : 'Every prayer logged and trivia completed deals damage to the daily boss! Cooperate with all heroes to defeat him today.'}
-              </Text>
-
-              <View style={styles.raidBonusRow}>
-                <Text style={styles.raidBonusVal}>+20 XP {language === 'ar' ? 'لكل بطل مشارك' : 'for each active hero'}</Text>
-                <Text style={styles.raidBonusLabel}>🎁 {language === 'ar' ? 'المكافأة المشتركة' : 'Co-op Reward'}</Text>
-              </View>
-            </View>
-          </View>
-        ) : (
-          <>
             {/* Daily Goals Progress Dashboard */}
             <Text style={styles.sectionTitle}>{t('dailyGoals')}</Text>
             <View style={styles.dailyGoalsRow}>
@@ -560,55 +445,73 @@ Join us in our daily journey towards Islamic knowledge! 🚀`;
               </Text>
             </View>
 
-            {/* Today's Challenges Grid */}
-            <Text style={styles.sectionTitle}>{t('challenges')}</Text>
-            <View style={styles.challengesGrid}>
+            {/* The 3 Pillars Hub Grid */}
+            <Text style={styles.sectionTitle}>
+              {language === 'ar' ? 'أركان بطل مسلم 🗺️' : 'Pillars of Muslim Hero 🗺️'}
+            </Text>
+            
+            <View style={styles.pillarsGrid}>
+              {/* Worship Pillar */}
               <TouchableOpacity
-                style={[styles.challengeCard, { backgroundColor: '#10B9811A', borderColor: '#10B9814D' }]}
-                onPress={() => navigation.navigate('Trivia')}
+                style={[styles.pillarCard, { borderLeftColor: '#10B981', backgroundColor: '#10B9810D' }]}
+                onPress={() => navigation.navigate('WorshipSanctuary')}
                 activeOpacity={0.85}
               >
-                <Text style={styles.challengeCardEmoji}>🧠</Text>
-                <Text style={styles.challengeCardTitle}>{t('dailyTrivia')}</Text>
-                <Text style={styles.challengeCardDesc}>{t('dailyTriviaDesc')}</Text>
-                <View style={styles.challengeCardBtn}>
-                  <Text style={styles.challengeCardBtnText}>{t('startChallenge')}</Text>
+                <View style={styles.pillarIconWrapper}>
+                  <Text style={styles.pillarIcon}>🕌</Text>
                 </View>
+                <View style={styles.pillarInfo}>
+                  <Text style={styles.pillarTitle}>
+                    {language === 'ar' ? 'أركان العبادة' : 'Pillars of Worship'}
+                  </Text>
+                  <Text style={styles.pillarDesc}>
+                    {language === 'ar' ? 'الصلوات، تحدي الفجر، الأذكار اليومية' : 'Prayers, Fajr tracker, Adhkar'}
+                  </Text>
+                </View>
+                <Text style={styles.pillarArrow}>➔</Text>
               </TouchableOpacity>
 
+              {/* Quran Pillar */}
               <TouchableOpacity
-                style={[styles.challengeCard, { backgroundColor: '#F59E0B1A', borderColor: '#F59E0B4D' }]}
-                onPress={() => navigation.navigate('Voice')}
+                style={[styles.pillarCard, { borderLeftColor: '#F59E0B', backgroundColor: '#F59E0B0D' }]}
+                onPress={() => navigation.navigate('QuranSanctuary')}
                 activeOpacity={0.85}
               >
-                <Text style={styles.challengeCardEmoji}>🎙️</Text>
-                <Text style={styles.challengeCardTitle}>{t('recitationHub')}</Text>
-                <Text style={styles.challengeCardDesc}>{t('recitationHubDesc')}</Text>
-                <View style={[styles.challengeCardBtn, { backgroundColor: '#FBBF24' }]}>
-                  <Text style={[styles.challengeCardBtnText, { color: '#000000' }]}>{t('reciteNow')}</Text>
+                <View style={styles.pillarIconWrapper}>
+                  <Text style={styles.pillarIcon}>📖</Text>
                 </View>
+                <View style={styles.pillarInfo}>
+                  <Text style={styles.pillarTitle}>
+                    {language === 'ar' ? 'محراب القرآن الكريم' : 'Quran Sanctuary'}
+                  </Text>
+                  <Text style={styles.pillarDesc}>
+                    {language === 'ar' ? 'تقليد القراء، حفظ الآيات، التفسير' : 'Qari imitation, Memorization, Tafsir'}
+                  </Text>
+                </View>
+                <Text style={styles.pillarArrow}>➔</Text>
+              </TouchableOpacity>
+
+              {/* Knowledge Pillar */}
+              <TouchableOpacity
+                style={[styles.pillarCard, { borderLeftColor: '#3B82F6', backgroundColor: '#3B82F60D' }]}
+                onPress={() => navigation.navigate('KnowledgeSanctuary')}
+                activeOpacity={0.85}
+              >
+                <View style={styles.pillarIconWrapper}>
+                  <Text style={styles.pillarIcon}>🗺️</Text>
+                </View>
+                <View style={styles.pillarInfo}>
+                  <Text style={styles.pillarTitle}>
+                    {language === 'ar' ? 'مسالك المعرفة' : 'Knowledge Quests'}
+                  </Text>
+                  <Text style={styles.pillarDesc}>
+                    {language === 'ar' ? 'خريطة السيرة النبوية، الحديث، المسابقات' : 'Sirah Quest Map, Hadith, Trivia'}
+                  </Text>
+                </View>
+                <Text style={styles.pillarArrow}>➔</Text>
               </TouchableOpacity>
             </View>
-
-            {/* Quick Access List */}
-            <View style={styles.quickAccessList}>
-              <TouchableOpacity style={styles.quickAccessItem} onPress={() => navigation.navigate('PrayerTracker')} activeOpacity={0.8}>
-                <Text style={styles.quickAccessArrow}>➔</Text>
-                <Text style={styles.quickAccessText}>{t('prayerTrackerLink')}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.quickAccessItem} onPress={() => navigation.navigate('Adhkar')} activeOpacity={0.8}>
-                <Text style={styles.quickAccessArrow}>➔</Text>
-                <Text style={styles.quickAccessText}>{t('adhkarLink')}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.quickAccessItem} onPress={() => navigation.navigate('Memorization')} activeOpacity={0.8}>
-                <Text style={styles.quickAccessArrow}>➔</Text>
-                <Text style={styles.quickAccessText}>{t('memorizationLink')}</Text>
-              </TouchableOpacity>
-            </View>
-          </>
-        )}
+          </View>
 
         {/* Ad Banner */}
         <View style={styles.adWrapper}>
@@ -1496,6 +1399,58 @@ const getStyles = (colors: any) => StyleSheet.create({
     color: '#09120F',
     fontSize: 11,
     fontWeight: '900',
+  },
+  pillarsGrid: {
+    gap: 12,
+    marginBottom: 20,
+  },
+  pillarCard: {
+    borderRadius: 20,
+    padding: 16,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderLeftWidth: 6,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.02,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  pillarIconWrapper: {
+    width: 46,
+    height: 46,
+    borderRadius: 12,
+    backgroundColor: '#09120F',
+    borderWidth: 1,
+    borderColor: '#1E3A2F',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 14,
+  },
+  pillarIcon: {
+    fontSize: 22,
+  },
+  pillarInfo: {
+    flex: 1,
+  },
+  pillarTitle: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: colors.textPrimary,
+    textAlign: 'right',
+    marginBottom: 2,
+  },
+  pillarDesc: {
+    fontSize: 10.5,
+    color: colors.textSecondary,
+    textAlign: 'right',
+  },
+  pillarArrow: {
+    fontSize: 14,
+    color: colors.primary,
+    marginRight: 6,
   },
 });
 const ONBOARDING_KEY = 'batl-muslim-onboarding-complete-v1';

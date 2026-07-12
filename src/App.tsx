@@ -24,6 +24,10 @@ import HadithChallengeScreen from './screens/HadithChallengeScreen';
 import LiveDuelScreen from './screens/LiveDuelScreen';
 import CommunityFeedScreen from './screens/CommunityFeedScreen';
 import SirahQuestScreen from './screens/SirahQuestScreen';
+import ArenaHubScreen from './screens/ArenaHubScreen';
+import WorshipSanctuaryScreen from './screens/WorshipSanctuaryScreen';
+import QuranSanctuaryScreen from './screens/QuranSanctuaryScreen';
+import KnowledgeSanctuaryScreen from './screens/KnowledgeSanctuaryScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -64,43 +68,35 @@ function TabNavigator() {
       }}
     >
       <Tab.Screen
-        name="Profile"
-        component={ProfileScreen}
+        name="Home"
+        component={HomeScreen}
         options={{
-          title: t('profileTab'),
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>👤</Text>,
+          title: language === 'ar' ? 'الرئيسية' : 'Home',
+          tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>🏡</Text>,
         }}
       />
       <Tab.Screen
         name="CommunityFeed"
         component={CommunityFeedScreen}
         options={{
-          title: language === 'ar' ? 'منبر التلاوة' : 'Community Feed',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>🎙️</Text>,
+          title: language === 'ar' ? 'ساحة التلاوة' : 'Recitation Square',
+          tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>👥</Text>,
         }}
       />
       <Tab.Screen
-        name="ChallengePicker"
-        component={ChallengePickerScreen}
+        name="ArenaHub"
+        component={ArenaHubScreen}
         options={{
-          title: t('challengeTab'),
+          title: language === 'ar' ? 'المنافسة' : 'Arena',
           tabBarButton: (props) => <ChallengeHeroButton {...props} />,
         }}
       />
       <Tab.Screen
-        name="Leaderboard"
-        component={LeaderboardScreen}
+        name="Profile"
+        component={ProfileScreen}
         options={{
-          title: t('leaderboardTab'),
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>🏆</Text>,
-        }}
-      />
-      <Tab.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{
-          title: t('homeTab'),
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>🏡</Text>,
+          title: language === 'ar' ? 'حسابي' : 'Profile',
+          tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>👤</Text>,
         }}
       />
     </Tab.Navigator>
@@ -186,6 +182,26 @@ function NavigationWrapper() {
           name="SirahQuest"
           component={SirahQuestScreen}
           options={{ title: language === 'ar' ? 'خريطة السيرة النبوية' : 'Sirah Quest Map' }}
+        />
+        <Stack.Screen
+          name="WorshipSanctuary"
+          component={WorshipSanctuaryScreen}
+          options={{ title: language === 'ar' ? 'أركان العبادة' : 'Pillars of Worship' }}
+        />
+        <Stack.Screen
+          name="QuranSanctuary"
+          component={QuranSanctuaryScreen}
+          options={{ title: language === 'ar' ? 'محراب القرآن الكريم' : 'Quran Sanctuary' }}
+        />
+        <Stack.Screen
+          name="KnowledgeSanctuary"
+          component={KnowledgeSanctuaryScreen}
+          options={{ title: language === 'ar' ? 'مسالك المعرفة' : 'Knowledge Quests' }}
+        />
+        <Stack.Screen
+          name="Leaderboard"
+          component={LeaderboardScreen}
+          options={{ title: language === 'ar' ? 'لوحة الصدارة' : 'Leaderboard' }}
         />
       </Stack.Navigator>
     </NavigationContainer>

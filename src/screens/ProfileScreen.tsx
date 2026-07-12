@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { getCurrentUserProfile, updateUserCountry } from '../firebase/auth';
+import { getCurrentUserProfile, updateUserCountry, saveUserScore } from '../firebase/auth';
 import { badgesCatalog, checkUnlockedBadges } from '../data/badges';
 import AdBanner from '../components/AdBanner';
 import { Colors } from '../config/colors';
@@ -18,7 +19,7 @@ const countriesList = [
   { code: 'OTH', nameAr: 'أخرى 🌍', nameEn: 'Other' },
 ];
 
-export default function ProfileScreen() {
+export default function ProfileScreen({ navigation }: any) {
   const { user, logout } = useAuth();
   const { t, language, setLanguage } = useLanguage();
   const { theme, colors, toggleTheme, isLightMode } = useTheme();
@@ -27,6 +28,7 @@ export default function ProfileScreen() {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [unlockedBadgeIds, setUnlockedBadgeIds] = useState<string[]>([]);
+  const [savedRecitations, setSavedRecitations] = useState<any[]>([]);
 
   const loadProfile = async () => {
     if (!user?.uid) {
@@ -40,6 +42,14 @@ export default function ProfileScreen() {
       // Load unlocked badges dynamically based on user stats
       const unlocked = await checkUnlockedBadges(currentProfile?.score ?? 0);
       setUnlockedBadgeIds(unlocked);
+
+      // Load saved recitations list
+      const stored = await AsyncStorage.getItem('saved-recitations-list');
+      if (stored) {
+        setSavedRecitations(JSON.parse(stored));
+      } else {
+        setSavedRecitations([]);
+      }
     } catch (err) {
       console.error('Error loading profile:', err);
     } finally {
@@ -47,9 +57,40 @@ export default function ProfileScreen() {
     }
   };
 
+  const handleDeleteSaved = async (id: string) => {
+    Alert.alert(
+      language === 'ar' ? 'حذف التلاوة 🗑️' : 'Delete Recitation 🗑️',
+      language === 'ar'
+        ? 'هل أنت متأكد من حذف هذه التلاوة المحفوظة لتوفير مساحة في حقيبتك؟'
+        : 'Are you sure you want to delete this saved recitation to free up slots?',
+      [
+        { text: language === 'ar' ? 'إلغاء' : 'Cancel', style: 'cancel' },
+        {
+          text: language === 'ar' ? 'حذف' : 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const updatedList = savedRecitations.filter((r: any) => r.id !== id);
+              setSavedRecitations(updatedList);
+              await AsyncStorage.setItem('saved-recitations-list', JSON.stringify(updatedList));
+            } catch (err) {
+              console.error(err);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   useEffect(() => {
     loadProfile();
-  }, [user?.uid]);
+    if (navigation) {
+      const unsubscribe = navigation.addListener('focus', () => {
+        loadProfile();
+      });
+      return unsubscribe;
+    }
+  }, [user?.uid, navigation]);
 
   const currentScore = profile?.score ?? 0;
 
@@ -145,6 +186,50 @@ export default function ProfileScreen() {
                   </View>
                 );
               })}
+            </View>
+
+            {/* Private Recitations Portfolio (Freemium 3 limit) */}
+            <Text style={styles.sectionTitle}>
+              {language === 'ar' ? '💾 تلاواتي المحفوظة' : '💾 My Saved Recitations'}
+            </Text>
+            <Text style={styles.sectionSubtitle}>
+              {language === 'ar' 
+                ? `سعة تخزين التلاوات: ${savedRecitations.length} / ٣ مساحات مجانية مستخدمة`
+                : `Storage limit: ${savedRecitations.length} / 3 free slots used`}
+            </Text>
+
+            <View style={styles.portfolioContainer}>
+              {savedRecitations.length === 0 ? (
+                <View style={styles.portfolioEmptyCard}>
+                  <Text style={styles.portfolioEmptyText}>
+                    {language === 'ar' 
+                      ? 'لا توجد تلاوات محفوظة حتى الآن. اذهب لمحراب القرآن وسجل تلاوتك لحفظها هنا!'
+                      : 'No saved recitations found. Go to the Quran Sanctuary to save your best recitations!'}
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.portfolioGrid}>
+                  {savedRecitations.map((item: any) => (
+                    <View key={item.id} style={styles.portfolioCard}>
+                      <View style={styles.portfolioHeader}>
+                        <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDeleteSaved(item.id)} activeOpacity={0.75}>
+                          <Text style={styles.deleteBtnText}>🗑️</Text>
+                        </TouchableOpacity>
+                        <Text style={styles.portfolioCardTitle}>{item.surahName}</Text>
+                      </View>
+                      <Text style={styles.portfolioCardMeta}>
+                        {language === 'ar' ? `آية: ${item.ayahNumber}` : `Ayah: ${item.ayahNumber}`} | {item.style === 'mujawwad' ? (language === 'ar' ? 'مجوّد' : 'Mujawwad') : (language === 'ar' ? 'مرتل' : 'Murattal')}
+                      </Text>
+                      <Text style={styles.portfolioCardQari}>
+                        👤 {item.readerName}
+                      </Text>
+                      <View style={styles.portfolioScoreBadge}>
+                        <Text style={styles.portfolioScoreText}>🎯 {item.matchPercentage}% match</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
             </View>
 
             {/* Details Card with Language Switcher */}
@@ -628,5 +713,74 @@ const getStyles = (colors: any) => StyleSheet.create({
     color: '#09120F',
     fontWeight: '800',
     fontSize: 12,
+  },
+  portfolioContainer: {
+    width: '100%',
+    marginBottom: 20,
+  },
+  portfolioEmptyCard: {
+    backgroundColor: '#09120F',
+    borderWidth: 1.5,
+    borderColor: '#1E3A2F',
+    borderRadius: 18,
+    padding: 20,
+    alignItems: 'center',
+  },
+  portfolioEmptyText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  portfolioGrid: {
+    gap: 12,
+  },
+  portfolioCard: {
+    backgroundColor: colors.surface,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: 18,
+    padding: 14,
+  },
+  portfolioHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  deleteBtn: {
+    padding: 4,
+  },
+  deleteBtnText: {
+    fontSize: 16,
+  },
+  portfolioCardTitle: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: colors.primary,
+  },
+  portfolioCardMeta: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    textAlign: 'right',
+    marginBottom: 4,
+  },
+  portfolioCardQari: {
+    fontSize: 11,
+    color: colors.textPrimary,
+    textAlign: 'right',
+    marginBottom: 8,
+  },
+  portfolioScoreBadge: {
+    backgroundColor: colors.accentLight,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  portfolioScoreText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: colors.accent,
   },
 });

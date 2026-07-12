@@ -24,6 +24,7 @@ export default function VoiceScreen({ navigation }: any) {
   // Navigation states: 'select-reader' | 'setup-ayah' | 'ready' | 'recording' | 'recorded' | 'analyzing' | 'scored'
   const [step, setStep] = useState<'select-reader' | 'setup-ayah' | 'ready' | 'recording' | 'recorded' | 'analyzing' | 'scored'>('select-reader');
   const [hasShared, setHasShared] = useState(false);
+  const [hasSaved, setHasSaved] = useState(false);
   const [selectedSurahNumber, setSelectedSurahNumber] = useState<number>(1);
   const [startAyahNumber, setStartAyahNumber] = useState<number>(1);
   const [endAyahNumber, setEndAyahNumber] = useState<number>(1);
@@ -257,6 +258,7 @@ export default function VoiceScreen({ navigation }: any) {
     setRecordingDuration(0);
     setLiveVolume(0);
     setHasShared(false);
+    setHasSaved(false);
     setStep('select-reader');
   };
 
@@ -277,12 +279,63 @@ export default function VoiceScreen({ navigation }: any) {
       });
       setHasShared(true);
       Alert.alert(
-        'تم النشر بنجاح! 🎉',
-        'لقد تم نشر تلاوتك في منبر التلاوة الجماعي ليراها ويتفاعل معها مجتمع الأبطال.'
+        language === 'ar' ? 'تم النشر بنجاح! 🎉' : 'Published Successfully! 🎉',
+        language === 'ar'
+          ? 'لقد تم نشر تلاوتك في ساحة التلاوة ليراها ويتفاعل معها مجتمع الأبطال.'
+          : 'Your recitation was posted in the Recitation Square feed!'
       );
     } catch (err) {
       console.error(err);
       Alert.alert('خطأ', 'فشل في نشر التلاوة على Feed.');
+    }
+  };
+
+  const handleSaveToProfile = async () => {
+    if (!selectedReader || !currentAyah) return;
+    try {
+      const storedStr = await AsyncStorage.getItem('saved-recitations-list');
+      const savedList = storedStr ? JSON.parse(storedStr) : [];
+
+      if (savedList.length >= 3) {
+        Alert.alert(
+          language === 'ar' ? 'وصلت للحد الأقصى (3/3) 🔒' : 'Freemium Limit Reached (3/3) 🔒',
+          language === 'ar'
+            ? 'قمت بحفظ 3 تلاوات مجانية. قم بالترقية للحصول على سعة غير محدودة، أو احذف تلاوة قديمة لتوفير مساحة.'
+            : 'You have saved 3 free recitations. Upgrade to unlock unlimited storage, or delete older records from your profile.'
+        );
+        return;
+      }
+
+      const newItem = {
+        id: Date.now().toString(),
+        surahName: currentAyah.surah,
+        ayahNumber: currentAyah.number,
+        readerName: selectedReader.name,
+        matchPercentage: scoreBreakdown.overall,
+        style: recitationStyle,
+        createdAt: new Date().toISOString(),
+      };
+
+      savedList.push(newItem);
+      await AsyncStorage.setItem('saved-recitations-list', JSON.stringify(savedList));
+      setHasSaved(true);
+
+      // Award +5 XP
+      if (user?.uid) {
+        const userProfile = await getCurrentUserProfile(user.uid);
+        const currentScore = userProfile?.score ?? 0;
+        await saveUserScore(user.uid, currentScore + 5);
+      }
+
+      Alert.alert(
+        language === 'ar' ? 'تم الحفظ بنجاح! 💾' : 'Saved Successfully! 💾',
+        language === 'ar'
+          ? 'تمت إضافة التلاوة إلى حقيبتك الخاصة في حسابك الشخصي وحصلت على +٥ نقاط خبرة!'
+          : 'Added to your private portfolio inside your Profile. You earned +5 XP!'
+      );
+    } catch (err) {
+      console.error(err);
+      Alert.alert('Error', 'Failed to save recitation.');
     }
   };
 
@@ -683,22 +736,38 @@ export default function VoiceScreen({ navigation }: any) {
             <View style={styles.actionRow}>
               {!hasShared && (
                 <TouchableOpacity 
-                  style={[styles.primaryButton, { backgroundColor: colors.accent, marginBottom: 12 }]} 
+                  style={[styles.primaryButton, { backgroundColor: colors.accent, marginBottom: 10 }]} 
                   onPress={handleShareToFeed} 
                   activeOpacity={0.85}
                 >
                   <Text style={[styles.primaryButtonText, { color: '#09120F', fontWeight: '900' }]}>
-                    نشر في منبر التلاوة الجماعي 🌍
+                    {language === 'ar' ? '👥 نشر في ساحة التلاوة (+١٠ نقاط)' : '👥 Publish to Recitation Square (+10 XP)'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {!hasSaved && (
+                <TouchableOpacity 
+                  style={[styles.primaryButton, { backgroundColor: '#1E3A2F', borderColor: colors.primary, borderWidth: 1, marginBottom: 10 }]} 
+                  onPress={handleSaveToProfile} 
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.primaryButtonText, { color: colors.primary, fontWeight: '900' }]}>
+                    {language === 'ar' ? '💾 حفظ في ملفي الشخصي (+٥ نقاط)' : '💾 Save to My Profile (+5 XP)'}
                   </Text>
                 </TouchableOpacity>
               )}
 
               <TouchableOpacity style={styles.primaryButton} onPress={handleReset} activeOpacity={0.85}>
-                <Text style={styles.primaryButtonText}>تحدي قارئ آخر 🔄</Text>
+                <Text style={styles.primaryButtonText}>
+                  {language === 'ar' ? 'تحدي قارئ آخر 🔄' : 'Challenge Another Qari 🔄'}
+                </Text>
               </TouchableOpacity>
               
               <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.goBack()} activeOpacity={0.85}>
-                <Text style={styles.secondaryButtonText}>العودة لقائمة التحديات</Text>
+                <Text style={styles.secondaryButtonText}>
+                  {language === 'ar' ? 'العودة لقائمة التحديات' : 'Back to Sanctuary'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>

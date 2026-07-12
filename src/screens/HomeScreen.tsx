@@ -87,8 +87,7 @@ function MapScrollIcon({ color = '#FBBF24', size = 26 }: { color?: string, size?
 }
 
 // Custom SVG Circular Progress Ring
-function CircularProgress({ size, strokeWidth, percent, emoji, label, color, ringColor }: any) {
-  const { colors } = useTheme();
+function CircularProgress({ size, strokeWidth, percent, emoji, label, color, ringColor, colors }: any) {
   const styles = getStyles(colors);
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
@@ -139,7 +138,24 @@ export default function HomeScreen({ navigation }: any) {
   const { user } = useAuth();
   const { t, language } = useLanguage();
   const { colors, isLightMode } = useTheme();
-  const styles = getStyles(colors);
+  
+  const homeColors = useMemo(() => {
+    return {
+      background: '#09120F',     // Deep emerald night background
+      surface: '#0D1A15',        // Frosted dark slate card surface
+      border: '#142E24',         // Subtle gold-green border outline
+      textPrimary: '#E6F4EE',    // White gold text
+      textSecondary: '#86A597',  // Pale mint secondary text
+      primary: '#10B981',        // Emerald primary
+      primaryLight: '#10B98126', // Transparent emerald
+      accent: '#FBBF24',         // Shiny Amber Gold
+      accentLight: '#FBBF241A',  // Transparent gold
+      shadow: '#000000',
+      error: '#EF4444',
+    };
+  }, []);
+
+  const styles = getStyles(homeColors);
   const [profile, setProfile] = useState<any>(null);
   const [showGuide, setShowGuide] = useState(false);
   const [activePath, setActivePath] = useState<'solo' | 'live'>('solo');
@@ -429,6 +445,8 @@ Join us in our daily journey towards Islamic knowledge! 🚀`;
                   : (language === 'ar' ? '📿 ساهم بـ +١٠ صلوات على النبي (+٥ نقاط)' : '📿 Contribute +10 Salawat (+5 XP)')}
               </Text>
             </TouchableOpacity>
+          </View>
+
             {/* Daily Goals Progress Dashboard */}
             <Text style={styles.sectionTitle}>{t('dailyGoals')}</Text>
             <View style={styles.dailyGoalsRow}>
@@ -440,6 +458,7 @@ Join us in our daily journey towards Islamic knowledge! 🚀`;
                 label={t('prayers')}
                 color="#10B981"
                 ringColor="#34D399"
+                colors={homeColors}
               />
               <CircularProgress
                 size={80}
@@ -449,6 +468,7 @@ Join us in our daily journey towards Islamic knowledge! 🚀`;
                 label={t('recitation')}
                 color="#F59E0B"
                 ringColor="#FBBF24"
+                colors={homeColors}
               />
               <View style={styles.streakContainer}>
                 <View style={styles.streakFlameWrapper}>
@@ -649,7 +669,6 @@ Join us in our daily journey towards Islamic knowledge! 🚀`;
             </View>
           </View>
         </Modal>
-        </View>
       </View>
     </ScrollView>
   );

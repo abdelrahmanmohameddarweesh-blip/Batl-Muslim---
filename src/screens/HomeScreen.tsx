@@ -346,48 +346,21 @@ Join us in our daily journey towards Islamic knowledge! 🚀`;
         <ArabesqueBackgroundPattern />
         <View style={styles.topGlow} />
 
-        {/* Custom Glowing Emerald Header (exactly matching the mockup) */}
+        {/* Custom Header matching the Mockup */}
         <View style={styles.mockupHeader}>
-          {/* Ceiling hanging stars & crescent layout design details */}
-          <Svg style={styles.headerBackgroundSvg} width="100%" height={150}>
-            <Defs>
-              <LinearGradient id="headerGlow" x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0%" stopColor="#0B3E2E" />
-                <Stop offset="50%" stopColor="#11231D" stopOpacity="0.8" />
-                <Stop offset="100%" stopColor="#09120F" stopOpacity="0" />
-              </LinearGradient>
-            </Defs>
-            <Circle cx="50%" cy="-30" r="140" fill="url(#headerGlow)" />
-            {/* Hanging Crescent Moon */}
-            <Path
-              d="M32 40 a12 12 0 1 0 10 18 a10 10 0 1 1 -10 -18"
-              fill="#FBBF24"
-              opacity="0.8"
-            />
-            {/* Hanging Star 1 */}
-            <Path d="M120 40 l2 4 l4 1 l-3 3 l1 4 l-4 -2 l-4 2 l1 -4 l-3 -3 l4 -1 z" fill="#FBBF24" opacity="0.6" />
-            {/* Hanging Star 2 */}
-            <Path d="M280 50 l1 3 l3 1 l-2 2 l0 3 l-3 -2 l-3 2 l0 -3 l-2 -2 l3 -1 z" fill="#FBBF24" opacity="0.5" />
-          </Svg>
-
           <View style={styles.headerTopRow}>
-            {/* Notifications Bell */}
+            {/* Bell Icon at Left */}
             <TouchableOpacity style={styles.notificationBtn} activeOpacity={0.75}>
               <Text style={styles.notificationEmoji}>🔔</Text>
             </TouchableOpacity>
 
-            {/* Central App Shield Logo */}
-            <View style={styles.logoBadgeContainer}>
-              <View style={styles.shieldLogo}>
-                <Text style={styles.shieldLogoText}>🌙</Text>
-              </View>
-              <Text style={styles.appName}>{t('appName')}</Text>
-            </View>
+            {/* Title in center */}
+            <Text style={styles.headerTitleText}>Muslim Hero</Text>
 
-            {/* Dynamic Local Clock */}
-            <Text style={styles.timeText}>
-              {new Date().toLocaleTimeString(language === 'ar' ? 'ar-SA' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
-            </Text>
+            {/* Gold Moon icon at Right */}
+            <View style={styles.goldMoonBtn}>
+              <Text style={styles.goldMoonEmoji}>🌙</Text>
+            </View>
           </View>
           
           <Text style={styles.dateLabel}>{formattedDates.hijri} | {formattedDates.gregorian}</Text>
@@ -548,89 +521,84 @@ Join us in our daily journey towards Islamic knowledge! 🚀`;
             </Text>
             
             <View style={styles.pillarsGrid}>
-              {/* Worship Pillar */}
-              <TouchableOpacity
-                onPress={() => navigation.navigate('WorshipSanctuary')}
-                activeOpacity={0.85}
-                style={styles.pillarCardTouch}
-              >
-                <ExpoLinearGradient
-                  colors={['#10B981', '#064E3B']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.pillarCardGradientBorder}
+              <View style={styles.sideBySideRow}>
+                {/* Worship Pillar */}
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('WorshipSanctuary')}
+                  activeOpacity={0.85}
+                  style={styles.pillarCardTouchSideBySide}
                 >
-                  <View style={styles.pillarCardInner}>
-                    <View style={[styles.pillarIconWrapper, { backgroundColor: '#10B9811A' }]}>
-                      <MosqueIcon color="#10B981" />
-                    </View>
-                    <View style={styles.pillarInfo}>
-                      <Text style={styles.pillarTitle}>
-                        {language === 'ar' ? 'أركان العبادة' : 'Pillars of Worship'}
+                  <ExpoLinearGradient
+                    colors={['#10B981', '#064E3B']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.pillarCardGradientBorderSideBySide}
+                  >
+                    <View style={styles.pillarCardInnerSideBySide}>
+                      <View style={styles.pillarIconWrapperSideBySide}>
+                        <MosqueIcon color="#10B981" size={36} />
+                      </View>
+                      <Text style={styles.pillarTitleSideBySide}>
+                        {language === 'ar' ? 'أركان العبادة' : 'Worship'}
                       </Text>
-                      <Text style={styles.pillarDesc}>
-                        {language === 'ar' ? 'الصلوات، تحدي الفجر، الأذكار اليومية' : 'Prayers, Fajr tracker, Adhkar'}
+                      <Text style={styles.pillarDescSideBySide}>
+                        {language === 'ar' ? 'الصلوات، تحدي الفجر، الأذكار' : 'Prayers, Fajr, Adhkar'}
                       </Text>
                     </View>
-                    <Text style={[styles.pillarArrow, { color: '#10B981' }]}>➔</Text>
-                  </View>
-                </ExpoLinearGradient>
-              </TouchableOpacity>
+                  </ExpoLinearGradient>
+                </TouchableOpacity>
 
-              {/* Quran Pillar */}
-              <TouchableOpacity
-                onPress={() => navigation.navigate('QuranSanctuary')}
-                activeOpacity={0.85}
-                style={styles.pillarCardTouch}
-              >
-                <ExpoLinearGradient
-                  colors={['#F59E0B', '#78350F']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.pillarCardGradientBorder}
+                {/* Quran Pillar */}
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('QuranSanctuary')}
+                  activeOpacity={0.85}
+                  style={styles.pillarCardTouchSideBySide}
                 >
-                  <View style={styles.pillarCardInner}>
-                    <View style={[styles.pillarIconWrapper, { backgroundColor: '#F59E0B1A' }]}>
-                      <QuranBookIcon color="#F59E0B" />
-                    </View>
-                    <View style={styles.pillarInfo}>
-                      <Text style={styles.pillarTitle}>
-                        {language === 'ar' ? 'محراب القرآن الكريم' : 'Quran Sanctuary'}
+                  <ExpoLinearGradient
+                    colors={['#F59E0B', '#78350F']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.pillarCardGradientBorderSideBySide}
+                  >
+                    <View style={styles.pillarCardInnerSideBySide}>
+                      <View style={styles.pillarIconWrapperSideBySide}>
+                        <QuranBookIcon color="#F59E0B" size={36} />
+                      </View>
+                      <Text style={styles.pillarTitleSideBySide}>
+                        {language === 'ar' ? 'محراب القرآن' : 'Quran Sanctuary'}
                       </Text>
-                      <Text style={styles.pillarDesc}>
-                        {language === 'ar' ? 'تقليد القراء، حفظ الآيات، التفسير' : 'Qari imitation, Memorization, Tafsir'}
+                      <Text style={styles.pillarDescSideBySide}>
+                        {language === 'ar' ? 'تقليد القراء، الحفظ والتفسير' : 'Imitation, Hifz, Tafsir'}
                       </Text>
                     </View>
-                    <Text style={[styles.pillarArrow, { color: '#F59E0B' }]}>➔</Text>
-                  </View>
-                </ExpoLinearGradient>
-              </TouchableOpacity>
+                  </ExpoLinearGradient>
+                </TouchableOpacity>
+              </View>
 
               {/* Knowledge Pillar */}
               <TouchableOpacity
                 onPress={() => navigation.navigate('KnowledgeSanctuary')}
                 activeOpacity={0.85}
-                style={styles.pillarCardTouch}
+                style={styles.pillarCardTouchFullWidth}
               >
                 <ExpoLinearGradient
                   colors={['#3B82F6', '#1E3A8A']}
                   start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.pillarCardGradientBorder}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.pillarCardGradientBorderFullWidth}
                 >
-                  <View style={styles.pillarCardInner}>
-                    <View style={[styles.pillarIconWrapper, { backgroundColor: '#3B82F61A' }]}>
-                      <MapScrollIcon color="#3B82F6" />
+                  <View style={styles.pillarCardInnerFullWidth}>
+                    <View style={styles.pillarIconWrapperFullWidth}>
+                      <MapScrollIcon color="#3B82F6" size={30} />
                     </View>
-                    <View style={styles.pillarInfo}>
-                      <Text style={styles.pillarTitle}>
+                    <View style={styles.pillarInfoFullWidth}>
+                      <Text style={styles.pillarTitleFullWidth}>
                         {language === 'ar' ? 'مسالك المعرفة' : 'Knowledge Quests'}
                       </Text>
-                      <Text style={styles.pillarDesc}>
-                        {language === 'ar' ? 'خريطة السيرة النبوية، الحديث، المسابقات' : 'Sirah Quest Map, Hadith, Trivia'}
+                      <Text style={styles.pillarDescFullWidth}>
+                        {language === 'ar' ? 'سيرة النبي ﷺ، الأحاديث والمسابقات الثقافية' : 'Sirah Quest, Hadith, Trivia'}
                       </Text>
                     </View>
-                    <Text style={[styles.pillarArrow, { color: '#3B82F6' }]}>➔</Text>
                   </View>
                 </ExpoLinearGradient>
               </TouchableOpacity>
@@ -919,29 +887,29 @@ const getStyles = (colors: any) => StyleSheet.create({
   },
   mockupHeader: {
     width: '100%',
-    paddingTop: 50, // Avoid safe area overlay
-    paddingBottom: 24,
-    backgroundColor: '#0B2E21',
-    borderBottomLeftRadius: 36,
-    borderBottomRightRadius: 36,
-    borderBottomWidth: 3,
-    borderBottomColor: '#F59E0B', // Gold bottom border
+    paddingTop: 56,
+    paddingBottom: 16,
+    backgroundColor: 'transparent',
     alignItems: 'center',
-    position: 'relative',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 8,
-    marginBottom: 10,
   },
-  headerBackgroundSvg: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: -1,
+  headerTitleText: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#FBBF24',
+    letterSpacing: 0.5,
+  },
+  goldMoonBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.2,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  goldMoonEmoji: {
+    fontSize: 16,
   },
   headerTopRow: {
     flexDirection: 'row',
@@ -998,14 +966,9 @@ const getStyles = (colors: any) => StyleSheet.create({
   dateLabel: {
     fontSize: 11,
     fontWeight: '800',
-    color: colors.primary,
-    marginTop: 6,
-    backgroundColor: '#152E2480',
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#1E3A2F4D',
+    color: '#86A597',
+    marginTop: 4,
+    textAlign: 'center',
   },
   levelCard: {
     backgroundColor: colors.surface,
@@ -1527,53 +1490,107 @@ const getStyles = (colors: any) => StyleSheet.create({
     gap: 12,
     marginBottom: 20,
   },
-  pillarCardTouch: {
-    borderRadius: 20,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 4,
+  sideBySideRow: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    width: '100%',
     marginBottom: 12,
   },
-  pillarCardGradientBorder: {
+  pillarCardTouchSideBySide: {
+    width: '48.5%',
+    height: 190,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  pillarCardGradientBorderSideBySide: {
+    flex: 1,
     borderRadius: 20,
     padding: 1.5,
   },
-  pillarCardInner: {
+  pillarCardInnerSideBySide: {
+    flex: 1,
     backgroundColor: 'rgba(9, 18, 15, 0.88)',
     borderRadius: 18.5,
-    padding: 15,
+    padding: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  pillarIconWrapperSideBySide: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  pillarTitleSideBySide: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#FBBF24',
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  pillarDescSideBySide: {
+    fontSize: 10,
+    color: '#86A597',
+    textAlign: 'center',
+    lineHeight: 14,
+  },
+  pillarCardTouchFullWidth: {
+    width: '100%',
+    height: 96,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 6,
+    marginBottom: 12,
+  },
+  pillarCardGradientBorderFullWidth: {
+    flex: 1,
+    borderRadius: 20,
+    padding: 1.5,
+  },
+  pillarCardInnerFullWidth: {
+    flex: 1,
+    backgroundColor: 'rgba(9, 18, 15, 0.88)',
+    borderRadius: 18.5,
+    paddingHorizontal: 16,
     flexDirection: 'row-reverse',
     alignItems: 'center',
   },
-  pillarIconWrapper: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+  pillarIconWrapperFullWidth: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 14,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
-  pillarInfo: {
+  pillarInfoFullWidth: {
     flex: 1,
   },
-  pillarTitle: {
-    fontSize: 14,
+  pillarTitleFullWidth: {
+    fontSize: 15,
     fontWeight: '900',
-    color: colors.textPrimary,
+    color: '#FBBF24',
     textAlign: 'right',
     marginBottom: 2,
   },
-  pillarDesc: {
-    fontSize: 10.5,
-    color: colors.textSecondary,
+  pillarDescFullWidth: {
+    fontSize: 10,
+    color: '#86A597',
     textAlign: 'right',
-  },
-  pillarArrow: {
-    fontSize: 14,
-    marginRight: 6,
-    fontWeight: '900',
   },
 });
 const ONBOARDING_KEY = 'batl-muslim-onboarding-complete-v1';

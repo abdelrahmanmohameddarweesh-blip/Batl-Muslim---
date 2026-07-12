@@ -334,12 +334,6 @@ Join us in our daily journey towards Islamic knowledge! 🚀`;
     return { gregorian, hijri };
   }, [language]);
 
-  const prayerPercent = Math.round((prayersCompletedCount / 5) * 100);
-  const recitationPercent = Math.round((recitationMinutes / 20) * 100);
-
-  // Daily quest progress calculation
-  const completedQuestsCount = [questTriviaPlayed, questPrayerLogged, questVoiceDone].filter(Boolean).length;
-
   return (
     <ScrollView style={styles.outerContainer} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
       <View style={styles.container}>
@@ -367,216 +361,154 @@ Join us in our daily journey towards Islamic knowledge! 🚀`;
         </View>
 
         <View style={styles.bodyContent}>
-
-          {/* Level Progress Bar (Pokemon Go Style) */}
-          <View style={styles.levelProgressContainer}>
-            <View style={styles.homeLevelRow}>
-              <Text style={styles.levelText}>
+          {/* Compact Stats Bar */}
+          <View style={styles.compactStatsBar}>
+            <View style={styles.statPill}>
+              <Text style={styles.statEmoji}>🔥</Text>
+              <Text style={styles.statText}>{streakDays} {language === 'ar' ? 'أيام' : 'Days'}</Text>
+            </View>
+            <View style={styles.statPill}>
+              <Text style={styles.statEmoji}>⭐️</Text>
+              <Text style={styles.statText}>
                 {language === 'ar' 
                   ? `المستوى ${Math.max(1, Math.floor(currentScore / 100))}` 
-                  : `Level ${Math.max(1, Math.floor(currentScore / 100))}`}
+                  : `Lvl ${Math.max(1, Math.floor(currentScore / 100))}`}
               </Text>
-              <Text style={styles.homeLevelBadgeText}>{levelName}</Text>
             </View>
-            <View style={styles.progressBarBg}>
-              <View style={[styles.progressBarFill, { width: `${currentScore % 100}%` }]} />
+            <View style={styles.statPill}>
+              <Text style={styles.statEmoji}>✨</Text>
+              <Text style={styles.statText}>{currentScore % 100} / 100 XP</Text>
             </View>
-            <Text style={styles.xpFractionText}>{currentScore % 100} / 100 XP</Text>
           </View>
 
-          {/* Communal Quest Card */}
-          <View style={styles.communalCard}>
-            <View style={styles.communalHeaderRow}>
-              <View style={styles.communalBadge}>
-                <Text style={styles.communalBadgeText}>
-                  {language === 'ar' ? 'التحدي الجماعي اليومي ⚡' : 'Daily Communal Quest ⚡'}
-                </Text>
-              </View>
-              <Text style={styles.communalTitle}>
-                {language === 'ar' ? 'الصلاة على النبي ﷺ الاستغفار' : 'Salawat & Seeking Forgiveness'}
+          {/* How It Works visual roadmap guide */}
+          <Text style={styles.sectionHeader}>{language === 'ar' ? 'كيف يعمل التطبيق؟ 🧭' : 'How It Works 🧭'}</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.roadmapScroll} style={styles.roadmapContainer}>
+            <View style={styles.roadmapCard}>
+              <Text style={styles.roadmapStepNum}>1</Text>
+              <Text style={styles.roadmapTitle}>{language === 'ar' ? 'حاسب نفسك يومياً' : 'Daily Accountability'}</Text>
+              <Text style={styles.roadmapDesc}>
+                {language === 'ar' 
+                  ? 'سجّل صلواتك الخمس ووردك بصدق في صفحة المحاسبة لتكسب نقاطاً.' 
+                  : 'Log prayers and daily Quran readings honestly in the Accountability tab.'}
               </Text>
             </View>
-            
-            <View style={styles.communalProgressRow}>
-              <View style={styles.communalBarBg}>
-                <View style={[styles.communalBarFill, { width: `${Math.min(100, (communalCount / 50000) * 100)}%` }]} />
-              </View>
-              <Text style={styles.communalProgressText}>
-                {communalCount.toLocaleString()} / 50,000
+            <View style={styles.roadmapCard}>
+              <Text style={styles.roadmapStepNum}>2</Text>
+              <Text style={styles.roadmapTitle}>{language === 'ar' ? 'رتل وشارك تلاوتك' : 'Recite & Share'}</Text>
+              <Text style={styles.roadmapDesc}>
+                {language === 'ar' 
+                  ? 'سجل تلاوتك للقرآن الكريم وانشرها في ساحة التلاوة ليتفاعل معك المجتمع.' 
+                  : 'Record and share your recitations to the Recitation Square feed.'}
               </Text>
             </View>
+            <View style={styles.roadmapCard}>
+              <Text style={styles.roadmapStepNum}>3</Text>
+              <Text style={styles.roadmapTitle}>{language === 'ar' ? 'نافس وارتقِ بالترتيب' : 'Arena Duels'}</Text>
+              <Text style={styles.roadmapDesc}>
+                {language === 'ar' 
+                  ? 'ادخل ساحة المنافسة وتحدَ الأصدقاء في مسابقات ثقافية سريعة.' 
+                  : 'Challenge peers in live trivia duels and climb the global leaderboards.'}
+              </Text>
+            </View>
+          </ScrollView>
 
-            <TouchableOpacity 
-              style={[styles.contributeBtn, hasContributedToday && styles.contributeBtnDisabled]}
-              onPress={handleContributeCommunal}
-              disabled={hasContributedToday}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.contributeBtnText}>
-                {hasContributedToday 
-                  ? (language === 'ar' ? '✅ ساهمت اليوم' : '✅ Contributed Today')
-                  : (language === 'ar' ? '📿 ساهم بـ +١٠ صلوات على النبي (+٥ نقاط)' : '📿 Contribute +10 Salawat (+5 XP)')}
-              </Text>
+          {/* Pillars Navigation Hub */}
+          <Text style={styles.sectionHeader}>{language === 'ar' ? 'أركان بطل مسلم 🗺️' : 'Pillars of Muslim Hero 🗺️'}</Text>
+
+          {/* Worship Pillar Card with sub shortcuts */}
+          <View style={styles.pillarSectionCard}>
+            <TouchableOpacity onPress={() => navigation.navigate('WorshipSanctuary')} activeOpacity={0.9} style={styles.pillarHeaderRow}>
+              <View style={[styles.pillarHeaderIconWrapper, { backgroundColor: 'rgba(16, 185, 129, 0.12)', borderColor: 'rgba(16, 185, 129, 0.3)' }]}>
+                <MosqueIcon color="#10B981" size={24} />
+              </View>
+              <View style={styles.pillarHeaderInfo}>
+                <Text style={styles.pillarHeaderTitle}>{language === 'ar' ? 'أركان العبادة' : 'Worship Essentials'}</Text>
+                <Text style={styles.pillarHeaderDesc}>{language === 'ar' ? 'الصلاة، الأذكار والدعاء' : 'Prayers, Adhkar and Dua'}</Text>
+              </View>
             </TouchableOpacity>
-          </View>
-
-
-
-            {/* Unified Daily Quests (Interlinking challenges) */}
-            <Text style={styles.sectionTitle}>{t('dailyQuestTitle')}</Text>
-            <View style={styles.questCard}>
-              <View style={styles.questProgressRow}>
-                <Text style={styles.questPercentText}>{completedQuestsCount}/3</Text>
-                <Text style={styles.questProgressLabel}>{t('questProgress')}</Text>
-              </View>
-              <View style={styles.questBarBackground}>
-                <View style={[styles.questBarFill, { width: `${(completedQuestsCount / 3) * 100}%` }]} />
-              </View>
-
-              <View style={styles.questsList}>
-                <View style={styles.questItem}>
-                  <Text style={[styles.questCheckIcon, questTriviaPlayed && styles.questCheckIconActive]}>
-                    {questTriviaPlayed ? '✓' : '○'}
-                  </Text>
-                  <Text style={[styles.questItemText, questTriviaPlayed && styles.questItemTextDone]}>
-                    {t('questTrivia')}
-                  </Text>
-                </View>
-                <View style={styles.questItem}>
-                  <Text style={[styles.questCheckIcon, questPrayerLogged && styles.questCheckIconActive]}>
-                    {questPrayerLogged ? '✓' : '○'}
-                  </Text>
-                  <Text style={[styles.questItemText, questPrayerLogged && styles.questItemTextDone]}>
-                    {t('questPrayer')}
-                  </Text>
-                </View>
-                <View style={styles.questItem}>
-                  <Text style={[styles.questCheckIcon, questVoiceDone && styles.questCheckIconActive]}>
-                    {questVoiceDone ? '✓' : '○'}
-                  </Text>
-                  <Text style={[styles.questItemText, questVoiceDone && styles.questItemTextDone]}>
-                    {t('questVoice')}
-                  </Text>
-                </View>
-              </View>
-
-              {questBonusAwarded && (
-                <View style={styles.questBonusBadge}>
-                  <Text style={styles.questBonusText}>🎁 {t('questCompleted')}</Text>
-                </View>
-              )}
-            </View>
-
-            {/* Ayah of the Day */}
-            <Text style={styles.sectionTitle}>{t('ayahOfDay')}</Text>
-            <View style={styles.ayahCard}>
-              <View style={styles.ayahHeader}>
-                <TouchableOpacity style={styles.shareBtn} onPress={handleShareAyah} activeOpacity={0.75}>
-                  <Text style={styles.shareBtnText}>{t('share')}</Text>
-                </TouchableOpacity>
-                <Text style={styles.ayahTitle}>Surah Al-Imran | 3:133</Text>
-              </View>
-              <Text style={styles.ayahArabic}>
-                {`﴿  وَسَارِعُوا إِلَىٰ مَغْفِرَةٍ مِّن رَّبِّكُمْ وَجَنَّةٍ عَرْضُهَا السَّمَاوَاتُ وَالْأَرْضُ أُعَدَّتْ لِلْمُتَّقِينَ  ﴾`}
-              </Text>
-              <Text style={styles.ayahEnglish}>
-                "And hasten to forgiveness from your Lord and a garden as wide as the heavens and the earth, prepared for the righteous."
-              </Text>
-            </View>
-
-            {/* The 3 Pillars Hub Grid */}
-            <Text style={styles.sectionTitle}>
-              {language === 'ar' ? 'أركان بطل مسلم 🗺️' : 'Pillars of Muslim Hero 🗺️'}
-            </Text>
-            
-            <View style={styles.pillarsGrid}>
-              <View style={styles.sideBySideRow}>
-                {/* Worship Pillar */}
-                <TouchableOpacity
-                  onPress={() => navigation.navigate('WorshipSanctuary')}
-                  activeOpacity={0.85}
-                  style={styles.pillarCardTouchSideBySide}
-                >
-                  <ExpoLinearGradient
-                    colors={['#10B981', '#064E3B']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.pillarCardGradientBorderSideBySide}
-                  >
-                    <View style={styles.pillarCardInnerSideBySide}>
-                      <View style={styles.pillarIconWrapperSideBySide}>
-                        <MosqueIcon color="#10B981" size={36} />
-                      </View>
-                      <Text style={styles.pillarTitleSideBySide}>
-                        {language === 'ar' ? 'أركان العبادة' : 'Worship'}
-                      </Text>
-                      <Text style={styles.pillarDescSideBySide}>
-                        {language === 'ar' ? 'الصلوات، تحدي الفجر، الأذكار' : 'Prayers, Fajr, Adhkar'}
-                      </Text>
-                    </View>
-                  </ExpoLinearGradient>
-                </TouchableOpacity>
-
-                {/* Quran Pillar */}
-                <TouchableOpacity
-                  onPress={() => navigation.navigate('QuranSanctuary')}
-                  activeOpacity={0.85}
-                  style={styles.pillarCardTouchSideBySide}
-                >
-                  <ExpoLinearGradient
-                    colors={['#F59E0B', '#78350F']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.pillarCardGradientBorderSideBySide}
-                  >
-                    <View style={styles.pillarCardInnerSideBySide}>
-                      <View style={styles.pillarIconWrapperSideBySide}>
-                        <QuranBookIcon color="#F59E0B" size={36} />
-                      </View>
-                      <Text style={styles.pillarTitleSideBySide}>
-                        {language === 'ar' ? 'محراب القرآن' : 'Quran Sanctuary'}
-                      </Text>
-                      <Text style={styles.pillarDescSideBySide}>
-                        {language === 'ar' ? 'تقليد القراء، الحفظ والتفسير' : 'Imitation, Hifz, Tafsir'}
-                      </Text>
-                    </View>
-                  </ExpoLinearGradient>
-                </TouchableOpacity>
-              </View>
-
-              {/* Knowledge Pillar */}
-              <TouchableOpacity
-                onPress={() => navigation.navigate('KnowledgeSanctuary')}
-                activeOpacity={0.85}
-                style={styles.pillarCardTouchFullWidth}
-              >
-                <ExpoLinearGradient
-                  colors={['#3B82F6', '#1E3A8A']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.pillarCardGradientBorderFullWidth}
-                >
-                  <View style={styles.pillarCardInnerFullWidth}>
-                    <View style={styles.pillarIconWrapperFullWidth}>
-                      <MapScrollIcon color="#3B82F6" size={30} />
-                    </View>
-                    <View style={styles.pillarInfoFullWidth}>
-                      <Text style={styles.pillarTitleFullWidth}>
-                        {language === 'ar' ? 'مسالك المعرفة' : 'Knowledge Quests'}
-                      </Text>
-                      <Text style={styles.pillarDescFullWidth}>
-                        {language === 'ar' ? 'سيرة النبي ﷺ، الأحاديث والمسابقات الثقافية' : 'Sirah Quest, Hadith, Trivia'}
-                      </Text>
-                    </View>
-                  </View>
-                </ExpoLinearGradient>
+            <View style={styles.shortcutsGrid}>
+              <TouchableOpacity onPress={() => navigation.navigate('WorshipSanctuary')} style={styles.shortcutBtn}>
+                <Text style={styles.shortcutEmoji}>⏰</Text>
+                <Text style={styles.shortcutLabel}>{language === 'ar' ? 'مواقيت الصلاة' : 'Prayer Times'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate('Adhkar')} style={styles.shortcutBtn}>
+                <Text style={styles.shortcutEmoji}>📿</Text>
+                <Text style={styles.shortcutLabel}>{language === 'ar' ? 'حصن المسلم' : 'Adhkar Portal'}</Text>
               </TouchableOpacity>
             </View>
           </View>
 
-        {/* Ad Banner */}
-        <View style={styles.adWrapper}>
-          <AdBanner />
+          {/* Quran Pillar Card with sub shortcuts */}
+          <View style={styles.pillarSectionCard}>
+            <TouchableOpacity onPress={() => navigation.navigate('QuranSanctuary')} activeOpacity={0.9} style={styles.pillarHeaderRow}>
+              <View style={[styles.pillarHeaderIconWrapper, { backgroundColor: 'rgba(245, 158, 11, 0.12)', borderColor: 'rgba(245, 158, 11, 0.3)' }]}>
+                <QuranBookIcon color="#F59E0B" size={24} />
+              </View>
+              <View style={styles.pillarHeaderInfo}>
+                <Text style={styles.pillarHeaderTitle}>{language === 'ar' ? 'محراب القرآن الكريم' : 'Quran Sanctuary'}</Text>
+                <Text style={styles.pillarHeaderDesc}>{language === 'ar' ? 'تلاوة وحفظ وسماع آيات الله' : 'Recitations and Audio Portal'}</Text>
+              </View>
+            </TouchableOpacity>
+            <View style={styles.shortcutsGrid}>
+              <TouchableOpacity onPress={() => navigation.navigate('Voice')} style={styles.shortcutBtn}>
+                <Text style={styles.shortcutEmoji}>🎙️</Text>
+                <Text style={styles.shortcutLabel}>{language === 'ar' ? 'تقليد القراء' : 'Imitate Reciters'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate('Memorization')} style={styles.shortcutBtn}>
+                <Text style={styles.shortcutEmoji}>✍️</Text>
+                <Text style={styles.shortcutLabel}>{language === 'ar' ? 'تسهيل الحفظ' : 'Hifz Companion'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate('ReadingChallenge')} style={styles.shortcutBtn}>
+                <Text style={styles.shortcutEmoji}>🎧</Text>
+                <Text style={styles.shortcutLabel}>{language === 'ar' ? 'الورد القرآني' : 'Listen & Read'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Knowledge Pillar Card with sub shortcuts */}
+          <View style={styles.pillarSectionCard}>
+            <TouchableOpacity onPress={() => navigation.navigate('KnowledgeSanctuary')} activeOpacity={0.9} style={styles.pillarHeaderRow}>
+              <View style={[styles.pillarHeaderIconWrapper, { backgroundColor: 'rgba(59, 130, 246, 0.12)', borderColor: 'rgba(59, 130, 246, 0.3)' }]}>
+                <MapScrollIcon color="#3B82F6" size={24} />
+              </View>
+              <View style={styles.pillarHeaderInfo}>
+                <Text style={styles.pillarHeaderTitle}>{language === 'ar' ? 'مسالك المعرفة' : 'Knowledge Quests'}</Text>
+                <Text style={styles.pillarHeaderDesc}>{language === 'ar' ? 'السيرة النبوية، الأحاديث والمسابقات' : 'Sirah Quest, Hadith and Trivia'}</Text>
+              </View>
+            </TouchableOpacity>
+            <View style={styles.shortcutsGrid}>
+              <TouchableOpacity onPress={() => navigation.navigate('SirahQuest')} style={styles.shortcutBtn}>
+                <Text style={styles.shortcutEmoji}>🧭</Text>
+                <Text style={styles.shortcutLabel}>{language === 'ar' ? 'خريطة السيرة' : 'Sirah Quest'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate('Trivia')} style={styles.shortcutBtn}>
+                <Text style={styles.shortcutEmoji}>🧠</Text>
+                <Text style={styles.shortcutLabel}>{language === 'ar' ? 'مسابقة المعلومات' : 'Trivia Duel'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate('HadithChallenge')} style={styles.shortcutBtn}>
+                <Text style={styles.shortcutEmoji}>📚</Text>
+                <Text style={styles.shortcutLabel}>{language === 'ar' ? 'سلسلة الأحاديث' : 'Hadith Series'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Ayah of the Day */}
+          <Text style={styles.sectionTitle}>{t('ayahOfDay')}</Text>
+          <View style={styles.ayahCard}>
+            <View style={styles.ayahHeader}>
+              <TouchableOpacity style={styles.shareBtn} onPress={handleShareAyah} activeOpacity={0.75}>
+                <Text style={styles.shareBtnText}>{t('share')}</Text>
+              </TouchableOpacity>
+              <Text style={styles.ayahTitle}>Surah Al-Imran | 3:133</Text>
+            </View>
+            <Text style={styles.ayahArabic}>
+              {`﴿  وَسَارِعُوا إِلَىٰ مَغْفِرَةٍ مِّن رَّبِّكُمْ وَجَنَّةٍ عَرْضُهَا السَّمَاوَاتُ وَالْأَرْضُ أُعَدَّتْ لِلْمُتَّقِينَ  ﴾`}
+            </Text>
+            <Text style={styles.ayahEnglish}>
+              "And hasten to forgiveness from your Lord and a garden as wide as the heavens and the earth, prepared for the righteous."
+            </Text>
+          </View>
         </View>
 
         {/* Welcome Guide Modal */}
@@ -1560,6 +1492,148 @@ const getStyles = (colors: any) => StyleSheet.create({
     fontSize: 10,
     color: '#86A597',
     textAlign: 'right',
+  },
+  compactStatsBar: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderWidth: 1.2,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    marginBottom: 20,
+    width: '100%',
+  },
+  statPill: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  statEmoji: {
+    fontSize: 13,
+  },
+  statText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#E6F4EE',
+  },
+  sectionHeader: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#FBBF24',
+    textAlign: 'right',
+    marginBottom: 12,
+    marginTop: 10,
+  },
+  roadmapContainer: {
+    marginBottom: 24,
+    width: '100%',
+  },
+  roadmapScroll: {
+    gap: 12,
+    paddingLeft: 4,
+    flexDirection: 'row-reverse',
+  },
+  roadmapCard: {
+    width: 210,
+    backgroundColor: '#0D1A15',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1.5,
+    borderColor: '#142E24',
+    position: 'relative',
+  },
+  roadmapStepNum: {
+    position: 'absolute',
+    top: 10,
+    left: 14,
+    fontSize: 24,
+    fontWeight: '900',
+    color: 'rgba(251, 191, 36, 0.12)',
+  },
+  roadmapTitle: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#FBBF24',
+    textAlign: 'right',
+    marginBottom: 6,
+  },
+  roadmapDesc: {
+    fontSize: 10.5,
+    color: '#86A597',
+    textAlign: 'right',
+    lineHeight: 14,
+  },
+  pillarSectionCard: {
+    backgroundColor: '#0D1A15',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1.5,
+    borderColor: '#142E24',
+    marginBottom: 16,
+    width: '100%',
+  },
+  pillarHeaderRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  pillarHeaderIconWrapper: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1.2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 12,
+  },
+  pillarHeaderInfo: {
+    flex: 1,
+  },
+  pillarHeaderTitle: {
+    fontSize: 14.5,
+    fontWeight: '900',
+    color: '#FBBF24',
+    textAlign: 'right',
+    marginBottom: 2,
+  },
+  pillarHeaderDesc: {
+    fontSize: 10.5,
+    color: '#86A597',
+    textAlign: 'right',
+  },
+  shortcutsGrid: {
+    flexDirection: 'row-reverse',
+    flexWrap: 'wrap',
+    gap: 8,
+    width: '100%',
+  },
+  shortcutBtn: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    backgroundColor: '#09120F',
+    borderWidth: 1.2,
+    borderColor: '#142E24',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    flex: 1,
+    minWidth: '46%',
+    justifyContent: 'center',
+  },
+  shortcutEmoji: {
+    fontSize: 14,
+    marginLeft: 6,
+  },
+  shortcutLabel: {
+    fontSize: 11.5,
+    fontWeight: '800',
+    color: '#E6F4EE',
   },
 });
 const ONBOARDING_KEY = 'batl-muslim-onboarding-complete-v1';

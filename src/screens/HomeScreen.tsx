@@ -79,6 +79,10 @@ export default function HomeScreen({ navigation }: any) {
   const [questVoiceDone, setQuestVoiceDone] = useState(false);
   const [questBonusAwarded, setQuestBonusAwarded] = useState(false);
 
+  // Communal Daily Quest States
+  const [communalCount, setCommunalCount] = useState<number>(34250);
+  const [hasContributedToday, setHasContributedToday] = useState<boolean>(false);
+
   const loadData = async () => {
     if (!user?.uid) return;
     try {
@@ -127,6 +131,15 @@ export default function HomeScreen({ navigation }: any) {
         setProfile(updatedProfile);
       }
 
+      const commCount = await AsyncStorage.getItem('communal-quest-tasbih-count');
+      if (commCount) {
+        setCommunalCount(parseInt(commCount, 10));
+      } else {
+        setCommunalCount(34250);
+      }
+      const contributed = await AsyncStorage.getItem(`communal-quest-contributed-${todayStr}`);
+      setHasContributedToday(contributed === 'true');
+
     } catch (err) {
       console.error('Error loading home data:', err);
     }
@@ -158,6 +171,33 @@ export default function HomeScreen({ navigation }: any) {
     if (currentScore >= 80) return language === 'ar' ? 'بطل فضي' : 'Silver Hero';
     return language === 'ar' ? 'بطل مبتدئ' : 'Novice Hero';
   }, [currentScore, language]);
+
+  const handleContributeCommunal = async () => {
+    if (!user?.uid) return;
+    try {
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+      
+      const nextCount = communalCount + 10;
+      setCommunalCount(nextCount);
+      await AsyncStorage.setItem('communal-quest-tasbih-count', nextCount.toString());
+      await AsyncStorage.setItem(`communal-quest-contributed-${todayStr}`, 'true');
+      setHasContributedToday(true);
+
+      const nextScore = currentScore + 5;
+      await saveUserScore(user.uid, nextScore);
+      
+      Alert.alert(
+        language === 'ar' ? 'مساهمة مباركة! 📿' : 'Blessed Contribution! 📿',
+        language === 'ar'
+          ? 'تم تسجيل +١٠ صلوات على النبي ﷺ في التحدي الجماعي وحصلت على +٥ نقاط خبرة!'
+          : 'Registered +10 Salawat in the communal challenge and earned +5 XP points!'
+      );
+      await loadData();
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const dismissGuide = async () => {
     await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
@@ -261,6 +301,58 @@ Join us in our daily journey towards Islamic knowledge! 🚀`;
         </View>
 
         <View style={styles.bodyContent}>
+
+          {/* Level Progress Bar (Pokemon Go Style) */}
+          <View style={styles.levelProgressContainer}>
+            <View style={styles.homeLevelRow}>
+              <Text style={styles.levelText}>
+                {language === 'ar' 
+                  ? `المستوى ${Math.max(1, Math.floor(currentScore / 100))}` 
+                  : `Level ${Math.max(1, Math.floor(currentScore / 100))}`}
+              </Text>
+              <Text style={styles.homeLevelBadgeText}>{levelName}</Text>
+            </View>
+            <View style={styles.progressBarBg}>
+              <View style={[styles.progressBarFill, { width: `${currentScore % 100}%` }]} />
+            </View>
+            <Text style={styles.xpFractionText}>{currentScore % 100} / 100 XP</Text>
+          </View>
+
+          {/* Communal Quest Card */}
+          <View style={styles.communalCard}>
+            <View style={styles.communalHeaderRow}>
+              <View style={styles.communalBadge}>
+                <Text style={styles.communalBadgeText}>
+                  {language === 'ar' ? 'التحدي الجماعي اليومي ⚡' : 'Daily Communal Quest ⚡'}
+                </Text>
+              </View>
+              <Text style={styles.communalTitle}>
+                {language === 'ar' ? 'الصلاة على النبي ﷺ الاستغفار' : 'Salawat & Seeking Forgiveness'}
+              </Text>
+            </View>
+            
+            <View style={styles.communalProgressRow}>
+              <View style={styles.communalBarBg}>
+                <View style={[styles.communalBarFill, { width: `${Math.min(100, (communalCount / 50000) * 100)}%` }]} />
+              </View>
+              <Text style={styles.communalProgressText}>
+                {communalCount.toLocaleString()} / 50,000
+              </Text>
+            </View>
+
+            <TouchableOpacity 
+              style={[styles.contributeBtn, hasContributedToday && styles.contributeBtnDisabled]}
+              onPress={handleContributeCommunal}
+              disabled={hasContributedToday}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.contributeBtnText}>
+                {hasContributedToday 
+                  ? (language === 'ar' ? '✅ ساهمت اليوم' : '✅ Contributed Today')
+                  : (language === 'ar' ? '📿 ساهم بـ +١٠ صلوات على النبي (+٥ نقاط)' : '📿 Contribute +10 Salawat (+5 XP)')}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
         {/* Dual Path Selector */}
         <View style={styles.dualPathContainer}>
@@ -1279,6 +1371,131 @@ const getStyles = (colors: any) => StyleSheet.create({
     color: colors.surface,
     fontSize: 14,
     fontWeight: '800',
+  },
+  levelProgressContainer: {
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    padding: 14,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    marginBottom: 14,
+  },
+  homeLevelRow: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  levelText: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: colors.textPrimary,
+  },
+  homeLevelBadgeText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: colors.primary,
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  progressBarBg: {
+    height: 10,
+    backgroundColor: '#09120F',
+    borderRadius: 5,
+    overflow: 'hidden',
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: '#1E3A2F',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: colors.accent,
+    borderRadius: 5,
+  },
+  xpFractionText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: colors.textSecondary,
+    textAlign: 'left',
+  },
+  communalCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    marginBottom: 16,
+    gap: 12,
+  },
+  communalHeaderRow: {
+    alignItems: 'flex-end',
+    gap: 4,
+  },
+  communalBadge: {
+    backgroundColor: '#1E3A2F33',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    alignSelf: 'flex-end',
+  },
+  communalBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: colors.textSecondary,
+  },
+  communalTitle: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: colors.primary,
+    textAlign: 'right',
+  },
+  communalProgressRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 10,
+  },
+  communalBarBg: {
+    flex: 1,
+    height: 10,
+    backgroundColor: '#09120F',
+    borderRadius: 5,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#1E3A2F',
+  },
+  communalBarFill: {
+    height: '100%',
+    backgroundColor: colors.primary,
+    borderRadius: 5,
+  },
+  communalProgressText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: colors.textPrimary,
+  },
+  contributeBtn: {
+    backgroundColor: colors.accent,
+    borderRadius: 12,
+    paddingVertical: 10,
+    alignItems: 'center',
+    shadowColor: colors.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+  },
+  contributeBtnDisabled: {
+    backgroundColor: '#09120F',
+    borderWidth: 1,
+    borderColor: '#1E3A2F',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  contributeBtnText: {
+    color: '#09120F',
+    fontSize: 11,
+    fontWeight: '900',
   },
 });
 const ONBOARDING_KEY = 'batl-muslim-onboarding-complete-v1';

@@ -23,6 +23,7 @@ import AdhkarScreen from './screens/AdhkarScreen';
 import HadithChallengeScreen from './screens/HadithChallengeScreen';
 import LiveDuelScreen from './screens/LiveDuelScreen';
 import CommunityFeedScreen from './screens/CommunityFeedScreen';
+import SirahQuestScreen from './screens/SirahQuestScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -180,6 +181,11 @@ function NavigationWrapper() {
           name="Voice"
           component={VoiceScreen}
           options={{ title: language === 'ar' ? 'تحدي محاكاة التلاوة' : 'Recitation Challenge' }}
+        />
+        <Stack.Screen
+          name="SirahQuest"
+          component={SirahQuestScreen}
+          options={{ title: language === 'ar' ? 'خريطة السيرة النبوية' : 'Sirah Quest Map' }}
         />
       </Stack.Navigator>
     </NavigationContainer>

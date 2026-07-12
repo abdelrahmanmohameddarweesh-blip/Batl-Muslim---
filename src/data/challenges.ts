@@ -90,4 +90,14 @@ export const challenges: Challenge[] = [
     difficulty: 'متوسط',
     points: 10,
   },
+  {
+    id: 'sirah-quest',
+    title: 'خريطة السيرة النبوية',
+    description: 'تتبع مسيرة النبي ﷺ من الولادة إلى المدينة، أجب عن الأسئلة، وافتح أوسمة تاريخية.',
+    emoji: '🗺️',
+    route: 'SirahQuest',
+    color: '#FFF0F5',
+    difficulty: 'متقدم',
+    points: 50,
+  },
 ];

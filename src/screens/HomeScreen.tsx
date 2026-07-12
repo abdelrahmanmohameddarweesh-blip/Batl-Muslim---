@@ -368,6 +368,153 @@ Join us in our daily journey towards Islamic knowledge! 🚀`;
 
         <View style={styles.bodyContent}>
 
+          {/* Level Progress Bar (Pokemon Go Style) */}
+          <View style={styles.levelProgressContainer}>
+            <View style={styles.homeLevelRow}>
+              <Text style={styles.levelText}>
+                {language === 'ar' 
+                  ? `المستوى ${Math.max(1, Math.floor(currentScore / 100))}` 
+                  : `Level ${Math.max(1, Math.floor(currentScore / 100))}`}
+              </Text>
+              <Text style={styles.homeLevelBadgeText}>{levelName}</Text>
+            </View>
+            <View style={styles.progressBarBg}>
+              <View style={[styles.progressBarFill, { width: `${currentScore % 100}%` }]} />
+            </View>
+            <Text style={styles.xpFractionText}>{currentScore % 100} / 100 XP</Text>
+          </View>
+
+          {/* Communal Quest Card */}
+          <View style={styles.communalCard}>
+            <View style={styles.communalHeaderRow}>
+              <View style={styles.communalBadge}>
+                <Text style={styles.communalBadgeText}>
+                  {language === 'ar' ? 'التحدي الجماعي اليومي ⚡' : 'Daily Communal Quest ⚡'}
+                </Text>
+              </View>
+              <Text style={styles.communalTitle}>
+                {language === 'ar' ? 'الصلاة على النبي ﷺ الاستغفار' : 'Salawat & Seeking Forgiveness'}
+              </Text>
+            </View>
+            
+            <View style={styles.communalProgressRow}>
+              <View style={styles.communalBarBg}>
+                <View style={[styles.communalBarFill, { width: `${Math.min(100, (communalCount / 50000) * 100)}%` }]} />
+              </View>
+              <Text style={styles.communalProgressText}>
+                {communalCount.toLocaleString()} / 50,000
+              </Text>
+            </View>
+
+            <TouchableOpacity 
+              style={[styles.contributeBtn, hasContributedToday && styles.contributeBtnDisabled]}
+              onPress={handleContributeCommunal}
+              disabled={hasContributedToday}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.contributeBtnText}>
+                {hasContributedToday 
+                  ? (language === 'ar' ? '✅ ساهمت اليوم' : '✅ Contributed Today')
+                  : (language === 'ar' ? '📿 ساهم بـ +١٠ صلوات على النبي (+٥ نقاط)' : '📿 Contribute +10 Salawat (+5 XP)')}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+            {/* Daily Goals Progress Dashboard */}
+            <Text style={styles.sectionTitle}>{t('dailyGoals')}</Text>
+            <View style={styles.dailyGoalsRow}>
+              <CircularProgress
+                size={80}
+                strokeWidth={7}
+                percent={prayerPercent}
+                emoji="🕌"
+                label={t('prayers')}
+                color="#10B981"
+                ringColor="#34D399"
+                colors={homeColors}
+              />
+              <CircularProgress
+                size={80}
+                strokeWidth={7}
+                percent={recitationPercent}
+                emoji="🎙️"
+                label={t('recitation')}
+                color="#F59E0B"
+                ringColor="#FBBF24"
+                colors={homeColors}
+              />
+              <View style={styles.streakContainer}>
+                <View style={styles.streakFlameWrapper}>
+                  <Text style={styles.streakFlame}>🔥</Text>
+                  <Text style={styles.streakCount}>{streakDays}</Text>
+                </View>
+                <Text style={styles.percentText}>{streakDays} {t('days')}</Text>
+                <Text style={styles.progressLabel}>{t('streak')}</Text>
+              </View>
+            </View>
+
+            {/* Unified Daily Quests (Interlinking challenges) */}
+            <Text style={styles.sectionTitle}>{t('dailyQuestTitle')}</Text>
+            <View style={styles.questCard}>
+              <View style={styles.questProgressRow}>
+                <Text style={styles.questPercentText}>{completedQuestsCount}/3</Text>
+                <Text style={styles.questProgressLabel}>{t('questProgress')}</Text>
+              </View>
+              <View style={styles.questBarBackground}>
+                <View style={[styles.questBarFill, { width: `${(completedQuestsCount / 3) * 100}%` }]} />
+              </View>
+
+              <View style={styles.questsList}>
+                <View style={styles.questItem}>
+                  <Text style={[styles.questCheckIcon, questTriviaPlayed && styles.questCheckIconActive]}>
+                    {questTriviaPlayed ? '✓' : '○'}
+                  </Text>
+                  <Text style={[styles.questItemText, questTriviaPlayed && styles.questItemTextDone]}>
+                    {t('questTrivia')}
+                  </Text>
+                </View>
+                <View style={styles.questItem}>
+                  <Text style={[styles.questCheckIcon, questPrayerLogged && styles.questCheckIconActive]}>
+                    {questPrayerLogged ? '✓' : '○'}
+                  </Text>
+                  <Text style={[styles.questItemText, questPrayerLogged && styles.questItemTextDone]}>
+                    {t('questPrayer')}
+                  </Text>
+                </View>
+                <View style={styles.questItem}>
+                  <Text style={[styles.questCheckIcon, questVoiceDone && styles.questCheckIconActive]}>
+                    {questVoiceDone ? '✓' : '○'}
+                  </Text>
+                  <Text style={[styles.questItemText, questVoiceDone && styles.questItemTextDone]}>
+                    {t('questVoice')}
+                  </Text>
+                </View>
+              </View>
+
+              {questBonusAwarded && (
+                <View style={styles.questBonusBadge}>
+                  <Text style={styles.questBonusText}>🎁 {t('questCompleted')}</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Ayah of the Day */}
+            <Text style={styles.sectionTitle}>{t('ayahOfDay')}</Text>
+            <View style={styles.ayahCard}>
+              <View style={styles.ayahHeader}>
+                <TouchableOpacity style={styles.shareBtn} onPress={handleShareAyah} activeOpacity={0.75}>
+                  <Text style={styles.shareBtnText}>{t('share')}</Text>
+                </TouchableOpacity>
+                <Text style={styles.ayahTitle}>Surah Al-Imran | 3:133</Text>
+              </View>
+              <Text style={styles.ayahArabic}>
+                {`﴿  وَسَارِعُوا إِلَىٰ مَغْفِرَةٍ مِّن رَّبِّكُمْ وَجَنَّةٍ عَرْضُهَا السَّمَاوَاتُ وَالْأَرْضُ أُعَدَّتْ لِلْمُتَّقِينَ  ﴾`}
+              </Text>
+              <Text style={styles.ayahEnglish}>
+                "And hasten to forgiveness from your Lord and a garden as wide as the heavens and the earth, prepared for the righteous."
+              </Text>
+            </View>
+
             {/* The 3 Pillars Hub Grid */}
             <Text style={styles.sectionTitle}>
               {language === 'ar' ? 'أركان بطل مسلم 🗺️' : 'Pillars of Muslim Hero 🗺️'}
@@ -499,10 +646,6 @@ const getStyles = (colors: any) => StyleSheet.create({
   outerContainer: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  scrollContainer: {
-    flex: 1,
-    width: '100%',
   },
   scrollContent: {
     paddingBottom: 24,
@@ -1448,44 +1591,6 @@ const getStyles = (colors: any) => StyleSheet.create({
     fontSize: 10,
     color: '#86A597',
     textAlign: 'right',
-  },
-  subNavBar: {
-    flexDirection: 'row-reverse',
-    justifyContent: 'space-around',
-    paddingVertical: 12,
-    borderBottomWidth: 1.5,
-    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
-    marginBottom: 20,
-    width: '100%',
-    paddingHorizontal: 16,
-  },
-  subNavTab: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-  },
-  subNavTabActive: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    position: 'relative',
-  },
-  subNavTabText: {
-    fontSize: 13,
-    color: '#86A597',
-    fontWeight: '700',
-  },
-  subNavTabTextActive: {
-    fontSize: 13,
-    color: '#FBBF24',
-    fontWeight: '900',
-  },
-  activeTabIndicator: {
-    position: 'absolute',
-    bottom: -12,
-    left: '25%',
-    right: '25%',
-    height: 3,
-    backgroundColor: '#FBBF24',
-    borderRadius: 1.5,
   },
 });
 const ONBOARDING_KEY = 'batl-muslim-onboarding-complete-v1';

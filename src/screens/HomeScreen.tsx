@@ -453,7 +453,50 @@ Join us in our daily journey towards Islamic knowledge! 🚀`;
               </View>
             </View>
 
+            {/* Unified Daily Quests (Interlinking challenges) */}
+            <Text style={styles.sectionTitle}>{t('dailyQuestTitle')}</Text>
+            <View style={styles.questCard}>
+              <View style={styles.questProgressRow}>
+                <Text style={styles.questPercentText}>{completedQuestsCount}/3</Text>
+                <Text style={styles.questProgressLabel}>{t('questProgress')}</Text>
+              </View>
+              <View style={styles.questBarBackground}>
+                <View style={[styles.questBarFill, { width: `${(completedQuestsCount / 3) * 100}%` }]} />
+              </View>
 
+              <View style={styles.questsList}>
+                <View style={styles.questItem}>
+                  <Text style={[styles.questCheckIcon, questTriviaPlayed && styles.questCheckIconActive]}>
+                    {questTriviaPlayed ? '✓' : '○'}
+                  </Text>
+                  <Text style={[styles.questItemText, questTriviaPlayed && styles.questItemTextDone]}>
+                    {t('questTrivia')}
+                  </Text>
+                </View>
+                <View style={styles.questItem}>
+                  <Text style={[styles.questCheckIcon, questPrayerLogged && styles.questCheckIconActive]}>
+                    {questPrayerLogged ? '✓' : '○'}
+                  </Text>
+                  <Text style={[styles.questItemText, questPrayerLogged && styles.questItemTextDone]}>
+                    {t('questPrayer')}
+                  </Text>
+                </View>
+                <View style={styles.questItem}>
+                  <Text style={[styles.questCheckIcon, questVoiceDone && styles.questCheckIconActive]}>
+                    {questVoiceDone ? '✓' : '○'}
+                  </Text>
+                  <Text style={[styles.questItemText, questVoiceDone && styles.questItemTextDone]}>
+                    {t('questVoice')}
+                  </Text>
+                </View>
+              </View>
+
+              {questBonusAwarded && (
+                <View style={styles.questBonusBadge}>
+                  <Text style={styles.questBonusText}>🎁 {t('questCompleted')}</Text>
+                </View>
+              )}
+            </View>
 
             {/* Ayah of the Day */}
             <Text style={styles.sectionTitle}>{t('ayahOfDay')}</Text>

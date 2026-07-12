@@ -28,6 +28,7 @@ import ArenaHubScreen from './screens/ArenaHubScreen';
 import WorshipSanctuaryScreen from './screens/WorshipSanctuaryScreen';
 import QuranSanctuaryScreen from './screens/QuranSanctuaryScreen';
 import KnowledgeSanctuaryScreen from './screens/KnowledgeSanctuaryScreen';
+import AccountabilityScreen from './screens/AccountabilityScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -76,11 +77,11 @@ function TabNavigator() {
         }}
       />
       <Tab.Screen
-        name="CommunityFeed"
-        component={CommunityFeedScreen}
+        name="Accountability"
+        component={AccountabilityScreen}
         options={{
-          title: language === 'ar' ? 'ساحة التلاوة' : 'Recitation Square',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>👥</Text>,
+          title: language === 'ar' ? 'المحاسبة' : 'Accountability',
+          tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>📋</Text>,
         }}
       />
       <Tab.Screen
@@ -89,6 +90,14 @@ function TabNavigator() {
         options={{
           title: language === 'ar' ? 'المنافسة' : 'Arena',
           tabBarButton: (props) => <ChallengeHeroButton {...props} />,
+        }}
+      />
+      <Tab.Screen
+        name="CommunityFeed"
+        component={CommunityFeedScreen}
+        options={{
+          title: language === 'ar' ? 'ساحة التلاوة' : 'Recitation Square',
+          tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>👥</Text>,
         }}
       />
       <Tab.Screen

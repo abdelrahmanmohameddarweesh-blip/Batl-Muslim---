@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView, Share, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Svg, { Circle, Defs, LinearGradient, Stop, Path } from 'react-native-svg';
+import Svg, { Circle, Defs, LinearGradient, Stop, Path, Pattern, Rect } from 'react-native-svg';
+import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getCurrentUserProfile, saveUserScore } from '../firebase/auth';
@@ -9,6 +10,81 @@ import { shareAchievementWithImage } from '../utils/sharing';
 import AdBanner from '../components/AdBanner';
 import { useTheme } from '../contexts/ThemeContext';
 import { Colors } from '../config/colors';
+
+// Natively generated low-opacity Islamic geometric repeating backdrop
+function ArabesqueBackgroundPattern() {
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <Svg style={StyleSheet.absoluteFill}>
+        <Defs>
+          <Pattern id="arabesque" width={100} height={100} patternUnits="userSpaceOnUse">
+            {/* Draw diamond */}
+            <Path
+              d="M 50 15 L 75 50 L 50 85 L 25 50 Z"
+              stroke="#D4AF37"
+              strokeWidth={0.5}
+              opacity={0.15}
+              fill="none"
+            />
+            {/* Draw intersecting spoke lines */}
+            <Path
+              d="M 50 0 L 50 100 M 0 50 L 100 50 M 0 0 L 100 100 M 100 0 L 0 100"
+              stroke="#D4AF37"
+              strokeWidth={0.4}
+              opacity={0.1}
+              fill="none"
+            />
+            {/* Star points circles */}
+            <Circle cx={50} cy={50} r={6} stroke="#D4AF37" strokeWidth={0.5} opacity={0.15} fill="none" />
+          </Pattern>
+        </Defs>
+        <Rect width="100%" height="100%" fill="url(#arabesque)" />
+      </Svg>
+    </View>
+  );
+}
+
+function MosqueIcon({ color = '#FBBF24', size = 26 }: { color?: string, size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M12 2v3M12 5c-2.5 0-4.5 1.8-4.9 4.2h9.8c-.4-2.4-2.4-4.2-4.9-4.2zm-9 6h18v1H3v-1zm1 2h16v8H4v-8zm5 3v5h6v-5H9z"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+function QuranBookIcon({ color = '#FBBF24', size = 26 }: { color?: string, size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20M4 19.5V5A2.5 2.5 0 0 1 6.5 2.5H20v14.5M6 6h10M6 10h10"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+function MapScrollIcon({ color = '#FBBF24', size = 26 }: { color?: string, size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M9 20l-5.4-3V4L9 7l6-3 5.4 3v13l-6-3-6 3zm0-13v13M15 4v13"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
 
 // Custom SVG Circular Progress Ring
 function CircularProgress({ size, strokeWidth, percent, emoji, label, color, ringColor }: any) {
@@ -251,6 +327,7 @@ Join us in our daily journey towards Islamic knowledge! 🚀`;
   return (
     <ScrollView style={styles.outerContainer} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
       <View style={styles.container}>
+        <ArabesqueBackgroundPattern />
         <View style={styles.topGlow} />
 
         {/* Custom Glowing Emerald Header (exactly matching the mockup) */}
@@ -453,62 +530,89 @@ Join us in our daily journey towards Islamic knowledge! 🚀`;
             <View style={styles.pillarsGrid}>
               {/* Worship Pillar */}
               <TouchableOpacity
-                style={[styles.pillarCard, { borderLeftColor: '#10B981', backgroundColor: '#10B9810D' }]}
                 onPress={() => navigation.navigate('WorshipSanctuary')}
                 activeOpacity={0.85}
+                style={styles.pillarCardTouch}
               >
-                <View style={styles.pillarIconWrapper}>
-                  <Text style={styles.pillarIcon}>🕌</Text>
-                </View>
-                <View style={styles.pillarInfo}>
-                  <Text style={styles.pillarTitle}>
-                    {language === 'ar' ? 'أركان العبادة' : 'Pillars of Worship'}
-                  </Text>
-                  <Text style={styles.pillarDesc}>
-                    {language === 'ar' ? 'الصلوات، تحدي الفجر، الأذكار اليومية' : 'Prayers, Fajr tracker, Adhkar'}
-                  </Text>
-                </View>
-                <Text style={styles.pillarArrow}>➔</Text>
+                <ExpoLinearGradient
+                  colors={['#10B981', '#064E3B']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.pillarCardGradientBorder}
+                >
+                  <View style={styles.pillarCardInner}>
+                    <View style={[styles.pillarIconWrapper, { backgroundColor: '#10B9811A' }]}>
+                      <MosqueIcon color="#10B981" />
+                    </View>
+                    <View style={styles.pillarInfo}>
+                      <Text style={styles.pillarTitle}>
+                        {language === 'ar' ? 'أركان العبادة' : 'Pillars of Worship'}
+                      </Text>
+                      <Text style={styles.pillarDesc}>
+                        {language === 'ar' ? 'الصلوات، تحدي الفجر، الأذكار اليومية' : 'Prayers, Fajr tracker, Adhkar'}
+                      </Text>
+                    </View>
+                    <Text style={[styles.pillarArrow, { color: '#10B981' }]}>➔</Text>
+                  </View>
+                </ExpoLinearGradient>
               </TouchableOpacity>
 
               {/* Quran Pillar */}
               <TouchableOpacity
-                style={[styles.pillarCard, { borderLeftColor: '#F59E0B', backgroundColor: '#F59E0B0D' }]}
                 onPress={() => navigation.navigate('QuranSanctuary')}
                 activeOpacity={0.85}
+                style={styles.pillarCardTouch}
               >
-                <View style={styles.pillarIconWrapper}>
-                  <Text style={styles.pillarIcon}>📖</Text>
-                </View>
-                <View style={styles.pillarInfo}>
-                  <Text style={styles.pillarTitle}>
-                    {language === 'ar' ? 'محراب القرآن الكريم' : 'Quran Sanctuary'}
-                  </Text>
-                  <Text style={styles.pillarDesc}>
-                    {language === 'ar' ? 'تقليد القراء، حفظ الآيات، التفسير' : 'Qari imitation, Memorization, Tafsir'}
-                  </Text>
-                </View>
-                <Text style={styles.pillarArrow}>➔</Text>
+                <ExpoLinearGradient
+                  colors={['#F59E0B', '#78350F']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.pillarCardGradientBorder}
+                >
+                  <View style={styles.pillarCardInner}>
+                    <View style={[styles.pillarIconWrapper, { backgroundColor: '#F59E0B1A' }]}>
+                      <QuranBookIcon color="#F59E0B" />
+                    </View>
+                    <View style={styles.pillarInfo}>
+                      <Text style={styles.pillarTitle}>
+                        {language === 'ar' ? 'محراب القرآن الكريم' : 'Quran Sanctuary'}
+                      </Text>
+                      <Text style={styles.pillarDesc}>
+                        {language === 'ar' ? 'تقليد القراء، حفظ الآيات، التفسير' : 'Qari imitation, Memorization, Tafsir'}
+                      </Text>
+                    </View>
+                    <Text style={[styles.pillarArrow, { color: '#F59E0B' }]}>➔</Text>
+                  </View>
+                </ExpoLinearGradient>
               </TouchableOpacity>
 
               {/* Knowledge Pillar */}
               <TouchableOpacity
-                style={[styles.pillarCard, { borderLeftColor: '#3B82F6', backgroundColor: '#3B82F60D' }]}
                 onPress={() => navigation.navigate('KnowledgeSanctuary')}
                 activeOpacity={0.85}
+                style={styles.pillarCardTouch}
               >
-                <View style={styles.pillarIconWrapper}>
-                  <Text style={styles.pillarIcon}>🗺️</Text>
-                </View>
-                <View style={styles.pillarInfo}>
-                  <Text style={styles.pillarTitle}>
-                    {language === 'ar' ? 'مسالك المعرفة' : 'Knowledge Quests'}
-                  </Text>
-                  <Text style={styles.pillarDesc}>
-                    {language === 'ar' ? 'خريطة السيرة النبوية، الحديث، المسابقات' : 'Sirah Quest Map, Hadith, Trivia'}
-                  </Text>
-                </View>
-                <Text style={styles.pillarArrow}>➔</Text>
+                <ExpoLinearGradient
+                  colors={['#3B82F6', '#1E3A8A']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.pillarCardGradientBorder}
+                >
+                  <View style={styles.pillarCardInner}>
+                    <View style={[styles.pillarIconWrapper, { backgroundColor: '#3B82F61A' }]}>
+                      <MapScrollIcon color="#3B82F6" />
+                    </View>
+                    <View style={styles.pillarInfo}>
+                      <Text style={styles.pillarTitle}>
+                        {language === 'ar' ? 'مسالك المعرفة' : 'Knowledge Quests'}
+                      </Text>
+                      <Text style={styles.pillarDesc}>
+                        {language === 'ar' ? 'خريطة السيرة النبوية، الحديث، المسابقات' : 'Sirah Quest Map, Hadith, Trivia'}
+                      </Text>
+                    </View>
+                    <Text style={[styles.pillarArrow, { color: '#3B82F6' }]}>➔</Text>
+                  </View>
+                </ExpoLinearGradient>
               </TouchableOpacity>
             </View>
           </View>
@@ -1404,33 +1508,33 @@ const getStyles = (colors: any) => StyleSheet.create({
     gap: 12,
     marginBottom: 20,
   },
-  pillarCard: {
+  pillarCardTouch: {
     borderRadius: 20,
-    padding: 16,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 4,
+    marginBottom: 12,
+  },
+  pillarCardGradientBorder: {
+    borderRadius: 20,
+    padding: 1.5,
+  },
+  pillarCardInner: {
+    backgroundColor: 'rgba(9, 18, 15, 0.88)',
+    borderRadius: 18.5,
+    padding: 15,
     flexDirection: 'row-reverse',
     alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    borderLeftWidth: 6,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.02,
-    shadowRadius: 6,
-    elevation: 2,
   },
   pillarIconWrapper: {
-    width: 46,
-    height: 46,
+    width: 44,
+    height: 44,
     borderRadius: 12,
-    backgroundColor: '#09120F',
-    borderWidth: 1,
-    borderColor: '#1E3A2F',
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 14,
-  },
-  pillarIcon: {
-    fontSize: 22,
   },
   pillarInfo: {
     flex: 1,
@@ -1449,8 +1553,8 @@ const getStyles = (colors: any) => StyleSheet.create({
   },
   pillarArrow: {
     fontSize: 14,
-    color: colors.primary,
     marginRight: 6,
+    fontWeight: '900',
   },
 });
 const ONBOARDING_KEY = 'batl-muslim-onboarding-complete-v1';

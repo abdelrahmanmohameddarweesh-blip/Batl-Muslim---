@@ -420,38 +420,7 @@ Join us in our daily journey towards Islamic knowledge! 🚀`;
             </TouchableOpacity>
           </View>
 
-            {/* Daily Goals Progress Dashboard */}
-            <Text style={styles.sectionTitle}>{t('dailyGoals')}</Text>
-            <View style={styles.dailyGoalsRow}>
-              <CircularProgress
-                size={80}
-                strokeWidth={7}
-                percent={prayerPercent}
-                emoji="🕌"
-                label={t('prayers')}
-                color="#10B981"
-                ringColor="#34D399"
-                colors={homeColors}
-              />
-              <CircularProgress
-                size={80}
-                strokeWidth={7}
-                percent={recitationPercent}
-                emoji="🎙️"
-                label={t('recitation')}
-                color="#F59E0B"
-                ringColor="#FBBF24"
-                colors={homeColors}
-              />
-              <View style={styles.streakContainer}>
-                <View style={styles.streakFlameWrapper}>
-                  <Text style={styles.streakFlame}>🔥</Text>
-                  <Text style={styles.streakCount}>{streakDays}</Text>
-                </View>
-                <Text style={styles.percentText}>{streakDays} {t('days')}</Text>
-                <Text style={styles.progressLabel}>{t('streak')}</Text>
-              </View>
-            </View>
+
 
             {/* Unified Daily Quests (Interlinking challenges) */}
             <Text style={styles.sectionTitle}>{t('dailyQuestTitle')}</Text>

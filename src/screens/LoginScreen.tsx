@@ -3,14 +3,18 @@ import {
   View, Text, TextInput, TouchableOpacity, ActivityIndicator,
   StyleSheet, Keyboard, TouchableWithoutFeedback, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path, Circle } from 'react-native-svg';
 import { useAuth } from '../contexts/AuthContext';
-import { Colors } from '../config/colors';
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function LoginScreen({ navigation }: any) {
   const { user, loading, login } = useAuth();
+  const { colors } = useTheme();
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -35,166 +39,321 @@ export default function LoginScreen({ navigation }: any) {
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <KeyboardAvoidingView
-        style={styles.container}
+        style={[styles.container, { backgroundColor: colors.background }]}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View style={styles.decorativeShape1} />
-        <View style={styles.decorativeShape2} />
-        
-        <View style={styles.card}>
-          <View style={styles.iconContainer}>
-            <Text style={styles.iconText}>🕌</Text>
-          </View>
-          
-          <Text style={styles.title}>بطل مسلم</Text>
-          <Text style={styles.subtitle}>ابدأ رحلتك الإسلامية الممتعة ونافس اللاعبين حول العالم</Text>
-          
-          <View style={styles.inputWrapper}>
-            <TextInput
-              style={[styles.input, error ? styles.inputError : null]}
-              placeholder="اكتب اسمك هنا للبدء..."
-              placeholderTextColor={Colors.textSecondary + 'B3'}
-              value={name}
-              onChangeText={(text) => {
-                setName(text);
-                if (error) setError('');
-              }}
-              maxLength={18}
-              returnKeyType="done"
-              onSubmitEditing={handleContinue}
-              blurOnSubmit={true}
-            />
-          </View>
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-          {(loading || saving) ? (
-            <ActivityIndicator size="large" color={Colors.primary} style={styles.loader} />
-          ) : (
-            <TouchableOpacity style={styles.button} onPress={handleContinue} activeOpacity={0.85}>
-              <Text style={styles.buttonText}>ابدأ اللعب الآن 🚀</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        <ScrollViewContent
+          name={name}
+          setName={setName}
+          error={error}
+          setError={setError}
+          isFocused={isFocused}
+          setIsFocused={setIsFocused}
+          handleContinue={handleContinue}
+          saving={saving}
+          loading={loading}
+          colors={colors}
+        />
       </KeyboardAvoidingView>
     </TouchableWithoutFeedback>
+  );
+}
+
+// Separate stateless renderer to keep components clean
+function ScrollViewContent({
+  name, setName, error, setError, isFocused, setIsFocused, handleContinue, saving, loading, colors
+}: any) {
+  return (
+    <View style={styles.innerContainer}>
+      <View style={styles.topSection}>
+        {/* Rosette Islamic Logo with Bolt */}
+        <View style={styles.logoShadowWrapper}>
+          <LinearGradient
+            colors={['#10B981', '#047857']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.logoContainer}
+          >
+            <View style={styles.rosetteSquare1} />
+            <View style={styles.rosetteSquare2} />
+            
+            {/* SVG Bolt Glyph */}
+            <Svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={styles.boltIcon}>
+              <Path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+            </Svg>
+          </LinearGradient>
+        </View>
+
+        {/* Wordmark */}
+        <Text style={[styles.wordmark, { color: colors.textPrimary }]}>بطل مسلم</Text>
+        
+        {/* Subtitle */}
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+          ابدأ رحلتك الإسلامية الممتعة ونافس اللاعبين حول العالم
+        </Text>
+      </View>
+
+      <View style={styles.middleSection}>
+        {/* Input Label */}
+        <Text style={[styles.inputLabel, { color: colors.textBody }]}>اسمك في الميدان</Text>
+        
+        {/* Input Row */}
+        <View style={[
+          styles.inputRow,
+          { borderColor: error ? '#E7000B' : isFocused ? '#10B981' : colors.border },
+          isFocused && !error && styles.inputRowFocused
+        ]}>
+          {/* Trailing Character Counter */}
+          <Text style={[styles.charCounter, { color: colors.textTertiary }]}>
+            {name.length}/18
+          </Text>
+
+          {/* Text Input */}
+          <TextInput
+            style={[styles.input, { color: colors.textPrimary }]}
+            placeholder="اكتب اسمك هنا للبدء..."
+            placeholderTextColor={colors.textTertiary}
+            value={name}
+            onChangeText={(text) => {
+              setName(text);
+              if (error) setError('');
+            }}
+            maxLength={18}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            returnKeyType="done"
+            onSubmitEditing={handleContinue}
+            blurOnSubmit={true}
+          />
+
+          {/* Leading User SVG Icon */}
+          <Svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={styles.userIcon}>
+            <Path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <Circle cx="12" cy="7" r="4" />
+          </Svg>
+        </View>
+
+        {/* Helper/Error message */}
+        {error ? (
+          <Text style={styles.errorText}>{error}</Text>
+        ) : (
+          <Text style={[styles.helperText, { color: colors.textSecondary }]}>
+            يظهر هذا الاسم على لوحة الصدارة وفي المبارزات.
+          </Text>
+        )}
+
+        {/* Features Chips Row */}
+        <View style={styles.chipsRow}>
+          <View style={[styles.chip, { backgroundColor: '#ECFDF5', borderColor: '#A4F4CF' }]}>
+            <Text style={[styles.chipText, { color: '#00604F' }]}>٩ تحديات</Text>
+          </View>
+          <View style={[styles.chip, { backgroundColor: '#FFF7ED', borderColor: '#FFD6A7' }]}>
+            <Text style={[styles.chipText, { color: '#973C00' }]}>مبارزات ١×١</Text>
+          </View>
+          <View style={[styles.chip, { backgroundColor: '#EFF6FF', borderColor: '#BEDBFF' }]}>
+            <Text style={[styles.chipText, { color: '#1447E6' }]}>لوحة صدارة</Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.bottomSection}>
+        {/* Action Button */}
+        {loading || saving ? (
+          <ActivityIndicator size="large" color="#059669" style={styles.loader} />
+        ) : (
+          <TouchableOpacity
+            style={styles.ctaButton}
+            onPress={handleContinue}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.ctaButtonText}>ابدأ اللعب الآن</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Footnote */}
+        <Text style={[styles.footnote, { color: colors.textTertiary }]}>
+          لا حاجة لبريد أو كلمة مرور — تقدّمك محفوظ على جهازك.
+        </Text>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 24,
+  },
+  innerContainer: {
+    flex: 1,
+    paddingHorizontal: 20,
+    justifyContent: 'space-between',
+    paddingTop: 60,
+    paddingBottom: 28,
+  },
+  topSection: {
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  logoShadowWrapper: {
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.35,
+    shadowRadius: 25,
+    elevation: 8,
+    marginBottom: 24,
+  },
+  logoContainer: {
+    width: 104,
+    height: 104,
+    borderRadius: 32,
     justifyContent: 'center',
-    backgroundColor: Colors.background,
+    alignItems: 'center',
     position: 'relative',
+    overflow: 'hidden',
   },
-  decorativeShape1: {
+  rosetteSquare1: {
     position: 'absolute',
-    top: -50,
-    right: -50,
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: Colors.primaryLight,
-    opacity: 0.7,
+    width: 68,
+    height: 68,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.16)',
+    borderRadius: 2,
   },
-  decorativeShape2: {
+  rosetteSquare2: {
     position: 'absolute',
-    bottom: -80,
-    left: -80,
-    width: 250,
-    height: 250,
-    borderRadius: 125,
-    backgroundColor: Colors.accentLight,
-    opacity: 0.5,
+    width: 68,
+    height: 68,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.16)',
+    borderRadius: 2,
+    transform: [{ rotate: '45deg' }],
   },
-  card: {
-    backgroundColor: Colors.surface,
-    borderRadius: 24,
-    padding: 32,
-    alignItems: 'center',
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 6,
-    borderWidth: 1,
-    borderColor: Colors.border,
+  boltIcon: {
+    zIndex: 2,
   },
-  iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: Colors.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  iconText: {
-    fontSize: 40,
-  },
-  title: {
+  wordmark: {
     fontSize: 34,
-    fontWeight: '800',
-    color: Colors.primary,
+    fontWeight: '700',
     textAlign: 'center',
-    marginBottom: 10,
-    letterSpacing: 0.5,
+    letterSpacing: -0.68,
+    marginBottom: 8,
+    fontFamily: 'IBMPlexSansArabic-Bold',
   },
   subtitle: {
     fontSize: 15,
-    lineHeight: 22,
-    color: Colors.textSecondary,
     textAlign: 'center',
-    marginBottom: 28,
-    paddingHorizontal: 8,
+    lineHeight: 27,
+    maxWidth: 290,
+    fontFamily: 'IBMPlexSansArabic-Medium',
   },
-  inputWrapper: {
+  middleSection: {
     width: '100%',
-    marginBottom: 20,
+    marginVertical: 20,
   },
-  input: {
-    width: '100%',
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'right',
+    marginBottom: 8,
+    fontFamily: 'IBMPlexSansArabic-Medium',
+  },
+  inputRow: {
+    flexDirection: 'row-reverse',
     borderWidth: 1.5,
-    borderColor: Colors.border,
     borderRadius: 16,
     paddingVertical: 14,
-    paddingHorizontal: 20,
-    textAlign: 'center',
-    fontSize: 16,
-    color: Colors.textPrimary,
-    backgroundColor: '#FAFCFB',
-    fontWeight: '600',
+    paddingHorizontal: 18,
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
   },
-  button: {
-    backgroundColor: Colors.primary,
-    paddingVertical: 16,
+  inputRowFocused: {
+    shadowColor: 'rgba(16, 185, 129, 0.12)',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  userIcon: {
+    marginLeft: 12,
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'right',
+    padding: 0,
+    fontFamily: 'IBMPlexSansArabic-SemiBold',
+  },
+  charCounter: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginRight: 8,
+    writingDirection: 'ltr',
+  },
+  helperText: {
+    fontSize: 11,
+    fontWeight: '500',
+    textAlign: 'right',
+    marginTop: 8,
+    marginBottom: 20,
+    fontFamily: 'IBMPlexSansArabic-Regular',
+  },
+  errorText: {
+    color: '#E7000B',
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'right',
+    marginTop: 8,
+    marginBottom: 20,
+    fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+  chipsRow: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 8,
+  },
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  chipText: {
+    fontSize: 11,
+    fontWeight: '600',
+    fontFamily: 'IBMPlexSansArabic-SemiBold',
+  },
+  bottomSection: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  ctaButton: {
+    backgroundColor: '#059669',
+    paddingVertical: 17,
     borderRadius: 16,
     width: '100%',
     alignItems: 'center',
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 4 },
+    shadowColor: '#059669',
+    shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowRadius: 15,
+    elevation: 5,
+    marginBottom: 16,
   },
-  buttonText: {
-    color: Colors.surface,
-    fontSize: 17,
+  ctaButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
     fontWeight: '700',
+    fontFamily: 'IBMPlexSansArabic-Bold',
   },
   loader: {
-    marginVertical: 12,
+    marginVertical: 18,
   },
-  inputError: {
-    borderColor: Colors.error,
-  },
-  errorText: {
-    color: Colors.error,
-    fontSize: 13,
-    fontWeight: '700',
+  footnote: {
+    fontSize: 11,
+    fontWeight: '500',
     textAlign: 'center',
-    marginTop: -10,
-    marginBottom: 16,
+    fontFamily: 'IBMPlexSansArabic-Regular',
   },
 });

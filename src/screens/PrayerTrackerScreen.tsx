@@ -1,15 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path, Circle } from 'react-native-svg';
 import { prayers } from '../data/prayers';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { saveUserScore, getCurrentUserProfile } from '../firebase/auth';
-import { Colors } from '../config/colors';
 
 export default function PrayerTrackerScreen({ navigation }: any) {
   const { user } = useAuth();
+  const { colors } = useTheme();
+  const { language } = useLanguage();
   const [profile, setProfile] = useState<any>(null);
   const [checkedPrayers, setCheckedPrayers] = useState<Record<string, boolean>>({});
+  const [historyData, setHistoryData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -18,18 +24,37 @@ export default function PrayerTrackerScreen({ navigation }: any) {
     return `prayer-tracker-${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
   };
 
+  const getHistoryKeyForDate = (date: Date) => {
+    return `prayer-tracker-${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+  };
+
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
       try {
-        // Load local prayer status
-        const key = getTodayKey();
-        const stored = await AsyncStorage.getItem(key);
+        const todayKey = getTodayKey();
+        const stored = await AsyncStorage.getItem(todayKey);
         if (stored) {
           setCheckedPrayers(JSON.parse(stored));
         }
 
-        // Load profile score
+        // Load 7 days history
+        const tempHistory = [];
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date();
+          d.setDate(d.getDate() - i);
+          const key = getHistoryKeyForDate(d);
+          const histVal = await AsyncStorage.getItem(key);
+          const parsed = histVal ? JSON.parse(histVal) : {};
+          tempHistory.push({
+            label: d.toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US', { weekday: 'narrow' }),
+            isToday: i === 0,
+            prayers: parsed,
+          });
+        }
+        setHistoryData(tempHistory);
+
+        // Load profile
         if (user?.uid) {
           const currentProfile = await getCurrentUserProfile(user.uid);
           setProfile(currentProfile);
@@ -42,7 +67,47 @@ export default function PrayerTrackerScreen({ navigation }: any) {
     };
 
     loadData();
-  }, [user?.uid]);
+  }, [user?.uid, language]);
+
+  // Calculate Next Prayer details dynamically
+  const getNextPrayerDetails = () => {
+    const today = new Date();
+    const currentMinutes = today.getHours() * 60 + today.getMinutes();
+
+    // Map prayer names to their approximate minutes from midnight
+    const prayerTimes = [
+      { id: 'fajr', time: 270, labelAr: 'الفجر', timeStr: '٤:٣٠ ص' },
+      { id: 'dhuhr', time: 740, labelAr: 'الظهر', timeStr: '١٢:٢٠ م' },
+      { id: 'asr', time: 940, labelAr: 'العصر', timeStr: '٣:٤٠ م' },
+      { id: 'maghrib', time: 1130, labelAr: 'المغرب', timeStr: '٦:٥٠ م' },
+      { id: 'isha', time: 1220, labelAr: 'العشاء', timeStr: '٨:٢٠ م' },
+    ];
+
+    let next = prayerTimes.find(p => p.time > currentMinutes);
+    if (!next) {
+      next = prayerTimes[0]; // If all passed, next is Fajr tomorrow
+    }
+
+    const diff = next.time > currentMinutes ? next.time - currentMinutes : (1440 - currentMinutes) + next.time;
+    const hoursLeft = Math.floor(diff / 60);
+    const minutesLeft = diff % 60;
+    
+    let timeHint = '';
+    if (hoursLeft > 0) {
+      timeHint = `بعد ${hoursLeft} ساعة و ${minutesLeft} د`;
+    } else {
+      timeHint = `بعد ${minutesLeft} دقيقة`;
+    }
+
+    return {
+      id: next.id,
+      name: next.labelAr,
+      timeStr: next.timeStr,
+      timeHint,
+    };
+  };
+
+  const nextPrayer = getNextPrayerDetails();
 
   const handleTogglePrayer = async (id: string) => {
     if (saving) return;
@@ -59,19 +124,16 @@ export default function PrayerTrackerScreen({ navigation }: any) {
       const key = getTodayKey();
       await AsyncStorage.setItem(key, JSON.stringify(nextState));
 
-      // Calculate score logic: 3 points for each checked prayer today
       const currentCheckedCount = Object.values(checkedPrayers).filter(Boolean).length;
       const nextCheckedCount = Object.values(nextState).filter(Boolean).length;
 
       if (nextCheckedCount > currentCheckedCount) {
-        // Added a prayer, award +3 points
         if (user?.uid && profile) {
           const newScore = (profile.score ?? 0) + 3;
           await saveUserScore(user.uid, newScore);
           setProfile({ ...profile, score: newScore });
         }
       } else if (nextCheckedCount < currentCheckedCount) {
-        // Unchecked a prayer, deduct 3 points
         if (user?.uid && profile) {
           const newScore = Math.max(0, (profile.score ?? 0) - 3);
           await saveUserScore(user.uid, newScore);
@@ -79,7 +141,6 @@ export default function PrayerTrackerScreen({ navigation }: any) {
         }
       }
 
-      // Check if all 5 prayers are completed today for a bonus!
       if (nextCheckedCount === 5) {
         Alert.alert('ما شاء الله! 🎉', 'أكملت جميع صلوات اليوم المفروضة! تم إضافة +١٥ نقطة إضافية لرصيدك.');
         if (user?.uid && profile) {
@@ -88,6 +149,14 @@ export default function PrayerTrackerScreen({ navigation }: any) {
           setProfile({ ...profile, score: newScore });
         }
       }
+
+      setHistoryData(prev => prev.map(day => {
+        if (day.isToday) {
+          return { ...day, prayers: nextState };
+        }
+        return day;
+      }));
+
     } catch (err) {
       console.error(err);
     } finally {
@@ -97,54 +166,168 @@ export default function PrayerTrackerScreen({ navigation }: any) {
 
   const completedCount = Object.values(checkedPrayers).filter(Boolean).length;
 
+  const totalLoggedCount = historyData.reduce((acc, curr) => {
+    return acc + Object.values(curr.prayers).filter(Boolean).length;
+  }, 0);
+
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>الصلوات الخمس</Text>
-        <Text style={styles.subtitle}>تتبع صلواتك اليومية وحافظ عليها في وقتها لزيادة نقاطك الإيمانية</Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Header */}
+      <View style={[styles.headerStyle, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+          <Svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={colors.textPrimary} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: [{ scaleX: language === 'ar' ? -1 : 1 }] }}>
+            <Path d="m15 18-6-6 6-6" />
+          </Svg>
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>الصلوات الخمس</Text>
+        <View style={{ width: 40 }} />
       </View>
 
       {loading ? (
-        <ActivityIndicator size="large" color={Colors.primary} style={styles.loader} />
+        <ActivityIndicator size="large" color="#059669" style={styles.loader} />
       ) : (
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          {/* Progress Summary Card */}
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryTitle}>صلوات اليوم</Text>
-            <Text style={styles.summaryProgress}>{completedCount} من ٥ صلوات</Text>
-            
-            <View style={styles.progressBarBg}>
-              <View style={[styles.progressBarFill, { width: `${(completedCount / 5) * 100}%` }]} />
-            </View>
-            <Text style={styles.scoreText}>النقاط الحالية: {profile?.score ?? 0} نقطة</Text>
+          {/* Summary Hero Card */}
+          <View style={styles.heroShadowWrapper}>
+            <LinearGradient
+              colors={['#059669', '#047857']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.heroCard}
+            >
+              <View style={styles.heroTopRow}>
+                <View style={styles.heroCol}>
+                  <Text style={styles.heroLabel}>صلوات اليوم</Text>
+                  <Text style={styles.heroVal}>{completedCount} من ٥</Text>
+                </View>
+                <View style={styles.heroDivider} />
+                <View style={styles.heroCol}>
+                  <Text style={styles.heroLabel}>الصلاة القادمة</Text>
+                  <Text style={styles.heroVal}>{nextPrayer.name} · {nextPrayer.timeStr}</Text>
+                </View>
+              </View>
+
+              {/* Progress Track */}
+              <View style={styles.progressTrackBg}>
+                <LinearGradient
+                  colors={['#F5B841', '#FBBF24']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={[styles.progressTrackFill, { width: `${(completedCount / 5) * 100}%` }]}
+                />
+              </View>
+            </LinearGradient>
           </View>
 
           {/* List of Prayers */}
           <View style={styles.prayerList}>
             {prayers.map((prayer) => {
               const isChecked = !!checkedPrayers[prayer.id];
+              const isNext = nextPrayer.id === prayer.id;
+              
+              let checkboxFill = 'transparent';
+              let checkboxBorder = colors.borderStrong;
+
+              if (isChecked) {
+                checkboxFill = colors.primary;
+                checkboxBorder = colors.primary;
+              } else if (isNext) {
+                checkboxBorder = colors.accent;
+              }
+
               return (
                 <TouchableOpacity
                   key={prayer.id}
-                  style={[styles.prayerCard, isChecked && styles.prayerCardChecked]}
+                  style={[
+                    styles.prayerCard,
+                    isChecked && { borderColor: colors.primaryTintBorder },
+                    isNext && styles.nextPrayerCard,
+                    { backgroundColor: colors.surface }
+                  ]}
                   onPress={() => handleTogglePrayer(prayer.id)}
                   activeOpacity={0.85}
                   disabled={saving}
                 >
-                  <View style={[styles.checkbox, isChecked && styles.checkboxChecked]}>
-                    {isChecked && <Text style={styles.checkboxTick}>✓</Text>}
-                  </View>
-                  
-                  <View style={styles.prayerInfo}>
-                    <Text style={[styles.prayerName, isChecked && styles.textChecked]}>{prayer.name}</Text>
-                    <Text style={styles.timeHint}>🕒 {prayer.timeHint}</Text>
-                    <Text style={styles.hadithText}>{prayer.hadith}</Text>
+                  {/* Leading state checkbox */}
+                  <View style={[
+                    styles.checkboxCircle,
+                    { borderColor: checkboxBorder, backgroundColor: checkboxFill }
+                  ]}>
+                    {isChecked && (
+                      <Svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <Path d="M20 6 9 17l-5-5" />
+                      </Svg>
+                    )}
                   </View>
 
-                  <Text style={styles.pointsLabel}>+{isChecked ? 3 : 0} ن</Text>
+                  {/* Info Area */}
+                  <View style={styles.prayerInfo}>
+                    <View style={styles.prayerTitleRow}>
+                      {isNext && (
+                        <View style={[styles.nextChip, { backgroundColor: colors.accentTint, borderColor: colors.accentTintBorder }]}>
+                          <Text style={[styles.nextChipText, { color: colors.accentOnTint }]}>
+                            {nextPrayer.timeHint}
+                          </Text>
+                        </View>
+                      )}
+                      <Text style={[styles.rakatChip, { backgroundColor: colors.neutralTint, color: colors.textSecondary }]}>
+                        {prayer.rakats === 2 ? 'ركعتان' : `${prayer.rakats} ركعات`}
+                      </Text>
+                      <Text style={[styles.prayerName, { color: colors.textPrimary }]}>
+                        {prayer.name}
+                      </Text>
+                    </View>
+
+                    {/* Subline */}
+                    <Text style={[styles.sublineText, { color: colors.textSecondary }]}>
+                      {isChecked ? prayer.hadith : prayer.timeHint}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
               );
             })}
+          </View>
+
+          {/* 7-day Grid Panel */}
+          <View style={[styles.historyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={styles.historyHeader}>
+              <Text style={[styles.historyCountText, { color: colors.primaryDeep }]}>
+                {totalLoggedCount} / ٣٥ صلاة
+              </Text>
+              <Text style={[styles.historyTitleText, { color: colors.textPrimary }]}>
+                آخر ٧ أيام
+              </Text>
+            </View>
+
+            <View style={styles.historyGridRow}>
+              {historyData.map((day, dIdx) => (
+                <View key={dIdx} style={styles.historyColContainer}>
+                  <View style={styles.historyColumn}>
+                    {prayers.map((p) => {
+                      const wasChecked = !!day.prayers[p.id];
+                      let barColor = colors.neutralTint;
+                      if (wasChecked) {
+                        barColor = colors.primary;
+                      } else if (day.isToday) {
+                        barColor = colors.accent;
+                      } else {
+                        barColor = '#F3F4F6';
+                      }
+
+                      return (
+                        <View
+                          key={p.id}
+                          style={[styles.historyBarItem, { backgroundColor: barColor }]}
+                        />
+                      );
+                    })}
+                  </View>
+                  <Text style={[styles.historyColLabel, { color: colors.textSecondary }]}>
+                    {day.label}
+                  </Text>
+                </View>
+              ))}
+            </View>
           </View>
         </ScrollView>
       )}
@@ -155,27 +338,27 @@ export default function PrayerTrackerScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
-    paddingHorizontal: 20,
-    paddingTop: 20,
   },
-  header: {
+  headerStyle: {
+    flexDirection: 'row-reverse',
     alignItems: 'center',
-    marginBottom: 20,
+    justifyContent: 'space-between',
+    paddingTop: 56,
+    paddingBottom: 16,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: Colors.primary,
-    textAlign: 'center',
-    marginBottom: 6,
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  subtitle: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 18,
-    paddingHorizontal: 12,
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    fontFamily: 'IBMPlexSansArabic-Bold',
   },
   loader: {
     marginTop: 40,
@@ -184,119 +367,177 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 24,
-  },
-  summaryCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: 24,
     padding: 20,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    marginBottom: 20,
+    paddingBottom: 36,
+  },
+  heroShadowWrapper: {
+    shadowColor: '#059669',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 15,
+    elevation: 5,
+    marginBottom: 24,
+  },
+  heroCard: {
+    borderRadius: 22,
+    padding: 18,
+  },
+  heroTopRow: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  heroCol: {
+    flex: 1,
     alignItems: 'center',
   },
-  summaryTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: Colors.textPrimary,
+  heroDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  heroLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#A7F3D0',
     marginBottom: 4,
+    fontFamily: 'IBMPlexSansArabic-Regular',
   },
-  summaryProgress: {
-    fontSize: 24,
-    fontWeight: '900',
-    color: Colors.primary,
-    marginBottom: 12,
-  },
-  progressBarBg: {
-    height: 10,
-    width: '100%',
-    backgroundColor: Colors.background,
-    borderRadius: 5,
-    overflow: 'hidden',
-    marginBottom: 12,
-  },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: Colors.primary,
-    borderRadius: 5,
-  },
-  scoreText: {
-    fontSize: 13,
+  heroVal: {
+    fontSize: 16,
     fontWeight: '700',
-    color: Colors.accent,
+    color: '#FFFFFF',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+  progressTrackBg: {
+    height: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  progressTrackFill: {
+    height: '100%',
+    borderRadius: 999,
   },
   prayerList: {
-    gap: 14,
+    gap: 12,
+    marginBottom: 24,
   },
   prayerCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: 20,
-    padding: 16,
     flexDirection: 'row-reverse',
-    alignItems: 'center',
     borderWidth: 1,
-    borderColor: Colors.border,
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.02,
-    shadowRadius: 4,
+    borderRadius: 16,
+    padding: 14,
+    alignItems: 'center',
+    shadowColor: '#1D2939',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  nextPrayerCard: {
+    borderWidth: 1.5,
+    shadowColor: '#F5B841',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
     elevation: 2,
   },
-  prayerCardChecked: {
-    borderColor: Colors.primary + '55',
-    backgroundColor: '#F0F9F4',
-  },
-  checkbox: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
+  checkboxCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 9,
     borderWidth: 2,
-    borderColor: Colors.border,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 16,
-    backgroundColor: Colors.surface,
-  },
-  checkboxChecked: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primary,
-  },
-  checkboxTick: {
-    color: Colors.surface,
-    fontSize: 16,
-    fontWeight: '900',
+    marginLeft: 13,
   },
   prayerInfo: {
     flex: 1,
   },
-  prayerName: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: Colors.textPrimary,
-    textAlign: 'right',
+  prayerTitleRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
     marginBottom: 4,
   },
-  textChecked: {
-    color: Colors.primary,
-  },
-  timeHint: {
-    fontSize: 11,
-    color: Colors.textSecondary,
+  prayerName: {
+    fontSize: 15,
+    fontWeight: '700',
     textAlign: 'right',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+  rakatChip: {
+    fontSize: 10,
+    fontWeight: '600',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 5,
+    marginRight: 6,
+    fontFamily: 'IBMPlexSansArabic-SemiBold',
+  },
+  nextChip: {
+    fontSize: 10,
+    fontWeight: '600',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 5,
+    marginRight: 6,
+    borderWidth: 1,
+  },
+  nextChipText: {
+    fontSize: 9,
+    fontWeight: '700',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+    writingDirection: 'ltr',
+  },
+  sublineText: {
+    fontSize: 11,
+    fontWeight: '500',
+    textAlign: 'right',
+    lineHeight: 16,
+    fontFamily: 'IBMPlexSansArabic-Regular',
+  },
+  historyCard: {
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+  },
+  historyHeader: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  historyTitleText: {
+    fontSize: 13,
+    fontWeight: '700',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+  historyCountText: {
+    fontSize: 11,
+    fontWeight: '600',
+    writingDirection: 'ltr',
+  },
+  historyGridRow: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+  },
+  historyColContainer: {
+    alignItems: 'center',
+  },
+  historyColumn: {
+    gap: 4,
     marginBottom: 6,
   },
-  hadithText: {
-    fontSize: 11,
-    lineHeight: 16,
-    color: Colors.textSecondary,
-    textAlign: 'right',
-    fontStyle: 'italic',
-    paddingLeft: 12,
+  historyBarItem: {
+    width: 28,
+    height: 11,
+    borderRadius: 3,
   },
-  pointsLabel: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: Colors.primary,
-    marginRight: 8,
+  historyColLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    fontFamily: 'IBMPlexSansArabic-Medium',
   },
 });

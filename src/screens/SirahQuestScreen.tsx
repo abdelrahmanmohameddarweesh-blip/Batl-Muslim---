@@ -367,9 +367,9 @@ const getStyles = (colors: any) => StyleSheet.create({
     position: 'absolute',
     width: 6,
     height: 90,
-    backgroundColor: '#09120F',
+    backgroundColor: colors.border,
     borderWidth: 1.5,
-    borderColor: '#1E3A2F',
+    borderColor: colors.border,
     top: 50,
     zIndex: -1,
   },
@@ -407,8 +407,8 @@ const getStyles = (colors: any) => StyleSheet.create({
     borderColor: colors.accent,
   },
   nodeLocked: {
-    backgroundColor: '#09120F',
-    borderColor: '#1E3A2F',
+    backgroundColor: colors.neutralTint,
+    borderColor: colors.border,
   },
   nodeEmoji: {
     fontSize: 30,
@@ -514,9 +514,9 @@ const getStyles = (colors: any) => StyleSheet.create({
     gap: 10,
   },
   optionItem: {
-    backgroundColor: '#09120F',
+    backgroundColor: colors.surface,
     borderWidth: 1.5,
-    borderColor: '#1E3A2F',
+    borderColor: colors.border,
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 14,
@@ -524,19 +524,19 @@ const getStyles = (colors: any) => StyleSheet.create({
   },
   optionItemValActive: {
     borderColor: colors.accent,
-    backgroundColor: colors.accentLight,
+    backgroundColor: colors.accentTint,
   },
   optionItemCorrect: {
     borderColor: colors.success,
-    backgroundColor: colors.successLight,
+    backgroundColor: colors.primaryTint,
   },
   optionItemWrong: {
     borderColor: colors.error,
-    backgroundColor: colors.errorLight,
+    backgroundColor: colors.dangerTint,
   },
   optionText: {
     fontSize: 13,
-    color: colors.textSecondary,
+    color: colors.textPrimary,
     fontWeight: '800',
   },
   optionTextActive: {

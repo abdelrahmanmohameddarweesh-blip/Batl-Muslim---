@@ -139,21 +139,7 @@ export default function HomeScreen({ navigation }: any) {
   const { t, language } = useLanguage();
   const { colors, isLightMode } = useTheme();
   
-  const homeColors = useMemo(() => {
-    return {
-      background: '#09120F',     // Deep emerald night background
-      surface: '#0D1A15',        // Frosted dark slate card surface
-      border: '#142E24',         // Subtle gold-green border outline
-      textPrimary: '#E6F4EE',    // White gold text
-      textSecondary: '#86A597',  // Pale mint secondary text
-      primary: '#10B981',        // Emerald primary
-      primaryLight: '#10B98126', // Transparent emerald
-      accent: '#FBBF24',         // Shiny Amber Gold
-      accentLight: '#FBBF241A',  // Transparent gold
-      shadow: '#000000',
-      error: '#EF4444',
-    };
-  }, []);
+  const homeColors = colors;
 
   const styles = getStyles(homeColors);
   const [profile, setProfile] = useState<any>(null);
@@ -579,7 +565,7 @@ const getStyles = (colors: any) => StyleSheet.create({
   },
   pathCardActive: {
     borderColor: colors.primary,
-    backgroundColor: '#0F2C21',
+    backgroundColor: colors.primaryLight,
   },
   pathIcon: {
     fontSize: 28,

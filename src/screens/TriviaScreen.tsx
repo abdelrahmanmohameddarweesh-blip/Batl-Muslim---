@@ -537,11 +537,11 @@ const styles = StyleSheet.create({
     color: Colors.surface,
   },
   pointsPreviewCard: {
-    backgroundColor: '#FAF8F0',
+    backgroundColor: Colors.accentTint,
     borderRadius: 16,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#F0EAD6',
+    borderColor: Colors.accentTintBorder,
     marginBottom: 20,
     alignItems: 'center',
   },
@@ -663,20 +663,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   optionButtonSelected: {
-    backgroundColor: Colors.primaryLight,
-    borderColor: Colors.primary,
+    backgroundColor: Colors.primaryTint,
+    borderColor: Colors.primaryDeep,
   },
   optionButtonCorrect: {
-    backgroundColor: Colors.success,
-    borderColor: Colors.success,
+    backgroundColor: Colors.primaryTint,
+    borderColor: Colors.primary,
   },
   optionButtonIncorrect: {
-    backgroundColor: Colors.error,
-    borderColor: Colors.error,
+    backgroundColor: Colors.dangerTint,
+    borderColor: Colors.danger,
   },
   optionButtonDisabled: {
-    backgroundColor: '#F5F5F5',
-    borderColor: '#E2E8F0',
+    backgroundColor: Colors.neutralTint,
+    borderColor: Colors.border,
   },
   optionText: {
     fontSize: 15,
@@ -685,15 +685,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   optionTextSelected: {
-    color: Colors.primary,
+    color: Colors.primaryOnTint,
     fontWeight: '700',
   },
   optionTextWhite: {
-    color: Colors.surface,
+    color: Colors.primaryOnTint,
     fontWeight: '700',
   },
   optionTextMuted: {
-    color: '#A0AEC0',
+    color: Colors.textTertiary,
   },
   feedbackBox: {
     borderRadius: 14,

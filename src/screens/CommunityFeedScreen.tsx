@@ -397,7 +397,7 @@ const getStyles = (colors: any) => StyleSheet.create({
   recordActionBtnText: {
     fontSize: 13,
     fontWeight: '900',
-    color: '#09120F',
+    color: colors.surface,
   },
   filterToggleBtn: {
     flex: 1,
@@ -409,7 +409,7 @@ const getStyles = (colors: any) => StyleSheet.create({
     alignItems: 'center',
   },
   filterToggleBtnActive: {
-    backgroundColor: '#0F2C21',
+    backgroundColor: colors.primaryLight,
     borderColor: colors.primary,
   },
   filterToggleBtnText: {
@@ -449,9 +449,9 @@ const getStyles = (colors: any) => StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: '#09120F',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#1E3A2F',
+    borderColor: colors.border,
   },
   filterBadgeActive: {
     backgroundColor: colors.primary,
@@ -463,7 +463,7 @@ const getStyles = (colors: any) => StyleSheet.create({
     fontWeight: '800',
   },
   filterBadgeTextActive: {
-    color: '#09120F',
+    color: colors.surface,
     fontWeight: '900',
   },
   timelineScroll: {
@@ -553,11 +553,11 @@ const getStyles = (colors: any) => StyleSheet.create({
     fontSize: 22,
   },
   quranCard: {
-    backgroundColor: '#09120F',
+    backgroundColor: colors.background,
     borderRadius: 18,
     padding: 16,
     borderWidth: 1.5,
-    borderColor: '#1E3A2F4D',
+    borderColor: colors.border,
     gap: 12,
     marginBottom: 10,
   },
@@ -581,7 +581,7 @@ const getStyles = (colors: any) => StyleSheet.create({
     marginTop: 4,
   },
   qariBadge: {
-    backgroundColor: '#1E3A2F33',
+    backgroundColor: colors.neutralTint,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
@@ -659,9 +659,9 @@ const getStyles = (colors: any) => StyleSheet.create({
   },
   reactionBtn: {
     flex: 1,
-    backgroundColor: '#09120F',
+    backgroundColor: colors.neutralTint,
     borderWidth: 1,
-    borderColor: '#1E3A2F',
+    borderColor: colors.border,
     paddingVertical: 10,
     borderRadius: 12,
     alignItems: 'center',
@@ -685,13 +685,13 @@ const getStyles = (colors: any) => StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#09120F',
+    borderColor: colors.surface,
     zIndex: 1,
   },
   reactionBadgeCountText: {
     fontSize: 8,
     fontWeight: '900',
-    color: '#09120F',
+    color: colors.surface,
   },
   adWrapper: {
     marginTop: 10,

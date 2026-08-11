@@ -231,11 +231,11 @@ const getStyles = (colors: any) => StyleSheet.create({
   },
   tabsContainer: {
     flexDirection: 'row',
-    backgroundColor: '#09120F',
+    backgroundColor: colors.neutralTint,
     borderRadius: 14,
     padding: 3,
     borderWidth: 1,
-    borderColor: '#1E3A2F',
+    borderColor: colors.border,
     marginBottom: 14,
   },
   tabBtn: {
@@ -253,7 +253,7 @@ const getStyles = (colors: any) => StyleSheet.create({
     color: colors.textSecondary,
   },
   tabBtnTextActive: {
-    color: '#09120F',
+    color: colors.surface,
     fontWeight: '900',
   },
   warningContainer: {
@@ -433,7 +433,7 @@ const getStyles = (colors: any) => StyleSheet.create({
   podiumRankTextGold: {
     fontSize: 16,
     fontWeight: '900',
-    color: '#F59E0B',
+    color: colors.accentDeep,
   },
   listContainer: {
     backgroundColor: colors.surface,

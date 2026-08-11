@@ -29,7 +29,7 @@ export default function ArenaHubScreen({ navigation }: any) {
           onPress={() => navigation.navigate('LiveDuel')}
           activeOpacity={0.85}
         >
-          <View style={[styles.iconWrapper, { backgroundColor: '#FEE2E2' }]}>
+          <View style={[styles.iconWrapper, { backgroundColor: colors.dangerTint }]}>
             <Text style={styles.cardIcon}>⚔️</Text>
           </View>
           <View style={styles.cardInfo}>
@@ -51,7 +51,7 @@ export default function ArenaHubScreen({ navigation }: any) {
           onPress={() => navigation.navigate('Leaderboard')}
           activeOpacity={0.85}
         >
-          <View style={[styles.iconWrapper, { backgroundColor: '#FEF3C7' }]}>
+          <View style={[styles.iconWrapper, { backgroundColor: colors.accentTint }]}>
             <Text style={styles.cardIcon}>🏆</Text>
           </View>
           <View style={styles.cardInfo}>

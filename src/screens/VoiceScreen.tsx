@@ -341,39 +341,76 @@ export default function VoiceScreen({ navigation }: any) {
 
   const loadSelectedAyahRange = async (surahNum: number, startNum: number, endNum: number) => {
     setFetchingAyah(true);
+    let success = false;
+    let combinedText = '';
+
+    // 1. Try Primary API (Light Uthmani edition - 50x smaller than audio edition)
     try {
-      const response = await fetch(`https://api.alquran.cloud/v1/surah/${surahNum}/ar.alafasy`);
+      const response = await fetch(`https://api.alquran.cloud/v1/surah/${surahNum}`);
       const resJson = await response.json();
       if (resJson?.data?.ayahs) {
         const allAyahs = resJson.data.ayahs;
         const rangeAyahs = allAyahs.slice(startNum - 1, endNum);
-
-        let combinedText = rangeAyahs.map((a: any) => a.text).join(' ۞ ');
-
-        const bismillah = 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ';
-        if (surahNum !== 1 && startNum === 1 && combinedText.startsWith(bismillah)) {
-          combinedText = combinedText.replace(bismillah, '').trim();
-        }
-
-        setCurrentAyah({
-          id: `dynamic-${surahNum}-${startNum}-${endNum}`,
-          text: combinedText,
-          surah: `سورة ${surahsList.find(s => s.number === surahNum)?.name || 'مخصصة'}`,
-          number: startNum === endNum ? startNum : `${startNum} - ${endNum}`,
-        });
-        setStep('ready');
-      } else {
-        throw new Error('Invalid response');
+        combinedText = rangeAyahs.map((a: any) => a.text.trim()).join(' ۞ ');
+        success = true;
       }
-    } catch (err) {
-      console.error(err);
-      Alert.alert(
-        'خطأ في الشبكة 📡',
-        'فشل تحميل السورة أو الآيات من خوادم القرآن الكريم. الرجاء التأكد من اتصالك بالإنترنت.'
-      );
-    } finally {
-      setFetchingAyah(false);
+    } catch (primaryErr) {
+      console.warn('Primary Quran API failed, trying mirror...', primaryErr);
     }
+
+    // 2. Try Fallback Mirror API (Cloudflare Pages Static Mirror)
+    if (!success) {
+      try {
+        const response = await fetch(`https://quranapi.pages.dev/api/${surahNum}.json`);
+        const resJson = await response.json();
+        if (resJson?.arabic1) {
+          const allAyahs = resJson.arabic1;
+          const rangeAyahs = allAyahs.slice(startNum - 1, endNum);
+          combinedText = rangeAyahs.join(' ۞ ');
+          success = true;
+        }
+      } catch (mirrorErr) {
+        console.warn('Mirror Quran API failed too...', mirrorErr);
+      }
+    }
+
+    // 3. Process the text and set state
+    if (success && combinedText) {
+      const bismillah = 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ';
+      const bismillahAlt = 'بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ';
+      if (surahNum !== 1 && startNum === 1) {
+        if (combinedText.startsWith(bismillah)) {
+          combinedText = combinedText.replace(bismillah, '').trim();
+        } else if (combinedText.startsWith(bismillahAlt)) {
+          combinedText = combinedText.replace(bismillahAlt, '').trim();
+        }
+      }
+
+      setCurrentAyah({
+        id: `dynamic-${surahNum}-${startNum}-${endNum}`,
+        text: combinedText,
+        surah: `سورة ${surahsList.find(s => s.number === surahNum)?.name || 'مخصصة'}`,
+        number: startNum === endNum ? startNum : `${startNum} - ${endNum}`,
+      });
+      setStep('ready');
+    } else {
+      // 4. Offline fallback to local mockup data
+      const localAyah = ayahs[Math.floor(Math.random() * ayahs.length)];
+      setCurrentAyah({
+        id: `local-fallback-${Date.now()}`,
+        text: localAyah.text,
+        surah: localAyah.surah,
+        number: localAyah.number,
+      });
+      setStep('ready');
+      Alert.alert(
+        language === 'ar' ? 'الوضع غير المتصل 📡' : 'Offline Mode 📡',
+        language === 'ar'
+          ? 'تعذر الاتصال بخوادم القرآن. تم تحميل آية مخزنة محلياً للاستمرار بالتحدي.'
+          : 'Could not connect to online servers. Loaded local fallback verses to continue the challenge.'
+      );
+    }
+    setFetchingAyah(false);
   };
 
   return (

@@ -404,7 +404,7 @@ Join us in our daily journey towards Islamic knowledge! 🚀`;
 
           {/* Worship Pillar Card with sub shortcuts */}
           <View style={styles.pillarSectionCard}>
-            <TouchableOpacity onPress={() => navigation.navigate('WorshipSanctuary')} activeOpacity={0.9} style={styles.pillarHeaderRow}>
+            <TouchableOpacity onPress={() => navigation.navigate('Grow', { initialCategory: 'worship' })} activeOpacity={0.9} style={styles.pillarHeaderRow}>
               <View style={[styles.pillarHeaderIconWrapper, { backgroundColor: 'rgba(16, 185, 129, 0.12)', borderColor: 'rgba(16, 185, 129, 0.3)' }]}>
                 <MosqueIcon color="#10B981" size={24} />
               </View>
@@ -414,7 +414,7 @@ Join us in our daily journey towards Islamic knowledge! 🚀`;
               </View>
             </TouchableOpacity>
             <View style={styles.shortcutsGrid}>
-              <TouchableOpacity onPress={() => navigation.navigate('WorshipSanctuary')} style={styles.shortcutBtn}>
+              <TouchableOpacity onPress={() => navigation.navigate('PrayerTracker')} style={styles.shortcutBtn}>
                 <Text style={styles.shortcutEmoji}>⏰</Text>
                 <Text style={styles.shortcutLabel}>{language === 'ar' ? 'مواقيت الصلاة' : 'Prayer Times'}</Text>
               </TouchableOpacity>
@@ -427,7 +427,7 @@ Join us in our daily journey towards Islamic knowledge! 🚀`;
 
           {/* Quran Pillar Card with sub shortcuts */}
           <View style={styles.pillarSectionCard}>
-            <TouchableOpacity onPress={() => navigation.navigate('QuranSanctuary')} activeOpacity={0.9} style={styles.pillarHeaderRow}>
+            <TouchableOpacity onPress={() => navigation.navigate('Grow', { initialCategory: 'quran' })} activeOpacity={0.9} style={styles.pillarHeaderRow}>
               <View style={[styles.pillarHeaderIconWrapper, { backgroundColor: 'rgba(245, 158, 11, 0.12)', borderColor: 'rgba(245, 158, 11, 0.3)' }]}>
                 <QuranBookIcon color="#F59E0B" size={24} />
               </View>
@@ -454,7 +454,7 @@ Join us in our daily journey towards Islamic knowledge! 🚀`;
 
           {/* Knowledge Pillar Card with sub shortcuts */}
           <View style={styles.pillarSectionCard}>
-            <TouchableOpacity onPress={() => navigation.navigate('KnowledgeSanctuary')} activeOpacity={0.9} style={styles.pillarHeaderRow}>
+            <TouchableOpacity onPress={() => navigation.navigate('Grow', { initialCategory: 'knowledge' })} activeOpacity={0.9} style={styles.pillarHeaderRow}>
               <View style={[styles.pillarHeaderIconWrapper, { backgroundColor: 'rgba(59, 130, 246, 0.12)', borderColor: 'rgba(59, 130, 246, 0.3)' }]}>
                 <MapScrollIcon color="#3B82F6" size={24} />
               </View>
@@ -782,18 +782,18 @@ const getStyles = (colors: any) => StyleSheet.create({
   headerTitleText: {
     fontSize: 24,
     fontWeight: '900',
-    color: '#FBBF24',
+    color: colors.primaryDeep,
     letterSpacing: 0.5,
   },
   goldMoonBtn: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: colors.border,
   },
   goldMoonEmoji: {
     fontSize: 16,
@@ -810,11 +810,11 @@ const getStyles = (colors: any) => StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#11231D80',
+    backgroundColor: colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#1E3A2F',
+    borderColor: colors.border,
   },
   notificationEmoji: {
     fontSize: 16,
@@ -853,7 +853,7 @@ const getStyles = (colors: any) => StyleSheet.create({
   dateLabel: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#86A597',
+    color: colors.textSecondary,
     marginTop: 4,
     textAlign: 'center',
   },
@@ -889,7 +889,7 @@ const getStyles = (colors: any) => StyleSheet.create({
   },
   levelProgressBarBackground: {
     height: 8,
-    backgroundColor: '#1E3A2F',
+    backgroundColor: colors.neutralTint,
     borderRadius: 4,
     width: '100%',
     marginBottom: 8,
@@ -940,7 +940,7 @@ const getStyles = (colors: any) => StyleSheet.create({
     width: 54,
     height: 54,
     borderRadius: 27,
-    backgroundColor: '#09120F',
+    backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1006,7 +1006,7 @@ const getStyles = (colors: any) => StyleSheet.create({
   },
   questBarBackground: {
     height: 6,
-    backgroundColor: '#1E3A2F',
+    backgroundColor: colors.neutralTint,
     borderRadius: 3,
     width: '100%',
     marginBottom: 16,
@@ -1039,7 +1039,7 @@ const getStyles = (colors: any) => StyleSheet.create({
   questCheckIconActive: {
     borderColor: colors.primary,
     backgroundColor: colors.primary,
-    color: '#09120F',
+    color: colors.surface,
   },
   questItemText: {
     fontSize: 12,
@@ -1082,13 +1082,13 @@ const getStyles = (colors: any) => StyleSheet.create({
     marginBottom: 12,
   },
   shareBtn: {
-    backgroundColor: '#1E3A2F',
+    backgroundColor: colors.neutralTint,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 8,
   },
   shareBtnText: {
-    color: colors.primary,
+    color: colors.primaryDeep,
     fontSize: 11,
     fontWeight: '800',
   },

@@ -90,12 +90,18 @@ function ChallengeIcon({ id, color }: { id: string; color: string }) {
   );
 }
 
-export default function GrowScreen({ navigation }: any) {
+export default function GrowScreen({ navigation, route }: any) {
   const { language } = useLanguage();
   const { colors } = useTheme();
 
   // Active filter tab: 'all' | 'worship' | 'quran' | 'knowledge'
   const [activeTab, setActiveTab] = useState<'all' | 'worship' | 'quran' | 'knowledge'>('all');
+
+  React.useEffect(() => {
+    if (route?.params?.initialCategory) {
+      setActiveTab(route.params.initialCategory);
+    }
+  }, [route?.params?.initialCategory]);
 
   // Challenge groups mapping
   const worshipRoutes = ['PrayerTracker', 'FajrChallenge', 'Adhkar'];

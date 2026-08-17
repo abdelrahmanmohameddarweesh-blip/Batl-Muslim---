@@ -8,37 +8,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { getCurrentUserProfile } from '../firebase/auth';
 import AdBanner from '../components/AdBanner';
 
-function ArabesqueBackgroundPattern() {
-  return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      <Svg style={StyleSheet.absoluteFill}>
-        <Defs>
-          <Pattern id="arabesque" width={100} height={100} patternUnits="userSpaceOnUse">
-            {/* Draw diamond */}
-            <Path
-              d="M 50 15 L 75 50 L 50 85 L 25 50 Z"
-              stroke="#D4AF37"
-              strokeWidth={0.5}
-              opacity={0.06}
-              fill="none"
-            />
-            {/* Draw intersecting spoke lines */}
-            <Path
-              d="M 50 0 L 50 100 M 0 50 L 100 50 M 0 0 L 100 100 M 100 0 L 0 100"
-              stroke="#D4AF37"
-              strokeWidth={0.4}
-              opacity={0.04}
-              fill="none"
-            />
-            {/* Star points circles */}
-            <Circle cx={50} cy={50} r={6} stroke="#D4AF37" strokeWidth={0.5} opacity={0.06} fill="none" />
-          </Pattern>
-        </Defs>
-        <Rect width="100%" height="100%" fill="url(#arabesque)" />
-      </Svg>
-    </View>
-  );
-}
+
 
 export default function HomeScreen({ navigation }: any) {
   const { user } = useAuth();
@@ -163,7 +133,7 @@ export default function HomeScreen({ navigation }: any) {
 
   return (
     <ScrollView style={[styles.outerContainer, { backgroundColor: colors.background }]} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-      <ArabesqueBackgroundPattern />
+
       <View style={styles.container}>
         
         {/* Welcome & Top Actions Row */}

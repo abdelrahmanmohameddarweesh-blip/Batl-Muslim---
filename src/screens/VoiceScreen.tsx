@@ -647,6 +647,14 @@ export default function VoiceScreen({ navigation }: any) {
               <Text style={styles.verseText}>{currentAyah.text}</Text>
             </View>
 
+            <View style={[styles.disclaimerBox, { backgroundColor: colors.accentLight, borderColor: colors.accent }]}>
+              <Text style={[styles.disclaimerText, { color: colors.accent }]}>
+                ⚠️ {language === 'ar' 
+                  ? 'يقيس التحدي دقة مطابقة مخارج الضغط، مخارج الحروف، والمدود الصوتية مع القارئ. يرجى تلاوة الآيات المكتوبة بدقة لضمان دقة التقييم.'
+                  : 'This challenge measures dynamic emphasis, intonation, and vowel extensions matching the Qari. Please recite the written verses accurately to get a valid score.'}
+              </Text>
+            </View>
+
             <Text style={styles.statusHint}>استعد واضغط على الزر للبدء بالتسجيل</Text>
             <TouchableOpacity style={styles.micButton} onPress={handleStartRecording} activeOpacity={0.85}>
               <Text style={styles.micIcon}>🎙️</Text>
@@ -1342,5 +1350,18 @@ const getStyles = (colors: any) => StyleSheet.create({
   wholeSurahToggleTextActive: {
     color: colors.textPrimary,
     fontWeight: '900',
+  },
+  disclaimerBox: {
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginVertical: 10,
+    width: '100%',
+  },
+  disclaimerText: {
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: '700',
+    textAlign: 'center',
   },
 });

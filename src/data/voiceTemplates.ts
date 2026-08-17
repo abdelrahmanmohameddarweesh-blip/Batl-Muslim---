@@ -269,14 +269,18 @@ export function analyzeVocalImitation(
   const correlation = calculatePearsonCorrelation(resampledUser, reference.targetEnvelope);
   
   let shapeScore = 10;
-  if (correlation > 0) {
-    shapeScore = Math.max(10, Math.min(100, Math.round(correlation * 100)));
+  if (correlation > 0.45) {
+    // Normal similarity
+    shapeScore = Math.max(45, Math.min(100, Math.round(correlation * 100)));
+  } else if (correlation > 0.15) {
+    // Weak similarity - scale down
+    shapeScore = Math.max(15, Math.round(correlation * 100 * 0.8));
   } else {
+    // Extremely poor or negative correlation - random sounds
     shapeScore = Math.max(5, Math.min(15, Math.round((correlation + 1) * 10)));
   }
 
   // 5. Evaluate Long Vowel (Madd) Emphasis (أحكام المد ومخارج الضغط)
-  // Abdulbasit demands massive vocal peaks on specific vowel indices.
   // We compare user volume at vowelMaddIndices vs other parts.
   let maddScore = 100;
   if (reference.vowelMaddIndices.length > 0) {
@@ -287,11 +291,27 @@ export function analyzeVocalImitation(
       const val = resampledUser[idx];
       const targetVal = reference.targetEnvelope[idx];
 
-      // If the Qari has a tall peak (> 0.7) but the user is quiet (< 0.45) at this syllable
-      if (targetVal > 0.65 && val < 0.45) {
+      // If the Qari has a tall peak (> 0.7) but the user is quiet (< 0.48) at this syllable
+      if (targetVal > 0.65 && val < 0.48) {
         penalty += 25 * reference.style.maddEmphasisWeight;
       }
+      // User is loud where Qari is quiet/steady
+      else if (targetVal < 0.35 && val > 0.65) {
+        penalty += 18 * reference.style.maddEmphasisWeight;
+      }
     });
+
+    // General envelope difference check on non-Madd parts
+    let nonMaddDiff = 0;
+    reference.targetEnvelope.forEach((targetVal, idx) => {
+      if (!reference.vowelMaddIndices.includes(idx)) {
+        nonMaddDiff += Math.abs(resampledUser[idx] - targetVal);
+      }
+    });
+    const avgNonMaddDiff = nonMaddDiff / (reference.targetEnvelope.length - reference.vowelMaddIndices.length);
+    if (avgNonMaddDiff > 0.32) {
+      penalty += (avgNonMaddDiff * 40);
+    }
 
     maddScore = Math.max(10, 100 - Math.round(penalty));
   }
@@ -311,11 +331,11 @@ export function analyzeVocalImitation(
   const userPeaks = detectPeaks(resampledUser);
   const targetPeaks = detectPeaks(reference.targetEnvelope);
 
-  let pronunciationScore = 80; // default baseline
+  let pronunciationScore = 50; // lower default baseline
   if (targetPeaks.length === 0) {
-    pronunciationScore = userPeaks.length === 0 ? 95 : 60;
+    pronunciationScore = userPeaks.length === 0 ? 95 : 40;
   } else if (userPeaks.length === 0) {
-    pronunciationScore = 15;
+    pronunciationScore = 10;
   } else {
     let distanceSum = 0;
     targetPeaks.forEach(tPeak => {
@@ -327,7 +347,14 @@ export function analyzeVocalImitation(
       distanceSum += minD;
     });
     const avgDistance = distanceSum / targetPeaks.length;
-    pronunciationScore = Math.max(10, Math.min(100, Math.round(100 - avgDistance * 320)));
+    // Base score from spatial peak matching
+    let rawPronunciation = Math.round(100 - avgDistance * 360);
+    
+    // Deduct points for mismatch in peak density (talking too fast/slow or speaking gibberish)
+    const densityDiff = Math.abs(userPeaks.length - targetPeaks.length);
+    const densityPenalty = densityDiff * 14;
+    
+    pronunciationScore = Math.max(10, Math.min(100, rawPronunciation - densityPenalty));
   }
 
   // 7. Calculate final combined Tone score:

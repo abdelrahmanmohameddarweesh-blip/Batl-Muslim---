@@ -1,17 +1,13 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView, Share, Alert } from 'react-native';
+import React, { useState, useEffect, useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Share } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Svg, { Circle, Defs, LinearGradient, Stop, Path, Pattern, Rect } from 'react-native-svg';
-import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
+import Svg, { Path, Rect, Circle, Defs, Pattern } from 'react-native-svg';
 import { useAuth } from '../contexts/AuthContext';
-import { useLanguage } from '../contexts/LanguageContext';
-import { getCurrentUserProfile, saveUserScore } from '../firebase/auth';
-import { shareAchievementWithImage } from '../utils/sharing';
-import AdBanner from '../components/AdBanner';
 import { useTheme } from '../contexts/ThemeContext';
-import { Colors } from '../config/colors';
+import { useLanguage } from '../contexts/LanguageContext';
+import { getCurrentUserProfile } from '../firebase/auth';
+import AdBanner from '../components/AdBanner';
 
-// Natively generated low-opacity Islamic geometric repeating backdrop
 function ArabesqueBackgroundPattern() {
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -23,7 +19,7 @@ function ArabesqueBackgroundPattern() {
               d="M 50 15 L 75 50 L 50 85 L 25 50 Z"
               stroke="#D4AF37"
               strokeWidth={0.5}
-              opacity={0.15}
+              opacity={0.06}
               fill="none"
             />
             {/* Draw intersecting spoke lines */}
@@ -31,11 +27,11 @@ function ArabesqueBackgroundPattern() {
               d="M 50 0 L 50 100 M 0 50 L 100 50 M 0 0 L 100 100 M 100 0 L 0 100"
               stroke="#D4AF37"
               strokeWidth={0.4}
-              opacity={0.1}
+              opacity={0.04}
               fill="none"
             />
             {/* Star points circles */}
-            <Circle cx={50} cy={50} r={6} stroke="#D4AF37" strokeWidth={0.5} opacity={0.15} fill="none" />
+            <Circle cx={50} cy={50} r={6} stroke="#D4AF37" strokeWidth={0.5} opacity={0.06} fill="none" />
           </Pattern>
         </Defs>
         <Rect width="100%" height="100%" fill="url(#arabesque)" />
@@ -44,182 +40,54 @@ function ArabesqueBackgroundPattern() {
   );
 }
 
-function MosqueIcon({ color = '#FBBF24', size = 26 }: { color?: string, size?: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M12 2v3M12 5c-2.5 0-4.5 1.8-4.9 4.2h9.8c-.4-2.4-2.4-4.2-4.9-4.2zm-9 6h18v1H3v-1zm1 2h16v8H4v-8zm5 3v5h6v-5H9z"
-        stroke={color}
-        strokeWidth={1.8}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
-}
-
-function QuranBookIcon({ color = '#FBBF24', size = 26 }: { color?: string, size?: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20M4 19.5V5A2.5 2.5 0 0 1 6.5 2.5H20v14.5M6 6h10M6 10h10"
-        stroke={color}
-        strokeWidth={1.8}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
-}
-
-function MapScrollIcon({ color = '#FBBF24', size = 26 }: { color?: string, size?: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M9 20l-5.4-3V4L9 7l6-3 5.4 3v13l-6-3-6 3zm0-13v13M15 4v13"
-        stroke={color}
-        strokeWidth={1.8}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
-}
-
-// Custom SVG Circular Progress Ring
-function CircularProgress({ size, strokeWidth, percent, emoji, label, color, ringColor, colors }: any) {
-  const styles = getStyles(colors);
-  const radius = (size - strokeWidth) / 2;
-  const circumference = radius * 2 * Math.PI;
-  const strokeDashoffset = circumference - (percent / 100) * circumference;
-
-  return (
-    <View style={styles.circularProgressContainer}>
-      <View style={styles.svgWrapper}>
-        <Svg width={size} height={size}>
-          <Defs>
-            <LinearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <Stop offset="0%" stopColor={ringColor} />
-              <Stop offset="100%" stopColor={color} />
-            </LinearGradient>
-          </Defs>
-          <Circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            stroke="#1A342B"
-            strokeWidth={strokeWidth}
-            fill="transparent"
-          />
-          <Circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            stroke="url(#ringGrad)"
-            strokeWidth={strokeWidth}
-            strokeDasharray={`${circumference} ${circumference}`}
-            strokeDashoffset={strokeDashoffset}
-            strokeLinecap="round"
-            fill="transparent"
-            transform={`rotate(-90 ${size / 2} ${size / 2})`}
-          />
-        </Svg>
-        <View style={styles.innerCircle}>
-          <Text style={styles.innerEmoji}>{emoji}</Text>
-        </View>
-      </View>
-      <Text style={styles.percentText}>{percent}%</Text>
-      <Text style={styles.progressLabel}>{label}</Text>
-    </View>
-  );
-}
-
 export default function HomeScreen({ navigation }: any) {
   const { user } = useAuth();
-  const { t, language } = useLanguage();
-  const { colors, isLightMode } = useTheme();
+  const { language } = useLanguage();
+  const { colors } = useTheme();
   
-  const homeColors = colors;
-
-  const styles = getStyles(homeColors);
   const [profile, setProfile] = useState<any>(null);
-  const [showGuide, setShowGuide] = useState(false);
-  const [activePath, setActivePath] = useState<'solo' | 'live'>('solo');
+  const [loading, setLoading] = useState(false);
   
-  // Daily goals state
-  const [prayersCompletedCount, setPrayersCompletedCount] = useState(0);
-  const [recitationMinutes, setRecitationMinutes] = useState(15);
-  const [streakDays, setStreakDays] = useState(7);
+  // Daily tasks completion states
+  const [prayersDone, setPrayersDone] = useState(false);
+  const [adhkarDone, setAdhkarDone] = useState(false);
+  const [triviaDone, setTriviaDone] = useState(false);
 
-  // Daily Quests State (Trivia, Prayer, Voice)
-  const [questTriviaPlayed, setQuestTriviaPlayed] = useState(false);
-  const [questPrayerLogged, setQuestPrayerLogged] = useState(false);
-  const [questVoiceDone, setQuestVoiceDone] = useState(false);
-  const [questBonusAwarded, setQuestBonusAwarded] = useState(false);
-
-  // Communal Daily Quest States
-  const [communalCount, setCommunalCount] = useState<number>(34250);
-  const [hasContributedToday, setHasContributedToday] = useState<boolean>(false);
+  const todayStr = useMemo(() => {
+    const today = new Date();
+    return `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+  }, []);
 
   const loadData = async () => {
     if (!user?.uid) return;
+    setLoading(true);
     try {
       const currentProfile = await getCurrentUserProfile(user.uid);
       setProfile(currentProfile);
 
-      const today = new Date();
-      const todayStr = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
-      
-      // 1. Load today's prayers status
-      const prayerKey = `prayer-tracker-${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
-      const storedPrayers = await AsyncStorage.getItem(prayerKey);
-      let pCount = 0;
-      if (storedPrayers) {
-        const parsed = JSON.parse(storedPrayers);
-        pCount = Object.values(parsed).filter(Boolean).length;
-        setPrayersCompletedCount(pCount);
-      } else {
-        setPrayersCompletedCount(0);
+      // Check daily prayers log completion
+      const storedLog = await AsyncStorage.getItem(`accountability-log-${todayStr}`);
+      if (storedLog) {
+        const parsed = JSON.parse(storedLog);
+        const pCompleted = Object.values(parsed.prayers || {}).filter(val => val === 'congregation' || val === 'individual').length;
+        setPrayersDone(pCompleted === 5);
       }
 
-      // 2. Check Daily Quests Completion Status
+      // Check morning & evening sets completion
+      const storedSets = await AsyncStorage.getItem(`adhkar-sets-${todayStr}`);
+      if (storedSets) {
+        const parsed = JSON.parse(storedSets);
+        setAdhkarDone(!!parsed[`morning-${todayStr}`] || !!parsed[`evening-${todayStr}`]);
+      }
+
+      // Check trivia quiz completion
       const triviaPlayed = await AsyncStorage.getItem(`quest-trivia-played-${todayStr}`);
-      const voiceDone = await AsyncStorage.getItem(`quest-voice-done-${todayStr}`);
-      const bonusGot = await AsyncStorage.getItem(`quest-daily-bonus-awarded-${todayStr}`);
-
-      setQuestTriviaPlayed(triviaPlayed === 'true');
-      setQuestPrayerLogged(pCount > 0);
-      setQuestVoiceDone(voiceDone === 'true');
-      setQuestBonusAwarded(bonusGot === 'true');
-
-      // 3. Handle awarding daily quest bonus automatically
-      if (triviaPlayed === 'true' && pCount > 0 && voiceDone === 'true' && bonusGot !== 'true') {
-        const nextScore = (currentProfile?.score ?? 0) + 50;
-        await saveUserScore(user.uid, nextScore);
-        await AsyncStorage.setItem(`quest-daily-bonus-awarded-${todayStr}`, 'true');
-        setQuestBonusAwarded(true);
-        Alert.alert(
-          language === 'ar' ? 'تهانينا! 🎉' : 'Congratulations! 🎉',
-          language === 'ar' 
-            ? 'لقد أكملت جميع المهام اليومية وحصلت على +٥٠ نقطة مكافأة!'
-            : 'You have completed all daily quests and earned +50 XP bonus points!'
-        );
-        // Reload profile to show new score
-        const updatedProfile = await getCurrentUserProfile(user.uid);
-        setProfile(updatedProfile);
-      }
-
-      const commCount = await AsyncStorage.getItem('communal-quest-tasbih-count');
-      if (commCount) {
-        setCommunalCount(parseInt(commCount, 10));
-      } else {
-        setCommunalCount(34250);
-      }
-      const contributed = await AsyncStorage.getItem(`communal-quest-contributed-${todayStr}`);
-      setHasContributedToday(contributed === 'true');
+      setTriviaDone(triviaPlayed === 'true');
 
     } catch (err) {
-      console.error('Error loading home data:', err);
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -231,17 +99,11 @@ export default function HomeScreen({ navigation }: any) {
     return unsubscribe;
   }, [user?.uid, navigation]);
 
-  useEffect(() => {
-    const checkGuide = async () => {
-      const completed = await AsyncStorage.getItem(ONBOARDING_KEY);
-      if (!completed) {
-        setShowGuide(true);
-      }
-    };
-    checkGuide();
-  }, []);
-
   const currentScore = profile?.score ?? 0;
+  const currentLevel = Math.max(1, Math.floor(currentScore / 100));
+  const currentXP = currentScore % 100;
+  const targetXP = 100;
+  const streakDays = profile?.streak ?? 0;
 
   const levelName = useMemo(() => {
     if (currentScore >= 500) return language === 'ar' ? 'البطل الأسطوري' : 'Legendary Hero';
@@ -250,1376 +112,605 @@ export default function HomeScreen({ navigation }: any) {
     return language === 'ar' ? 'بطل مبتدئ' : 'Novice Hero';
   }, [currentScore, language]);
 
-  const handleContributeCommunal = async () => {
-    if (!user?.uid) return;
-    try {
-      const today = new Date();
-      const todayStr = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
-      
-      const nextCount = communalCount + 10;
-      setCommunalCount(nextCount);
-      await AsyncStorage.setItem('communal-quest-tasbih-count', nextCount.toString());
-      await AsyncStorage.setItem(`communal-quest-contributed-${todayStr}`, 'true');
-      setHasContributedToday(true);
+  const formattedDates = useMemo(() => {
+    const today = new Date();
+    
+    // Hijri date approximation
+    const hijriFormatter = new Intl.DateTimeFormat('ar-SA-u-ca-islamic', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+    const hijri = hijriFormatter.format(today);
 
-      const nextScore = currentScore + 5;
-      await saveUserScore(user.uid, nextScore);
+    // Gregorian date
+    const gregorianFormatter = new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG' : 'en-US', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+    });
+    const gregorian = gregorianFormatter.format(today);
+
+    return { gregorian, hijri };
+  }, [language]);
+
+  const handleShareAyah = async () => {
+    try {
+      const message = `📖 آية اليوم من تطبيق *بطل مسلم* 🏆:
       
-      Alert.alert(
-        language === 'ar' ? 'مساهمة مباركة! 📿' : 'Blessed Contribution! 📿',
-        language === 'ar'
-          ? 'تم تسجيل +١٠ صلوات على النبي ﷺ في التحدي الجماعي وحصلت على +٥ نقاط خبرة!'
-          : 'Registered +10 Salawat in the communal challenge and earned +5 XP points!'
-      );
-      await loadData();
+﴿ وَفِي ذَٰلِكَ فَلْيَتَنَافَسِ الْمُتَنَافِسُونَ ﴾
+"وفي ذلك فليتنافس المتنافسون" - سورة المطففين: ٢٦
+
+شاركوني التحدي وحملوا التطبيق الآن للارتقاء بعبادتكم اليومية! 🚀`;
+      await Share.share({ message });
     } catch (err) {
       console.error(err);
     }
   };
 
-  const dismissGuide = async () => {
-    await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
-    setShowGuide(false);
-  };
+  // 7 days checklist mock-up
+  const daysList = [
+    { label: 'س', active: streakDays >= 7 },
+    { label: 'ح', active: streakDays >= 6 },
+    { label: 'ن', active: streakDays >= 5 },
+    { label: 'ث', active: streakDays >= 4 },
+    { label: 'ر', active: streakDays >= 3 },
+    { label: 'خ', active: streakDays >= 2 },
+    { label: 'ج', active: streakDays >= 1 },
+  ];
 
-  const handleShareAyah = async () => {
-    const message = language === 'ar' 
-      ? `📖 آية اليوم من تطبيق *بطل مسلم* 🌟
-
-{ وَسَارِعُوا إِلَىٰ مَغْفِرَةٍ مِّن رَّبِّكُمْ وَجَنَّةٍ عَرْضُهَا السَّمَاوَاتُ وَالْأَرْضُ أُعَدَّتْ لِلْمُتَّقِينَ }
-[سورة آل عمران | 3:133]
-
-"And hasten to forgiveness from your Lord and a garden as wide as the heavens and the earth, prepared for the righteous."
-
-انضم إلينا في رحلة التنافس اليومي نحو المعرفة الإسلامية! 🚀`
-      : `📖 Ayah of the Day from *Batl Muslim* App 🌟
-
-"And hasten to forgiveness from your Lord and a garden as wide as the heavens and the earth, prepared for the righteous."
-[Surah Al-Imran | 3:133]
-
-Join us in our daily journey towards Islamic knowledge! 🚀`;
-
-    await shareAchievementWithImage(message);
-  };
-
-  // Date formatting
-  const formattedDates = useMemo(() => {
-    const today = new Date();
-    const gregorian = today.toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-    const hijri = new Intl.DateTimeFormat(language === 'ar' ? 'ar-SA-u-ca-islamic' : 'en-US-u-ca-islamic', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    }).format(today);
-    
-    return { gregorian, hijri };
-  }, [language]);
+  const totalDoneQuests = [prayersDone, adhkarDone, triviaDone].filter(Boolean).length;
 
   return (
-    <ScrollView style={styles.outerContainer} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+    <ScrollView style={[styles.outerContainer, { backgroundColor: colors.background }]} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ArabesqueBackgroundPattern />
       <View style={styles.container}>
-        <ArabesqueBackgroundPattern />
-        <View style={styles.topGlow} />
-
-        {/* Custom Header matching the Mockup */}
-        <View style={styles.mockupHeader}>
-          <View style={styles.headerTopRow}>
-            {/* Bell Icon at Left */}
-            <TouchableOpacity style={styles.notificationBtn} activeOpacity={0.75}>
-              <Text style={styles.notificationEmoji}>🔔</Text>
-            </TouchableOpacity>
-
-            {/* Title in center */}
-            <Text style={styles.headerTitleText}>Muslim Hero</Text>
-
-            {/* Gold Moon icon at Right */}
-            <View style={styles.goldMoonBtn}>
-              <Text style={styles.goldMoonEmoji}>🌙</Text>
-            </View>
+        
+        {/* Welcome & Top Actions Row */}
+        <View style={styles.topHeaderRow}>
+          <View style={styles.greetingCol}>
+            <Text style={[styles.greetingLabelText, { color: colors.textSecondary }]}>
+              {language === 'ar' ? 'السلام عليكم ورحمة الله' : 'Peace be upon you'}
+            </Text>
+            <Text style={[styles.profileNameText, { color: colors.textPrimary }]}>
+              {user?.displayName || (language === 'ar' ? 'بطل مسلم' : 'Guest Hero')}
+            </Text>
           </View>
           
-          <Text style={styles.dateLabel}>{formattedDates.hijri} | {formattedDates.gregorian}</Text>
+          <View style={styles.headerRightActions}>
+            {/* Notification Bell */}
+            <TouchableOpacity style={[styles.headerBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} activeOpacity={0.75}>
+              <Svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={colors.textSecondary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <Path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6z" />
+                <Path d="M10 20a2 2 0 0 0 4 0" />
+              </Svg>
+              <View style={[styles.unreadDot, { borderColor: colors.surface }]} />
+            </TouchableOpacity>
+
+            {/* Avatar container */}
+            <TouchableOpacity 
+              style={[styles.avatarBorderFrame, { borderColor: colors.primary }]}
+              onPress={() => navigation.navigate('Profile')}
+              activeOpacity={0.75}
+            >
+              <View style={[styles.avatarInnerCircle, { backgroundColor: colors.primaryTint }]}>
+                <Text style={styles.avatarEmojiText}>🧕</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
         </View>
 
-        <View style={styles.bodyContent}>
-          {/* Compact Stats Bar */}
-          <View style={styles.compactStatsBar}>
-            <View style={styles.statPill}>
-              <Text style={styles.statEmoji}>🔥</Text>
-              <Text style={styles.statText}>{streakDays} {language === 'ar' ? 'أيام' : 'Days'}</Text>
-            </View>
-            <View style={styles.statPill}>
-              <Text style={styles.statEmoji}>⭐️</Text>
-              <Text style={styles.statText}>
-                {language === 'ar' 
-                  ? `المستوى ${Math.max(1, Math.floor(currentScore / 100))}` 
-                  : `Lvl ${Math.max(1, Math.floor(currentScore / 100))}`}
+        {/* Date Label */}
+        <Text style={[styles.dateTextLabel, { color: colors.textSecondary }]}>
+          {formattedDates.hijri} · {formattedDates.gregorian}
+        </Text>
+
+        {/* XP Progress Card */}
+        <View style={[styles.progressCard, { backgroundColor: colors.primaryDeep }]}>
+          {/* Background vector rosette rosette */}
+          <Svg viewBox="0 0 120 120" width="150" height="150" style={styles.cardBgVector}>
+            <Rect x="30" y="30" width="60" height="60" fill="none" stroke="#FFFFFF" strokeWidth="2.5" opacity="0.12" />
+            <Rect x="30" y="30" width="60" height="60" fill="none" stroke="#FFFFFF" strokeWidth="2.5" opacity="0.12" transform="rotate(45 60 60)" />
+          </Svg>
+
+          <View style={styles.progressHeaderRow}>
+            <View style={styles.progressLabelCol}>
+              <Text style={styles.progressSubLabel}>
+                {language === 'ar' ? 'رتبتك الحالية' : 'Current Rank'}
+              </Text>
+              <Text style={styles.progressMainLabel}>
+                {levelName} · {language === 'ar' ? `المستوى ${currentLevel}` : `Level ${currentLevel}`}
               </Text>
             </View>
-            <View style={styles.statPill}>
-              <Text style={styles.statEmoji}>✨</Text>
-              <Text style={styles.statText}>{currentScore % 100} / 100 XP</Text>
+
+            <View style={[styles.scoreBadge, { backgroundColor: 'rgba(255, 255, 255, 0.15)', borderColor: 'rgba(255, 255, 255, 0.25)' }]}>
+              <Text style={styles.scoreBadgeNum}>{currentScore}</Text>
+              <Text style={styles.scoreBadgeLabel}>{language === 'ar' ? 'نقطة' : 'XP'}</Text>
             </View>
           </View>
 
-          {/* How It Works visual roadmap guide */}
-          <Text style={styles.sectionHeader}>{language === 'ar' ? 'كيف يعمل التطبيق؟ 🧭' : 'How It Works 🧭'}</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.roadmapScroll} style={styles.roadmapContainer}>
-            <View style={styles.roadmapCard}>
-              <Text style={styles.roadmapStepNum}>1</Text>
-              <Text style={styles.roadmapTitle}>{language === 'ar' ? 'حاسب نفسك يومياً' : 'Daily Accountability'}</Text>
-              <Text style={styles.roadmapDesc}>
-                {language === 'ar' 
-                  ? 'سجّل صلواتك الخمس ووردك بصدق في صفحة المحاسبة لتكسب نقاطاً.' 
-                  : 'Log prayers and daily Quran readings honestly in the Accountability tab.'}
-              </Text>
-            </View>
-            <View style={styles.roadmapCard}>
-              <Text style={styles.roadmapStepNum}>2</Text>
-              <Text style={styles.roadmapTitle}>{language === 'ar' ? 'رتل وشارك تلاوتك' : 'Recite & Share'}</Text>
-              <Text style={styles.roadmapDesc}>
-                {language === 'ar' 
-                  ? 'سجل تلاوتك للقرآن الكريم وانشرها في ساحة التلاوة ليتفاعل معك المجتمع.' 
-                  : 'Record and share your recitations to the Recitation Square feed.'}
-              </Text>
-            </View>
-            <View style={styles.roadmapCard}>
-              <Text style={styles.roadmapStepNum}>3</Text>
-              <Text style={styles.roadmapTitle}>{language === 'ar' ? 'نافس وارتقِ بالترتيب' : 'Arena Duels'}</Text>
-              <Text style={styles.roadmapDesc}>
-                {language === 'ar' 
-                  ? 'ادخل ساحة المنافسة وتحدَ الأصدقاء في مسابقات ثقافية سريعة.' 
-                  : 'Challenge peers in live trivia duels and climb the global leaderboards.'}
-              </Text>
-            </View>
-          </ScrollView>
-
-          {/* Pillars Navigation Hub */}
-          <Text style={styles.sectionHeader}>{language === 'ar' ? 'أركان بطل مسلم 🗺️' : 'Pillars of Muslim Hero 🗺️'}</Text>
-
-          {/* Worship Pillar Card with sub shortcuts */}
-          <View style={styles.pillarSectionCard}>
-            <TouchableOpacity onPress={() => navigation.navigate('Grow', { initialCategory: 'worship' })} activeOpacity={0.9} style={styles.pillarHeaderRow}>
-              <View style={[styles.pillarHeaderIconWrapper, { backgroundColor: 'rgba(16, 185, 129, 0.12)', borderColor: 'rgba(16, 185, 129, 0.3)' }]}>
-                <MosqueIcon color="#10B981" size={24} />
-              </View>
-              <View style={styles.pillarHeaderInfo}>
-                <Text style={styles.pillarHeaderTitle}>{language === 'ar' ? 'أركان العبادة' : 'Worship Essentials'}</Text>
-                <Text style={styles.pillarHeaderDesc}>{language === 'ar' ? 'الصلاة، الأذكار والدعاء' : 'Prayers, Adhkar and Dua'}</Text>
-              </View>
-            </TouchableOpacity>
-            <View style={styles.shortcutsGrid}>
-              <TouchableOpacity onPress={() => navigation.navigate('PrayerTracker')} style={styles.shortcutBtn}>
-                <Text style={styles.shortcutEmoji}>⏰</Text>
-                <Text style={styles.shortcutLabel}>{language === 'ar' ? 'مواقيت الصلاة' : 'Prayer Times'}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => navigation.navigate('Adhkar')} style={styles.shortcutBtn}>
-                <Text style={styles.shortcutEmoji}>📿</Text>
-                <Text style={styles.shortcutLabel}>{language === 'ar' ? 'حصن المسلم' : 'Adhkar Portal'}</Text>
-              </TouchableOpacity>
-            </View>
+          {/* Progress bar line */}
+          <View style={styles.progressBarBackground}>
+            <View style={[styles.progressBarFill, { width: `${(currentXP / targetXP) * 100}%` }]} />
           </View>
 
-          {/* Quran Pillar Card with sub shortcuts */}
-          <View style={styles.pillarSectionCard}>
-            <TouchableOpacity onPress={() => navigation.navigate('Grow', { initialCategory: 'quran' })} activeOpacity={0.9} style={styles.pillarHeaderRow}>
-              <View style={[styles.pillarHeaderIconWrapper, { backgroundColor: 'rgba(245, 158, 11, 0.12)', borderColor: 'rgba(245, 158, 11, 0.3)' }]}>
-                <QuranBookIcon color="#F59E0B" size={24} />
-              </View>
-              <View style={styles.pillarHeaderInfo}>
-                <Text style={styles.pillarHeaderTitle}>{language === 'ar' ? 'محراب القرآن الكريم' : 'Quran Sanctuary'}</Text>
-                <Text style={styles.pillarHeaderDesc}>{language === 'ar' ? 'تلاوة وحفظ وسماع آيات الله' : 'Recitations and Audio Portal'}</Text>
-              </View>
-            </TouchableOpacity>
-            <View style={styles.shortcutsGrid}>
-              <TouchableOpacity onPress={() => navigation.navigate('Voice')} style={styles.shortcutBtn}>
-                <Text style={styles.shortcutEmoji}>🎙️</Text>
-                <Text style={styles.shortcutLabel}>{language === 'ar' ? 'تقليد القراء' : 'Imitate Reciters'}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => navigation.navigate('Memorization')} style={styles.shortcutBtn}>
-                <Text style={styles.shortcutEmoji}>✍️</Text>
-                <Text style={styles.shortcutLabel}>{language === 'ar' ? 'تسهيل الحفظ' : 'Hifz Companion'}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => navigation.navigate('ReadingChallenge')} style={styles.shortcutBtn}>
-                <Text style={styles.shortcutEmoji}>🎧</Text>
-                <Text style={styles.shortcutLabel}>{language === 'ar' ? 'الورد القرآني' : 'Listen & Read'}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Knowledge Pillar Card with sub shortcuts */}
-          <View style={styles.pillarSectionCard}>
-            <TouchableOpacity onPress={() => navigation.navigate('Grow', { initialCategory: 'knowledge' })} activeOpacity={0.9} style={styles.pillarHeaderRow}>
-              <View style={[styles.pillarHeaderIconWrapper, { backgroundColor: 'rgba(59, 130, 246, 0.12)', borderColor: 'rgba(59, 130, 246, 0.3)' }]}>
-                <MapScrollIcon color="#3B82F6" size={24} />
-              </View>
-              <View style={styles.pillarHeaderInfo}>
-                <Text style={styles.pillarHeaderTitle}>{language === 'ar' ? 'مسالك المعرفة' : 'Knowledge Quests'}</Text>
-                <Text style={styles.pillarHeaderDesc}>{language === 'ar' ? 'السيرة النبوية، الأحاديث والمسابقات' : 'Sirah Quest, Hadith and Trivia'}</Text>
-              </View>
-            </TouchableOpacity>
-            <View style={styles.shortcutsGrid}>
-              <TouchableOpacity onPress={() => navigation.navigate('SirahQuest')} style={styles.shortcutBtn}>
-                <Text style={styles.shortcutEmoji}>🧭</Text>
-                <Text style={styles.shortcutLabel}>{language === 'ar' ? 'خريطة السيرة' : 'Sirah Quest'}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => navigation.navigate('Trivia')} style={styles.shortcutBtn}>
-                <Text style={styles.shortcutEmoji}>🧠</Text>
-                <Text style={styles.shortcutLabel}>{language === 'ar' ? 'مسابقة المعلومات' : 'Trivia Duel'}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => navigation.navigate('HadithChallenge')} style={styles.shortcutBtn}>
-                <Text style={styles.shortcutEmoji}>📚</Text>
-                <Text style={styles.shortcutLabel}>{language === 'ar' ? 'سلسلة الأحاديث' : 'Hadith Series'}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Ayah of the Day */}
-          <Text style={styles.sectionTitle}>{t('ayahOfDay')}</Text>
-          <View style={styles.ayahCard}>
-            <View style={styles.ayahHeader}>
-              <TouchableOpacity style={styles.shareBtn} onPress={handleShareAyah} activeOpacity={0.75}>
-                <Text style={styles.shareBtnText}>{t('share')}</Text>
-              </TouchableOpacity>
-              <Text style={styles.ayahTitle}>Surah Al-Imran | 3:133</Text>
-            </View>
-            <Text style={styles.ayahArabic}>
-              {`﴿  وَسَارِعُوا إِلَىٰ مَغْفِرَةٍ مِّن رَّبِّكُمْ وَجَنَّةٍ عَرْضُهَا السَّمَاوَاتُ وَالْأَرْضُ أُعَدَّتْ لِلْمُتَّقِينَ  ﴾`}
+          <View style={styles.progressFooterRow}>
+            <Text style={styles.progressFooterText}>
+              {language === 'ar' ? `${targetXP - currentXP} نقطة للمستوى التالي` : `${targetXP - currentXP} XP to next level`}
             </Text>
-            <Text style={styles.ayahEnglish}>
-              "And hasten to forgiveness from your Lord and a garden as wide as the heavens and the earth, prepared for the righteous."
+            <Text style={styles.progressValueText}>
+              {currentXP} / {targetXP}
             </Text>
           </View>
         </View>
 
-        {/* Welcome Guide Modal */}
-        <Modal transparent visible={showGuide} animationType="fade">
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalCard}>
-              <Text style={styles.modalEmoji}>🌱</Text>
-              <Text style={styles.modalTitle}>مرحباً بك في بطل مسلم!</Text>
-              <Text style={styles.modalSubtitle}>إليك خطوات سريعة للبدء والتقدم:</Text>
-              
-              <View style={styles.guideStep}>
-                <Text style={styles.stepNumber}>١</Text>
-                <Text style={styles.stepText}>اختر مستوى الأسئلة المناسب لثقافتك الإسلامية.</Text>
-              </View>
-              <View style={styles.guideStep}>
-                <Text style={styles.stepNumber}>٢</Text>
-                <Text style={styles.stepText}>أجب على الأسئلة واكسب نقاطاً إضافية مع كل إجابة متتالية.</Text>
-              </View>
-              <View style={styles.guideStep}>
-                <Text style={styles.stepNumber}>٣</Text>
-                <Text style={styles.stepText}>راقب ترتيبك بين أبطال العالم ووثق إنجازاتك في ملفك الشخصي.</Text>
-              </View>
-
-              <TouchableOpacity style={styles.modalButton} onPress={dismissGuide} activeOpacity={0.85}>
-                <Text style={styles.modalButtonText}>ابدأ رحلتي المباركة ✨</Text>
-              </TouchableOpacity>
+        {/* Challenge Streak Card */}
+        <View style={[styles.streakCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={styles.streakLeftCol}>
+            <View style={styles.streakFlameIconWrapper}>
+              <Svg width="20" height="20" viewBox="0 0 24 24" fill="#F97316" stroke="none">
+                <Path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
+              </Svg>
+            </View>
+            <View style={styles.streakCountTexts}>
+              <Text style={[styles.streakDaysValText, { color: colors.textPrimary }]}>
+                {streakDays} {language === 'ar' ? 'أيام' : 'Days'}
+              </Text>
+              <Text style={[styles.streakLabelText, { color: colors.textSecondary }]}>
+                {language === 'ar' ? 'سلسلة التحدي' : 'Daily Streak'}
+              </Text>
             </View>
           </View>
-        </Modal>
+
+          {/* 7 Days Row */}
+          <View style={styles.daysRow}>
+            {daysList.map((day, idx) => (
+              <View
+                key={idx}
+                style={[
+                  styles.dayPill,
+                  { backgroundColor: colors.neutralTint, borderColor: colors.border },
+                  day.active && styles.dayPillActive
+                ]}
+              >
+                <Text style={[styles.dayPillText, day.active ? { color: '#FFFFFF' } : { color: colors.textTertiary }]}>
+                  {day.label}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* Daily Goals / Quests Card */}
+        <View style={[styles.questsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={styles.questsHeader}>
+            <Text style={[styles.questsTitleText, { color: colors.textPrimary }]}>
+              {language === 'ar' ? 'المهام اليومية' : 'Daily Quests'}
+            </Text>
+            <View style={[styles.questsRatioBadge, { backgroundColor: colors.primaryTint }]}>
+              <Text style={[styles.questsRatioText, { color: colors.primaryOnTint }]}>
+                {totalDoneQuests} / 3
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.questsList}>
+            {/* Quest 1 */}
+            <View style={styles.questItemRow}>
+              <View style={[
+                styles.questCheckbox,
+                { borderColor: prayersDone ? colors.primary : colors.borderStrong, backgroundColor: prayersDone ? colors.primary : 'transparent' }
+              ]}>
+                {prayersDone && (
+                  <Svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                    <Path d="M20 6 9 17l-5-5" />
+                  </Svg>
+                )}
+              </View>
+              <Text style={[styles.questText, { color: colors.textPrimary }, prayersDone && styles.questTextDone]}>
+                {language === 'ar' ? '🕌 إتمام الصلوات الخمس المفروضة' : '🕌 Log all 5 daily prayers'}
+              </Text>
+            </View>
+
+            {/* Quest 2 */}
+            <View style={styles.questItemRow}>
+              <View style={[
+                styles.questCheckbox,
+                { borderColor: adhkarDone ? colors.primary : colors.borderStrong, backgroundColor: adhkarDone ? colors.primary : 'transparent' }
+              ]}>
+                {adhkarDone && (
+                  <Svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                    <Path d="M20 6 9 17l-5-5" />
+                  </Svg>
+                )}
+              </View>
+              <Text style={[styles.questText, { color: colors.textPrimary }, adhkarDone && styles.questTextDone]}>
+                {language === 'ar' ? '📿 قراءة أوراد الأذكار اليومية' : '📿 Read morning or evening Adhkar'}
+              </Text>
+            </View>
+
+            {/* Quest 3 */}
+            <View style={styles.questItemRow}>
+              <View style={[
+                styles.questCheckbox,
+                { borderColor: triviaDone ? colors.primary : colors.borderStrong, backgroundColor: triviaDone ? colors.primary : 'transparent' }
+              ]}>
+                {triviaDone && (
+                  <Svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                    <Path d="M20 6 9 17l-5-5" />
+                  </Svg>
+                )}
+              </View>
+              <Text style={[styles.questText, { color: colors.textPrimary }, triviaDone && styles.questTextDone]}>
+                {language === 'ar' ? '🧠 خوض مسابقة المعلومات اليومية' : '🧠 Play today\'s trivia challenge'}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Ayah of the Day Card */}
+        <View style={[styles.ayahCard, { backgroundColor: colors.accentTint, borderColor: colors.accentTintBorder }]}>
+          <View style={styles.ayahHeaderRow}>
+            <Text style={[styles.ayahLabelText, { color: colors.accentOnTint }]}>
+              {language === 'ar' ? 'آية اليوم' : 'Ayah of the Day'}
+            </Text>
+            <TouchableOpacity style={styles.ayahShareButton} onPress={handleShareAyah} activeOpacity={0.7}>
+              <Svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={colors.accentOnTint} strokeWidth="2.5">
+                <Path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                <Path d="m16 6-4-4-4 4" />
+                <Path d="M12 2v13" />
+              </Svg>
+            </TouchableOpacity>
+          </View>
+          
+          <Text style={[styles.ayahArabicText, { color: colors.textPrimary }]}>
+            وَفِي ذَٰلِكَ فَلْيَتَنَافَسِ الْمُتَنَافِسُونَ
+          </Text>
+          
+          <Text style={[styles.ayahMetaText, { color: colors.accentOnTint }]}>
+            {language === 'ar' ? 'سورة المطففين · ٢٦' : 'Surah Al-Mutaffifin · 26'}
+          </Text>
+        </View>
+
+        <AdBanner />
       </View>
     </ScrollView>
   );
 }
 
-const getStyles = (colors: any) => StyleSheet.create({
+const styles = StyleSheet.create({
   outerContainer: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   scrollContent: {
-    paddingBottom: 24,
+    paddingBottom: 28,
   },
   container: {
     flex: 1,
-    position: 'relative',
-  },
-  bodyContent: {
     padding: 20,
-  },
-  dualPathContainer: {
-    flexDirection: 'row-reverse',
-    gap: 12,
-    marginBottom: 24,
-  },
-  pathCard: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  pathCardActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primaryLight,
-  },
-  pathIcon: {
-    fontSize: 28,
-    marginBottom: 8,
-  },
-  pathTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: colors.textSecondary,
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  pathTitleActive: {
-    color: colors.primary,
-    fontWeight: '900',
-  },
-  pathSubtitle: {
-    fontSize: 9,
-    color: '#86A59780',
-    textAlign: 'center',
-    fontWeight: '700',
-  },
-  livePathContainer: {
+    paddingTop: 56,
     gap: 16,
   },
-  rivalCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-  },
-  rivalHeader: {
+  topHeaderRow: {
     flexDirection: 'row-reverse',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderBottomWidth: 1,
-    borderColor: '#1E3A2F4D',
-    paddingBottom: 12,
-    marginBottom: 16,
+    width: '100%',
   },
-  rivalHeaderTitle: {
+  greetingCol: {
+    alignItems: 'flex-end',
+    gap: 2,
+  },
+  greetingLabelText: {
     fontSize: 13,
-    fontWeight: '800',
-    color: colors.textPrimary,
+    fontWeight: '500',
+    fontFamily: 'IBMPlexSansArabic-Regular',
   },
-  liveIndicator: {
+  profileNameText: {
+    fontSize: 20,
+    fontWeight: '700',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+  headerRightActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#EF44441F',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
+    gap: 10,
+  },
+  headerBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#EF44444D',
-  },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#EF4444',
-  },
-  liveText: {
-    fontSize: 9,
-    color: '#EF4444',
-    fontWeight: '900',
-  },
-  rivalMatchupRow: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    marginBottom: 16,
-  },
-  rivalMatchupPlayer: {
-    alignItems: 'center',
-    flex: 1.2,
-  },
-  rivalAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
+    shadowColor: '#1D2939',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  unreadDot: {
+    position: 'absolute',
+    top: -1,
+    right: -1,
+    width: 9,
+    height: 9,
+    borderRadius: 50,
+    backgroundColor: '#F5B841',
     borderWidth: 2,
-    marginBottom: 8,
   },
-  rivalAvatarText: {
-    fontSize: 22,
-  },
-  rivalPlayerName: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: colors.textPrimary,
-    marginBottom: 2,
-    textAlign: 'center',
-    width: 90,
-  },
-  rivalPlayerXP: {
-    fontSize: 11,
-    color: colors.primary,
-    fontWeight: '700',
-  },
-  rivalMatchupVS: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: colors.accent,
-    fontStyle: 'italic',
-  },
-  rivalMatchupHint: {
-    fontSize: 11,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 16,
-    marginBottom: 16,
-    fontWeight: '700',
-  },
-  overtakeBtn: {
-    backgroundColor: colors.primary,
-    paddingVertical: 14,
+  avatarBorderFrame: {
+    width: 44,
+    height: 44,
     borderRadius: 14,
+    borderWidth: 1.5,
+    padding: 2,
+  },
+  avatarInnerCircle: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 10,
+    justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
+  },
+  avatarEmojiText: {
+    fontSize: 20,
+  },
+  dateTextLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 4,
+    fontFamily: 'IBMPlexSansArabic-SemiBold',
+  },
+  progressCard: {
+    borderRadius: 22,
+    padding: 20,
+    position: 'relative',
+    overflow: 'hidden',
+    shadowColor: '#059669',
+    shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.15,
-    shadowRadius: 6,
+    shadowRadius: 15,
     elevation: 3,
   },
-  overtakeBtnText: {
-    color: '#09120F',
-    fontWeight: '900',
-    fontSize: 13,
+  cardBgVector: {
+    position: 'absolute',
+    left: -30,
+    top: -24,
   },
-  raidCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    marginBottom: 16,
-  },
-  raidHeader: {
+  progressHeaderRow: {
     flexDirection: 'row-reverse',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
+    zIndex: 1,
   },
-  raidTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: colors.textPrimary,
+  progressLabelCol: {
+    alignItems: 'flex-end',
+    gap: 4,
   },
-  raidSub: {
-    fontSize: 11,
-    color: colors.accent,
-    fontWeight: '800',
+  progressSubLabel: {
+    fontSize: 11.5,
+    color: '#A7F3D0',
+    fontWeight: '500',
+    fontFamily: 'IBMPlexSansArabic-Regular',
   },
-  raidProgressBg: {
-    height: 10,
-    backgroundColor: '#09120F',
-    borderRadius: 5,
+  progressMainLabel: {
+    fontSize: 19,
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+  scoreBadge: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    zIndex: 1,
+  },
+  scoreBadgeNum: {
+    fontSize: 19,
+    color: '#FFFFFF',
+    fontWeight: '700',
+    writingDirection: 'ltr',
+  },
+  scoreBadgeLabel: {
+    fontSize: 9.5,
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontFamily: 'IBMPlexSansArabic-SemiBold',
+    marginTop: -2,
+  },
+  progressBarBackground: {
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#1E3A2F4D',
-    marginBottom: 12,
-  },
-  raidProgressFill: {
-    height: '100%',
-    backgroundColor: '#EF4444',
-    borderRadius: 5,
-  },
-  raidDesc: {
-    fontSize: 11,
-    color: colors.textSecondary,
-    lineHeight: 18,
-    textAlign: 'right',
-    marginBottom: 16,
-    fontWeight: '700',
-  },
-  raidBonusRow: {
-    flexDirection: 'row-reverse',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderColor: '#1E3A2F33',
-    paddingTop: 12,
-  },
-  raidBonusLabel: {
-    fontSize: 11,
-    color: colors.textSecondary,
-    fontWeight: '700',
-  },
-  raidBonusVal: {
-    fontSize: 11,
-    color: colors.primary,
-    fontWeight: '800',
-  },
-  topGlow: {
-    position: 'absolute',
-    top: -80,
-    right: -80,
-    width: 250,
-    height: 250,
-    borderRadius: 125,
-    backgroundColor: '#10B9811F',
-  },
-  mockupHeader: {
-    width: '100%',
-    paddingTop: 56,
-    paddingBottom: 16,
-    backgroundColor: 'transparent',
-    alignItems: 'center',
-  },
-  headerTitleText: {
-    fontSize: 24,
-    fontWeight: '900',
-    color: colors.primaryDeep,
-    letterSpacing: 0.5,
-  },
-  goldMoonBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: colors.surface,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1.2,
-    borderColor: colors.border,
-  },
-  goldMoonEmoji: {
-    fontSize: 16,
-  },
-  headerTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    width: '100%',
-    paddingHorizontal: 20,
-    marginBottom: 12,
-  },
-  notificationBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: colors.surface,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  notificationEmoji: {
-    fontSize: 16,
-  },
-  logoBadgeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  shieldLogo: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: '#10B981',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#F59E0B',
-  },
-  shieldLogoText: {
-    fontSize: 18,
-    color: '#000000',
-  },
-  appName: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: colors.textPrimary,
-  },
-  timeText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: colors.textSecondary,
-    width: 60,
-    textAlign: 'center',
-  },
-  dateLabel: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: colors.textSecondary,
-    marginTop: 4,
-    textAlign: 'center',
-  },
-  levelCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 24,
-  },
-  levelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  levelBadgeContainer: {
-    backgroundColor: colors.primaryLight,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  levelBadgeText: {
-    color: colors.primary,
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  pointsText: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: colors.accent,
-  },
-  levelProgressBarBackground: {
-    height: 8,
-    backgroundColor: colors.neutralTint,
-    borderRadius: 4,
-    width: '100%',
     marginBottom: 8,
+    width: '100%',
+    zIndex: 1,
   },
-  levelProgressBarFill: {
-    height: 8,
-    backgroundColor: colors.primary,
-    borderRadius: 4,
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: '#F5B841',
   },
-  levelProgressLabel: {
-    fontSize: 10,
-    color: colors.textSecondary,
-    textAlign: 'right',
-    fontWeight: '700',
-  },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: '900',
-    color: colors.textPrimary,
-    textAlign: 'right',
-    marginBottom: 12,
-    marginTop: 8,
-  },
-  dailyGoalsRow: {
+  progressFooterRow: {
     flexDirection: 'row-reverse',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
+    zIndex: 1,
+  },
+  progressFooterText: {
+    fontSize: 10.5,
+    color: '#A7F3D0',
+    fontWeight: '500',
+    fontFamily: 'IBMPlexSansArabic-Regular',
+  },
+  progressValueText: {
+    fontSize: 11,
+    color: '#A7F3D0',
+    fontWeight: '600',
+    writingDirection: 'ltr',
+  },
+  streakCard: {
+    flexDirection: 'row-reverse',
     alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: 22,
-    paddingVertical: 16,
-    paddingHorizontal: 10,
+    justifyContent: 'space-between',
+    borderRadius: 18,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 24,
+    shadowColor: '#1D2939',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
-  circularProgressContainer: {
+  streakLeftCol: {
+    flexDirection: 'row-reverse',
     alignItems: 'center',
+    gap: 9,
   },
-  svgWrapper: {
-    position: 'relative',
-    width: 80,
-    height: 80,
+  streakFlameIconWrapper: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: '#FFF7ED',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  innerCircle: {
-    position: 'absolute',
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: colors.background,
-    justifyContent: 'center',
-    alignItems: 'center',
+  streakCountTexts: {
+    alignItems: 'flex-end',
   },
-  innerEmoji: {
-    fontSize: 20,
-  },
-  percentText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: colors.textPrimary,
-    marginTop: 6,
-  },
-  progressLabel: {
-    fontSize: 10,
+  streakDaysValText: {
+    fontSize: 16,
     fontWeight: '700',
-    color: colors.textSecondary,
+    fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+  streakLabelText: {
+    fontSize: 10.5,
+    fontWeight: '500',
+    fontFamily: 'IBMPlexSansArabic-Regular',
     marginTop: 2,
   },
-  streakContainer: {
-    alignItems: 'center',
+  daysRow: {
+    flexDirection: 'row',
+    gap: 6,
   },
-  streakFlameWrapper: {
-    width: 80,
-    height: 80,
+  dayPill: {
+    width: 22,
+    height: 26,
+    borderRadius: 7,
     justifyContent: 'center',
     alignItems: 'center',
-    position: 'relative',
-  },
-  streakFlame: {
-    fontSize: 48,
-    position: 'absolute',
-  },
-  streakCount: {
-    fontSize: 14,
-    fontWeight: '900',
-    color: '#000000',
-    position: 'absolute',
-    top: 36,
-  },
-  questCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 22,
-    padding: 18,
     borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 24,
   },
-  questProgressRow: {
-    flexDirection: 'row',
+  dayPillActive: {
+    backgroundColor: '#F5B841',
+    borderColor: '#D97706',
+  },
+  dayPillText: {
+    fontSize: 10.5,
+    fontWeight: '600',
+    fontFamily: 'IBMPlexSansArabic-SemiBold',
+  },
+  questsCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 16,
+    shadowColor: '#1D2939',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  questsHeader: {
+    flexDirection: 'row-reverse',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 14,
   },
-  questPercentText: {
-    fontSize: 14,
-    fontWeight: '900',
-    color: colors.primary,
+  questsTitleText: {
+    fontSize: 15,
+    fontWeight: '700',
+    fontFamily: 'IBMPlexSansArabic-Bold',
   },
-  questProgressLabel: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: colors.textPrimary,
+  questsRatioBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 999,
   },
-  questBarBackground: {
-    height: 6,
-    backgroundColor: colors.neutralTint,
-    borderRadius: 3,
-    width: '100%',
-    marginBottom: 16,
-  },
-  questBarFill: {
-    height: 6,
-    backgroundColor: colors.primary,
-    borderRadius: 3,
+  questsRatioText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+    writingDirection: 'ltr',
   },
   questsList: {
     gap: 12,
   },
-  questItem: {
+  questItemRow: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
-    gap: 10,
   },
-  questCheckIcon: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+  questCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 8,
     borderWidth: 1.5,
-    borderColor: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 18,
-    fontSize: 12,
-    fontWeight: '900',
-    color: colors.textSecondary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 11,
   },
-  questCheckIconActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary,
-    color: colors.surface,
-  },
-  questItemText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.textPrimary,
+  questText: {
     flex: 1,
+    fontSize: 13,
+    fontWeight: '500',
     textAlign: 'right',
+    fontFamily: 'IBMPlexSansArabic-Medium',
   },
-  questItemTextDone: {
-    color: colors.textSecondary,
+  questTextDone: {
     textDecorationLine: 'line-through',
-  },
-  questBonusBadge: {
-    marginTop: 16,
-    backgroundColor: colors.accentLight,
-    borderRadius: 10,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: colors.accent,
-  },
-  questBonusText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: colors.accent,
-    textAlign: 'center',
-    lineHeight: 16,
+    opacity: 0.6,
   },
   ayahCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 22,
-    padding: 18,
+    borderRadius: 18,
+    paddingVertical: 18,
+    paddingHorizontal: 18,
     borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 24,
-  },
-  ayahHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  shareBtn: {
-    backgroundColor: colors.neutralTint,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-  },
-  shareBtnText: {
-    color: colors.primaryDeep,
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  ayahTitle: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: colors.textSecondary,
-  },
-  ayahArabic: {
-    fontSize: 16,
-    lineHeight: 28,
-    fontWeight: '700',
-    color: colors.primary,
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  ayahEnglish: {
-    fontSize: 11,
-    lineHeight: 16,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-  challengesGrid: {
-    flexDirection: 'row-reverse',
-    justifyContent: 'space-between',
-    gap: 12,
-    marginBottom: 24,
-  },
-  challengeCard: {
-    flex: 1,
-    borderRadius: 22,
-    padding: 16,
-    borderWidth: 1,
-    alignItems: 'center',
-  },
-  challengeCardEmoji: {
-    fontSize: 32,
-    marginBottom: 8,
-  },
-  challengeCardTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: colors.textPrimary,
-    marginBottom: 4,
-  },
-  challengeCardDesc: {
-    fontSize: 10,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: 12,
-    height: 30,
-  },
-  challengeCardBtn: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 10,
-    width: '100%',
-    alignItems: 'center',
-  },
-  challengeCardBtnText: {
-    color: colors.surface,
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  quickAccessList: {
-    gap: 10,
-    marginBottom: 20,
-  },
-  quickAccessItem: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 14,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  quickAccessArrow: {
-    color: colors.primary,
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  quickAccessText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  adWrapper: {
-    marginTop: 8,
-    marginBottom: 12,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 24,
-    padding: 24,
-    width: '100%',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  modalEmoji: {
-    fontSize: 48,
-    marginBottom: 12,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: colors.textPrimary,
-    marginBottom: 4,
-  },
-  modalSubtitle: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginBottom: 20,
-  },
-  guideStep: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    marginBottom: 14,
-    width: '100%',
-  },
-  stepNumber: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: colors.primary,
-    width: 24,
-    textAlign: 'center',
-    marginLeft: 12,
-  },
-  stepText: {
-    flex: 1,
-    fontSize: 12,
-    lineHeight: 18,
-    color: colors.textPrimary,
-    textAlign: 'right',
-  },
-  modalButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    width: '100%',
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  modalButtonText: {
-    color: colors.surface,
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  levelProgressContainer: {
-    backgroundColor: colors.surface,
-    borderRadius: 20,
-    padding: 14,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    marginBottom: 14,
-  },
-  homeLevelRow: {
-    flexDirection: 'row-reverse',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  levelText: {
-    fontSize: 14,
-    fontWeight: '900',
-    color: colors.textPrimary,
-  },
-  homeLevelBadgeText: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: colors.primary,
-    backgroundColor: colors.primaryLight,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-  },
-  progressBarBg: {
-    height: 10,
-    backgroundColor: '#09120F',
-    borderRadius: 5,
-    overflow: 'hidden',
-    marginBottom: 4,
-    borderWidth: 1,
-    borderColor: '#1E3A2F',
-  },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: colors.accent,
-    borderRadius: 5,
-  },
-  xpFractionText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: colors.textSecondary,
-    textAlign: 'left',
-  },
-  communalCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    marginBottom: 16,
-    gap: 12,
-  },
-  communalHeaderRow: {
-    alignItems: 'flex-end',
-    gap: 4,
-  },
-  communalBadge: {
-    backgroundColor: '#1E3A2F33',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    alignSelf: 'flex-end',
-  },
-  communalBadgeText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: colors.textSecondary,
-  },
-  communalTitle: {
-    fontSize: 14,
-    fontWeight: '900',
-    color: colors.primary,
-    textAlign: 'right',
-  },
-  communalProgressRow: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 10,
-  },
-  communalBarBg: {
-    flex: 1,
-    height: 10,
-    backgroundColor: '#09120F',
-    borderRadius: 5,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#1E3A2F',
-  },
-  communalBarFill: {
-    height: '100%',
-    backgroundColor: colors.primary,
-    borderRadius: 5,
-  },
-  communalProgressText: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: colors.textPrimary,
-  },
-  contributeBtn: {
-    backgroundColor: colors.accent,
-    borderRadius: 12,
-    paddingVertical: 10,
-    alignItems: 'center',
-    shadowColor: colors.accent,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-  },
-  contributeBtnDisabled: {
-    backgroundColor: '#09120F',
-    borderWidth: 1,
-    borderColor: '#1E3A2F',
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  contributeBtnText: {
-    color: '#09120F',
-    fontSize: 11,
-    fontWeight: '900',
-  },
-  pillarsGrid: {
-    gap: 12,
-    marginBottom: 20,
-  },
-  sideBySideRow: {
-    flexDirection: 'row-reverse',
-    justifyContent: 'space-between',
-    width: '100%',
-    marginBottom: 12,
-  },
-  pillarCardTouchSideBySide: {
-    width: '48.5%',
-    height: 190,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 6,
-  },
-  pillarCardGradientBorderSideBySide: {
-    flex: 1,
-    borderRadius: 20,
-    padding: 1.5,
-  },
-  pillarCardInnerSideBySide: {
-    flex: 1,
-    backgroundColor: 'rgba(9, 18, 15, 0.88)',
-    borderRadius: 18.5,
-    padding: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  pillarIconWrapperSideBySide: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  pillarTitleSideBySide: {
-    fontSize: 15,
-    fontWeight: '900',
-    color: '#FBBF24',
-    textAlign: 'center',
-    marginTop: 4,
-  },
-  pillarDescSideBySide: {
-    fontSize: 10,
-    color: '#86A597',
-    textAlign: 'center',
-    lineHeight: 14,
-  },
-  pillarCardTouchFullWidth: {
-    width: '100%',
-    height: 96,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 6,
-    marginBottom: 12,
-  },
-  pillarCardGradientBorderFullWidth: {
-    flex: 1,
-    borderRadius: 20,
-    padding: 1.5,
-  },
-  pillarCardInnerFullWidth: {
-    flex: 1,
-    backgroundColor: 'rgba(9, 18, 15, 0.88)',
-    borderRadius: 18.5,
-    paddingHorizontal: 16,
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-  },
-  pillarIconWrapperFullWidth: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 14,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  pillarInfoFullWidth: {
-    flex: 1,
-  },
-  pillarTitleFullWidth: {
-    fontSize: 15,
-    fontWeight: '900',
-    color: '#FBBF24',
-    textAlign: 'right',
-    marginBottom: 2,
-  },
-  pillarDescFullWidth: {
-    fontSize: 10,
-    color: '#86A597',
-    textAlign: 'right',
-  },
-  compactStatsBar: {
-    flexDirection: 'row-reverse',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    marginBottom: 20,
-    width: '100%',
-  },
-  statPill: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 10,
-  },
-  statEmoji: {
-    fontSize: 13,
-  },
-  statText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#E6F4EE',
-  },
-  sectionHeader: {
-    fontSize: 15,
-    fontWeight: '900',
-    color: '#FBBF24',
-    textAlign: 'right',
-    marginBottom: 12,
-    marginTop: 10,
-  },
-  roadmapContainer: {
-    marginBottom: 24,
-    width: '100%',
-  },
-  roadmapScroll: {
-    gap: 12,
-    paddingLeft: 4,
-    flexDirection: 'row-reverse',
-  },
-  roadmapCard: {
-    width: 210,
-    backgroundColor: '#0D1A15',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1.5,
-    borderColor: '#142E24',
     position: 'relative',
+    overflow: 'hidden',
   },
-  roadmapStepNum: {
-    position: 'absolute',
-    top: 10,
-    left: 14,
-    fontSize: 24,
-    fontWeight: '900',
-    color: 'rgba(251, 191, 36, 0.12)',
-  },
-  roadmapTitle: {
-    fontSize: 13,
-    fontWeight: '900',
-    color: '#FBBF24',
-    textAlign: 'right',
-    marginBottom: 6,
-  },
-  roadmapDesc: {
-    fontSize: 10.5,
-    color: '#86A597',
-    textAlign: 'right',
-    lineHeight: 14,
-  },
-  pillarSectionCard: {
-    backgroundColor: '#0D1A15',
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1.5,
-    borderColor: '#142E24',
-    marginBottom: 16,
-    width: '100%',
-  },
-  pillarHeaderRow: {
+  ayahHeaderRow: {
     flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 10,
   },
-  pillarHeaderIconWrapper: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    borderWidth: 1.2,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 12,
+  ayahLabelText: {
+    fontSize: 11,
+    fontWeight: '700',
+    fontFamily: 'IBMPlexSansArabic-Bold',
   },
-  pillarHeaderInfo: {
-    flex: 1,
+  ayahShareButton: {
+    padding: 4,
   },
-  pillarHeaderTitle: {
-    fontSize: 14.5,
-    fontWeight: '900',
-    color: '#FBBF24',
-    textAlign: 'right',
-    marginBottom: 2,
+  ayahArabicText: {
+    fontSize: 17,
+    lineHeight: 30,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 8,
+    fontFamily: 'IBMPlexSansArabic-Medium',
   },
-  pillarHeaderDesc: {
-    fontSize: 10.5,
-    color: '#86A597',
-    textAlign: 'right',
-  },
-  shortcutsGrid: {
-    flexDirection: 'row-reverse',
-    flexWrap: 'wrap',
-    gap: 8,
-    width: '100%',
-  },
-  shortcutBtn: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    backgroundColor: '#09120F',
-    borderWidth: 1.2,
-    borderColor: '#142E24',
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    flex: 1,
-    minWidth: '46%',
-    justifyContent: 'center',
-  },
-  shortcutEmoji: {
-    fontSize: 14,
-    marginLeft: 6,
-  },
-  shortcutLabel: {
-    fontSize: 11.5,
-    fontWeight: '800',
-    color: '#E6F4EE',
+  ayahMetaText: {
+    fontSize: 11,
+    fontWeight: '600',
+    textAlign: 'center',
+    fontFamily: 'IBMPlexSansArabic-SemiBold',
   },
 });
-const ONBOARDING_KEY = 'batl-muslim-onboarding-complete-v1';

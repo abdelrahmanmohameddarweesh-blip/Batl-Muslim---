@@ -1,8 +1,8 @@
 import json
 import os
 import random
+import re
 
-# Seed the random number generator for reproducibility if needed, but here we want organic shuffling
 random.seed(42)
 
 # Define categories and levels
@@ -54,7 +54,7 @@ companions = [
     ("الحباب بن المنذر", "صاحب الرأي في غزوة بدر بإنزال الجيش عند بئر بدر", "صاحب الرأي"),
     ("أسامة بن زيد", "حب رسول الله وابن حبه وقائد جيش الشام وهو شاب صغير", "الحب بن الحب"),
     ("عمرو بن العاص", "فاتح مصر وداهية العرب وقائد معارك فتح الشام", "فاتح مصر"),
-    ("sعيد بن زيد", "أحد العشرة المبشرين بالجنة ومستجاب الدعوة وزوج أخت عمر بن الخطاب", "المستجاب الدعوة")
+    ("سعيد بن زيد", "أحد العشرة المبشرين بالجنة ومستجاب الدعوة وزوج أخت عمر بن الخطاب", "المستجاب الدعوة")
 ]
 
 # 3. Events Database (30 entries)
@@ -91,7 +91,7 @@ events = [
     ("فتح القسطنطينية بقيادة محمد الفاتح", 857, "العام 857 هـ وتحقيق البشارة النبوية الشريفة")
 ]
 
-# 4. Fiqh Database (21 entries)
+# 4. Fiqh Database (30 entries)
 fiqh_topics = [
     ("صلاة الفجر", "ركعتان فريضة جهريتان"),
     ("صلاة الظهر", "أربع ركعات فريضة سرية"),
@@ -117,7 +117,7 @@ fiqh_topics = [
     ("الأذان للصلوات", "الإعلام بدخول وقت الصلاة بألفاظ مخصوصة وهو فرض كفاية"),
     ("الإقامة للصلاة", "الإعلام بالقيام إلى الصلاة المفروضة لإقامتها"),
     ("شروط صحة الصلاة", "دخول الوقت، الطهارة من الحدثين، طهارة الثوب والبدن والمكان، ستر العورة، استقبال القبلة، والنية"),
-    ("زكاة الفطر", "صاع من طعام تجب على كل مسلم قبل صلاة عيد الفطر لجبر الصيام"),
+    ("زكاة الفطر", "صاص من طعام تجب على كل مسلم قبل صلاة عيد الفطر لجبر الصيام"),
     ("صوم التطوع المستحب", "مثل صيام الاثنين والخميس وعاشوراء وتاسوعاء ويوم عرفة والأيام البيض"),
     ("صلاة التراويح", "سنة مؤكدة تصلى جماعة في ليالي شهر رمضان المبارك"),
     ("الاستنجاء بالماء", "تطهير مخرج البول والغائط بالماء الطهور حتى تزول النجاسة"),
@@ -196,21 +196,126 @@ sunnah_concepts = [
 # Initialize bank dictionary
 bank = {cat: {lvl: [] for lvl in levels} for cat in categories}
 
-# Helper to shuffle options and return them
 def make_options(correct_val, distractors):
     opts = [correct_val] + list(distractors)
     random.shuffle(opts)
     return opts
 
+# Smart Fiqh Distractors Generator
+def get_smart_fiqh_distractors(name, desc):
+    dists = []
+    
+    # 1. Modify numbers dynamically
+    nums = re.findall(r'\d+', desc)
+    if nums:
+        for offset in [1, -1, 2]:
+            alt_desc = desc
+            for num in nums:
+                val = int(num)
+                if val == 85: alt_val = 90 if offset == 1 else (80 if offset == -1 else 75)
+                elif val == 595: alt_val = 600 if offset == 1 else (580 if offset == -1 else 550)
+                elif val == 24: alt_val = 21 if offset == 1 else (18 if offset == -1 else 14)
+                else: alt_val = max(1, val + offset)
+                alt_desc = alt_desc.replace(num, str(alt_val))
+            if alt_desc != desc and alt_desc not in dists:
+                dists.append(alt_desc)
+
+    # 2. Key words swapping (فريضة / سنة)
+    if "فريضة" in desc or "سنة" in desc:
+        dists.append(desc.replace("فريضة", "سنة").replace("جهريتان", "سريتان").replace("جهرية", "سرية"))
+        dists.append(desc.replace("سنة", "فريضة").replace("سريتان", "جهريتان").replace("سرية", "جهرية"))
+        dists.append(desc.replace("فريضة", "مستحب").replace("سرية", "جهرية"))
+        
+    # 3. Sock wiping swaps
+    if "مقيم" in desc or "مسافر" in desc:
+        dists.append(desc.replace("يوماً وليلة للمقيم وثلاثة أيام بلياليها للمسافر", "ثلاثة أيام بلياليها للمقيم ويوماً وليلة للمسافر"))
+        dists.append(desc.replace("يوماً وليلة للمقيم وثلاثة أيام بلياليها للمسافر", "ثلاثة أيام للمقيم وخمسة أيام للمسافر"))
+        dists.append(desc.replace("يوماً وليلة للمقيم وثلاثة أيام بلياليها للمسافر", "يوماً وليلة للمقيم ويومين للمسافر"))
+
+    # 4. Filter and fill up using other similar Fiqh concepts
+    dists = list(set([d for d in dists if d != desc]))
+    while len(dists) < 3:
+        other = random.choice(fiqh_topics)
+        if other[1] != desc and other[1] not in dists:
+            dists.append(other[1])
+            
+    return dists[:3]
+
+# Smart Aqidah Distractors Generator
+def get_smart_aqidah_distractors(name, desc):
+    dists = []
+    
+    # 1. Angel duties
+    if "الملك الموكل" in desc or "الملك العظيم" in desc:
+        dists.append("الملك العظيم الموكل بالوحي للأنبياء والرسل عليهم السلام")
+        dists.append("الملك الموكل بالنفخ في الصور لقيام الساعة والبعث")
+        dists.append("الملك الموكل بقبض الأرواح عند انتهاء الآجال")
+        dists.append("الملك الموكل بالقطر (المطر) والنبات والأرزاق")
+        
+    # 2. Shirk & Nifaq
+    if "الشرك" in name or "الشرك" in desc:
+        dists.append("صرف العبادة لغير الله وهو ناقض للإسلام ومخرج من الملة")
+        dists.append("مثل اليسير من الرياء والحلف بغير الله دون تعظيم ربوبيته ولا يخرج من الملة")
+        dists.append("إظهار الإسلام باللسان وإبطان الكفر بالقلب وهو مخرج من الملة")
+        
+    if "النفاق" in name or "النفاق" in desc:
+        dists.append("إظهار الإسلام باللسان وإبطان الكفر بالقلب وهو مخرج من الملة")
+        dists.append("نفاق العمل مثل الكذب في الحديث وإخلاف الوعد وخيانة الأمانة")
+        dists.append("صرف العبادة لغير الله كالدعاء والاستغاثة بالقبور والأموات")
+
+    # 3. Tawhid
+    if "توحيد" in name or "توحيد" in desc:
+        dists.append("إفراد الله بالخلق والرزق والملك والإحياء والإماتة والتدبير العام")
+        dists.append("إفراد الله بجميع أنواع العبادة كالدعاء والصلاة والنذر والذبح")
+        dists.append("إثبات ما أثبته الله لنفسه وما أثبته له رسوله دون تحريف أو تعطيل")
+
+    # 4. Fill up using other concepts
+    dists = list(set([d for d in dists if d != desc]))
+    while len(dists) < 3:
+        other = random.choice(aqidah_concepts)
+        if other[1] != desc and other[1] not in dists:
+            dists.append(other[1])
+            
+    return dists[:3]
+
+# Smart Sunnah Distractors Generator
+def get_smart_sunnah_distractors(name, desc):
+    dists = []
+    
+    # 1. Hadith Types
+    if "الحديث" in name or "حديث" in name or "الحديث" in desc:
+        dists.append("ما اتصل سنده بنقل العدل الضابط عن مثله إلى منتهاه بلا شذوذ ولا علة قادحة")
+        dists.append("ما اتصل سنده بنقل العدل الذي خف ضبطه عن مثله بلا شذوذ ولا علة قادحة")
+        dists.append("ما لم يجمع شروط الحديث الصحيح أو الحسن لفقد شرط أو أكثر كالانقطاع")
+        dists.append("الحديث المختلق المكذوب المنسوب كذباً وافتراءً للنبي ﷺ")
+        dists.append("ما يرويه النبي ﷺ عن ربه عز وجل بغير اللفظ القرآني الإعجازي")
+        dists.append("ما رواه جمع كبير تحيل العادة تواطؤهم على الكذب من أول السند لآخره")
+        
+    # 2. Hadith Books
+    if "كتاب" in name or "صحيح" in name or "سنن" in name or "مسند" in name or "موطأ" in name:
+        dists.append("الجامع الصحيح للإمام البخاري وهو أصح كتاب مصنف في الحديث والأحكام بعد القرآن")
+        dists.append("المسند الصحيح للإمام مسلم ويأتي في المرتبة الثانية بعد البخاري في الصحة والدقة")
+        dists.append("كتاب سنن جمع فيه صاحبه أحاديث الأحكام الفقهية وتجنب الأحاديث الشديدة الضعف")
+        dists.append("أضخم مسند مسند على أسماء الصحابة للإمام أحمد بن حنبل ويضم حوالي 27 ألف حديث")
+
+    # 3. Fill up using other concepts
+    dists = list(set([d for d in dists if d != desc]))
+    while len(dists) < 3:
+        other = random.choice(sunnah_concepts)
+        if other[1] != desc and other[1] not in dists:
+            dists.append(other[1])
+            
+    return dists[:3]
+
 # ==================== 1. GENERATE QURAN QUESTIONS ====================
 for idx, s in enumerate(surahs):
     name, order, ayahs, place = s
     
-    # Beginner: Order questions
+    # Beginner: Order (extremely close numbers)
     correct = f"السورة رقم {order}"
-    d1 = f"السورة رقم {order+3 if order+3 <= 114 else order-3}"
-    d2 = f"السورة رقم {order-1 if order-1 >= 1 else order+2}"
-    d3 = f"السورة رقم {order+1 if order+1 <= 114 else order-2}"
+    d1 = f"السورة رقم {order-1}" if order - 1 >= 1 else f"السورة رقم {order+3}"
+    d2 = f"السورة رقم {order+1}" if order + 1 <= 114 else f"السورة رقم {order-2}"
+    d3 = f"السورة رقم {order+2}" if order + 2 <= 114 else f"السورة رقم {order-3}"
     options = make_options(correct, [d1, d2, d3])
     
     bank['القرآن']['Beginner'].append({
@@ -223,28 +328,28 @@ for idx, s in enumerate(surahs):
         "explanation": f"ترتيب سورة {name} في المصحف هو {order}."
     })
 
-    # Intermediate: Place questions
-    correct = "مكية" if place == "مكة" else "مدنية"
-    d1 = "مدنية" if place == "مكة" else "مكية"
-    d2 = "نزلت في تبوك"
-    d3 = "بين مكة والمدينة"
+    # Intermediate: Place (close definitions)
+    correct = "مكية ونزلت قبل الهجرة النبوية الشريفة" if place == "مكة" else "مدنية ونزلت بعد الهجرة النبوية الشريفة"
+    d1 = "مدنية ونزلت بعد الهجرة النبوية الشريفة" if place == "مكة" else "مكية ونزلت قبل الهجرة النبوية الشريفة"
+    d2 = "مكية ونزلت بعد الهجرة النبوية الشريفة"
+    d3 = "مدنية ونزلت قبل الهجرة النبوية الشريفة"
     options = make_options(correct, [d1, d2, d3])
     
     bank['القرآن']['Intermediate'].append({
         "id": f"q_qur_int_{idx+1}",
         "tier": "Intermediate",
         "category": "القرآن",
-        "question": f"أين نزلت سورة {name} الكريمة على رسول الله ﷺ؟",
+        "question": f"ما هو تصنيف سورة {name} الكريمة من حيث موضع ونطاق نزولها؟",
         "options": options,
         "answer": correct,
         "explanation": f"سورة {name} هي سورة {place}ة ونزلت في {place}."
     })
 
-    # Advanced: Ayah Count questions
+    # Advanced: Ayah Count (extremely close counts)
     correct = f"{ayahs} آية"
-    d1 = f"{ayahs+6} آية"
-    d2 = f"{ayahs-2 if ayahs-2 > 0 else ayahs+9} آية"
-    d3 = f"{ayahs+12} آية"
+    d1 = f"{ayahs-1 if ayahs-1 > 0 else ayahs+3} آية"
+    d2 = f"{ayahs+1} آية"
+    d3 = f"{ayahs+2} آية"
     options = make_options(correct, [d1, d2, d3])
     
     bank['القرآن']['Advanced'].append({
@@ -257,11 +362,11 @@ for idx, s in enumerate(surahs):
         "explanation": f"عدد آيات سورة {name} هو {ayahs}."
     })
 
-    # Hero: Combined trivia questions
+    # Hero: Combined (swapped details of the same surah)
     correct = f"سورة {place}ة وترتيبها {order} وعدد آياتها {ayahs}"
-    d1 = f"سورة مدنية وترتيبها {order+1} وعدد آياتها {ayahs+5}" if place == "مكة" else f"سورة مكية وترتيبها {order-1 if order-1 >= 1 else 10} وعدد آياتها {ayahs-1 if ayahs-1 > 0 else 5}"
-    d2 = f"سورة {place}ة وترتيبها {order+2} وعدد آياتها {ayahs+10}"
-    d3 = "أول سورة نزلت في المدينة بعد الهجرة مباشرة" if order != 1 else "أخر سورة نزلت من القرآن الكريم كاملاً"
+    d1 = f"سورة {place}ة وترتيبها {order+1 if order+1 <= 114 else order-1} وعدد آياتها {ayahs}"
+    d2 = f"سورة {'مكة' if place == 'المدينة' else 'المدينة'}ة وترتيبها {order} وعدد آياتها {ayahs}"
+    d3 = f"سورة {place}ة وترتيبها {order} وعدد آياتها {ayahs+3 if ayahs > 10 else ayahs+5}"
     options = make_options(correct, [d1, d2, d3])
     
     bank['القرآن']['Hero'].append({
@@ -279,10 +384,23 @@ for lvl in levels:
     for idx, comp in enumerate(companions):
         name, desc, nickname = comp
         
-        # Pull 3 highly plausible companion distractors from the database
-        other_companions = [c for c in companions if c[0] != name]
-        distractor_companions = random.sample(other_companions, 3)
+        # Categorized peer-groups for Seerah close companions matching
+        khulafa = ["أبو بكر الصديق", "عمر بن الخطاب", "عثمان بن عفان", "علي بن أبي طالب"]
+        commanders = ["خالد بن الوليد", "سعد بن أبي وقاص", "عمرو بن العاص", "أبو عبيدة بن الجراح", "حمزة بن عبد المطلب", "جعفر بن أبي طالب"]
+        scholars = ["عبد الله بن عباس", "عبد الله بن مسعود", "زيد بن ثابت", "معاذ بن جبل", "أبي بن كعب", "أبو هريرة"]
         
+        group = []
+        if name in khulafa: group = [c for c in companions if c[0] in khulafa and c[0] != name]
+        elif name in commanders: group = [c for c in companions if c[0] in commanders and c[0] != name]
+        elif name in scholars: group = [c for c in companions if c[0] in scholars and c[0] != name]
+        
+        other_comps = [c for c in companions if c[0] != name]
+        distractor_companions = []
+        if len(group) >= 3:
+            distractor_companions = random.sample(group, 3)
+        else:
+            distractor_companions = random.sample(other_comps, 3)
+            
         if lvl == 'Beginner':
             question = f"من هو الصحابي الجليل الملقب بـ '{nickname}'؟"
             correct = name
@@ -323,16 +441,30 @@ for lvl in levels:
     for idx, ev in enumerate(events):
         name, year, desc = ev
         
-        other_events = [e for e in events if e[0] != name]
-        distractor_events = random.sample(other_events, 3)
+        # Categorized peer-groups for History close events matching
+        battles = ["غزوة بدر الكبرى", "غزوة أحد", "غزوة الخندق (الأحزاب)", "غزوة خيبر", "غزوة تبوك", "معركة القادسية ضد الفرس", "معركة اليرموك ضد الروم", "معركة اليمامة وحروب الردة", "معركة بلاط الشهداء في فرنسا", "معركة ملاذكرد بقيادة ألب أرسلان", "معركة حطين وتحرير القدس بقيادة صلاح الدين", "معركة عين جالوت وهزيمة المغول"]
+        caliphs = ["تولية أبي بكر الصديق الخلافة", "تولية عمر بن الخطاب الخلافة", "تولية عثمان بن عفان الخلافة", "تولية علي بن أبي طالب الخلافة", "وفاة علي ونهاية الخلافة الراشدة", "تولية عمر بن عبد العزيز الخلافة"]
         
+        group = []
+        if name in battles: group = [e for e in events if e[0] in battles and e[0] != name]
+        elif name in caliphs: group = [e for e in events if e[0] in caliphs and e[0] != name]
+        
+        other_events = [e for e in events if e[0] != name]
+        distractor_events = []
+        if len(group) >= 3:
+            distractor_events = random.sample(group, 3)
+        else:
+            distractor_events = random.sample(other_events, 3)
+            
         if lvl == 'Beginner':
             question = f"في أي عام هجري وقعت حادثة '{name}' التاريخية الكبرى؟"
             correct = f"العام {year} هـ" if year > 0 else "قبل الهجرة بـ 13 سنة"
             dists = []
-            for d in distractor_events:
-                dy = d[1]
-                dists.append(f"العام {dy} هـ" if dy > 0 else "قبل الهجرة بـ 5 سنوات")
+            for offset in [-1, 1, 2]:
+                if year > 0:
+                    dists.append(f"العام {year+offset} هـ")
+                else:
+                    dists.append(f"قبل الهجرة بـ {13+offset} سنة")
             options = make_options(correct, dists)
             explanation = f"وقعت حادثة '{name}' في {desc}."
         elif lvl == 'Intermediate':
@@ -351,9 +483,11 @@ for lvl in levels:
             question = f"ارتبط حدث '{name}' بـ {desc}. في أي عام هجري وقع هذا الحدث؟"
             correct = f"العام {year} هـ" if year > 0 else "العام 13 قبل الهجرة"
             dists = []
-            for d in distractor_events:
-                dy = d[1]
-                dists.append(f"العام {dy} هـ" if dy > 0 else "العام 10 قبل الهجرة")
+            for offset in [-1, 1, 2]:
+                if year > 0:
+                    dists.append(f"العام {year+offset} هـ")
+                else:
+                    dists.append(f"العام {13+offset} قبل الهجرة")
             options = make_options(correct, dists)
             explanation = f"وقع حدث {name} في {desc}."
 
@@ -372,32 +506,30 @@ for lvl in levels:
     for idx, topic in enumerate(fiqh_topics):
         name, desc = topic
         
-        other_topics = [t for t in fiqh_topics if t[0] != name]
-        distractor_topics = random.sample(other_topics, 3)
+        # Get expert close distractors using Fiqh custom text-mutation engine
+        dists = get_smart_fiqh_distractors(name, desc)
         
         if lvl == 'Beginner':
             question = f"ما هو الحكم أو التعريف الفقهي البسيط لـ '{name}'؟"
             correct = desc
-            dists = [d[1] for d in distractor_topics]
             options = make_options(correct, dists)
             explanation = f"التعريف والضابط لـ {name} هو أنه {desc}."
         elif lvl == 'Intermediate':
             question = f"ما هي تفاصيل وأحكام المسألة الفقهية المتعلقة بـ '{name}'؟"
             correct = desc
-            dists = [d[1] for d in distractor_topics]
             options = make_options(correct, dists)
             explanation = f"أحكام {name} تتلخص في أنه {desc}."
         elif lvl == 'Advanced':
             question = f"أي من العبارات التالية تصف الضابط الشرعي الصحيح لـ '{name}'؟"
             correct = f"هو {desc}"
-            dists = [f"هو {d[1]}" for d in distractor_topics]
-            options = make_options(correct, dists)
+            dists_adj = [f"هو {d}" for d in dists]
+            options = make_options(correct, dists_adj)
             explanation = f"الضابط الشرعي لـ {name} هو أنه {desc}."
         else: # Hero
             question = f"ما هو القول الفقهي المعتمد والمفصل في مسألة '{name}'؟"
             correct = f"يعتبر {desc}"
-            dists = [f"يعتبر {d[1]}" for d in distractor_topics]
-            options = make_options(correct, dists)
+            dists_adj = [f"يعتبر {d}" for d in dists]
+            options = make_options(correct, dists_adj)
             explanation = f"القول المعتمد في {name} أنه {desc}."
 
         bank['الفقه'][lvl].append({
@@ -415,32 +547,29 @@ for lvl in levels:
     for idx, concept in enumerate(aqidah_concepts):
         name, desc = concept
         
-        other_concepts = [c for c in aqidah_concepts if c[0] != name]
-        distractor_concepts = random.sample(other_concepts, 3)
+        dists = get_smart_aqidah_distractors(name, desc)
         
         if lvl == 'Beginner':
             question = f"ما معنى المفهوم العقدي الإسلامي لـ '{name}'؟"
             correct = desc
-            dists = [d[1] for d in distractor_concepts]
             options = make_options(correct, dists)
             explanation = f"معنى {name} في العقيدة هو {desc}."
         elif lvl == 'Intermediate':
             question = f"ما هي أهمية ومنزلة '{name}' في عقيدة المسلم؟"
             correct = desc
-            dists = [d[1] for d in distractor_concepts]
             options = make_options(correct, dists)
             explanation = f"منزلة وأهمية {name} تتلخص في أنه {desc}."
         elif lvl == 'Advanced':
             question = f"أي العبارات التالية تعبر بدقة عن عقيدة أهل السنة والجماعة في '{name}'؟"
             correct = f"هو {desc}"
-            dists = [f"هو {d[1]}" for d in distractor_concepts]
-            options = make_options(correct, dists)
+            dists_adj = [f"هو {d}" for d in dists]
+            options = make_options(correct, dists_adj)
             explanation = f"عقيدة أهل السنة في {name} تتلخص في أنه {desc}."
         else: # Hero
             question = f"ما هو التعريف العقدي التفصيلي والدقيق لمسألة '{name}'؟"
             correct = f"هو {desc}"
-            dists = [f"هو {d[1]}" for d in distractor_concepts]
-            options = make_options(correct, dists)
+            dists_adj = [f"هو {d}" for d in dists]
+            options = make_options(correct, dists_adj)
             explanation = f"التعريف الدقيق لـ {name} هو أنه {desc}."
 
         bank['العقيدة'][lvl].append({
@@ -458,32 +587,29 @@ for lvl in levels:
     for idx, concept in enumerate(sunnah_concepts):
         name, desc = concept
         
-        other_concepts = [c for c in sunnah_concepts if c[0] != name]
-        distractor_concepts = random.sample(other_concepts, 3)
+        dists = get_smart_sunnah_distractors(name, desc)
         
         if lvl == 'Beginner':
             question = f"ما معنى المصطلح النبوي والحديثي لـ '{name}'؟"
             correct = desc
-            dists = [d[1] for d in distractor_concepts]
             options = make_options(correct, dists)
             explanation = f"معنى مصطلح {name} هو {desc}."
         elif lvl == 'Intermediate':
             question = f"ما هي القيمة العلمية والأثر الشرعي لـ '{name}'؟"
             correct = desc
-            dists = [d[1] for d in distractor_concepts]
             options = make_options(correct, dists)
             explanation = f"الأثر والقيمة لـ {name} تتلخص في أنه {desc}."
         elif lvl == 'Advanced':
             question = f"أي من العبارات التالية تعتبر الضابط المعتمد عند علماء الحديث لـ '{name}'؟"
             correct = f"هو {desc}"
-            dists = [f"هو {d[1]}" for d in distractor_concepts]
-            options = make_options(correct, dists)
+            dists_adj = [f"هو {d}" for d in dists]
+            options = make_options(correct, dists_adj)
             explanation = f"الضابط المعتمد لـ {name} هو أنه {desc}."
         else: # Hero
             question = f"ما هو التفصيل والشروط الدقيقة المعتمدة في مصطلح '{name}'؟"
             correct = f"يعتبر {desc}"
-            dists = [f"يعتبر {d[1]}" for d in distractor_concepts]
-            options = make_options(correct, dists)
+            dists_adj = [f"يعتبر {d}" for d in dists]
+            options = make_options(correct, dists_adj)
             explanation = f"التفصيل والشروط لـ {name} تتلخص في أنه {desc}."
 
         bank['السنة'][lvl].append({
@@ -502,10 +628,8 @@ for cat in categories:
     for lvl in levels:
         final_questions.extend(bank[cat][lvl][:30])
 
-# Verify exact count
 print(f"Total compiled questions: {len(final_questions)}")
 
-# Write to questions.ts
 ts_content = """export type Question = {
   id: string;
   tier: 'Beginner' | 'Intermediate' | 'Advanced' | 'Hero';

@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, FlatList, Dimensions, ImageBackground } from 'react-native';
+import React, { useState, useEffect, useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, FlatList, Dimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Svg, { Path, Rect, Circle } from 'react-native-svg';
+import Svg, { Path, Rect, Circle, G, Line } from 'react-native-svg';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -9,12 +9,13 @@ import { getCurrentUserProfile } from '../firebase/auth';
 import AdBanner from '../components/AdBanner';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_WIDTH = SCREEN_WIDTH - 40;
 
 // Mock data for Daily Podium Winner Cards
 const PODIUM_WINNERS = [
-  { rank: 2, name: 'عبد الله', nameEn: 'Abdullah', score: '95', time: '14s', medal: '🥈', border: '#D1D5DB' },
-  { rank: 1, name: 'يوسف أ.', nameEn: 'Yusuf A.', score: '98', time: '12s', medal: '👑', border: '#F5B841', isWinner: true },
-  { rank: 3, name: 'فاطمة', nameEn: 'Fatima', score: '92', time: '15s', medal: '🥉', border: '#D97706' }
+  { rank: 2, name: 'عبد الله', nameEn: 'Abdullah', score: '95', time: '14ث', timeEn: '14s', medal: '2', color: '#D1D5DB' },
+  { rank: 1, name: 'يوسف أ.', nameEn: 'Yusuf A.', score: '98', time: '12ث', timeEn: '12s', medal: '1', color: '#F5B841', isWinner: true },
+  { rank: 3, name: 'فاطمة', nameEn: 'Fatima', score: '92', time: '15ث', timeEn: '15s', medal: '3', color: '#D97706' }
 ];
 
 // Mock data for Live Activity Feed
@@ -32,11 +33,6 @@ export default function HomeScreen({ navigation }: any) {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>('الكل');
-
-  const todayStr = useMemo(() => {
-    const today = new Date();
-    return `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
-  }, []);
 
   const loadData = async () => {
     if (!user?.uid) return;
@@ -68,13 +64,11 @@ export default function HomeScreen({ navigation }: any) {
   // Custom stats with fallbacks
   const challengesPlayed = profile?.challengesPlayed ?? 142;
   const challengesWon = profile?.challengesWon ?? 98;
-  const winRate = Math.round((challengesWon / (challengesPlayed || 1)) * 100);
   const localRank = profile?.localRank ?? 12;
   const globalRank = profile?.globalRank ?? 384;
 
   const formattedDates = useMemo(() => {
     const today = new Date();
-    // Hijri date approximation
     const hijriFormatter = new Intl.DateTimeFormat('ar-SA-u-ca-islamic', {
       day: 'numeric',
       month: 'long',
@@ -82,7 +76,6 @@ export default function HomeScreen({ navigation }: any) {
     });
     const hijri = hijriFormatter.format(today);
 
-    // Gregorian date
     const gregorianFormatter = new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG' : 'en-US', {
       weekday: 'long',
       day: 'numeric',
@@ -107,7 +100,6 @@ export default function HomeScreen({ navigation }: any) {
     }
   };
 
-  // Carousel Challenges Data
   const challengesData = [
     {
       id: '1v1',
@@ -117,16 +109,18 @@ export default function HomeScreen({ navigation }: any) {
       descEn: 'A fast-paced, real-time speed quiz face-off against a live Muslim peer.',
       route: 'LiveDuel',
       isDuel: true,
+      color: '#044E3F',
     },
     {
       id: 'rapid',
-      titleAr: 'الضغط السريع (الموت المفاجئ) ⚡',
+      titleAr: 'الضغط السريع ⚡',
       titleEn: 'Rapid Fire Mode ⚡',
       descAr: '٥ ثوانٍ للإجابة على كل سؤال. خطأ واحد ينهي التحدي فوراً!',
       descEn: '5-second timer per question. A single mistake ends the run instantly!',
       route: 'Trivia',
       params: { mode: 'hardcore' },
       isDuel: false,
+      color: '#D97706',
     }
   ];
 
@@ -161,12 +155,16 @@ export default function HomeScreen({ navigation }: any) {
           {formattedDates.hijri} · {formattedDates.gregorian}
         </Text>
 
-        {/* UNIFIED CHALLENGER PROFILE CARD */}
+        {/* UNIFIED CHALLENGER PROFILE CARD (Mockup matching) */}
         <View style={[styles.unifiedCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={styles.unifiedHeaderRow}>
-            <View style={[styles.avatarCircle, { backgroundColor: colors.primaryTint }]}>
-              <Text style={styles.avatarEmoji}>🧔</Text>
+            {/* Avatar with golden glowing ring */}
+            <View style={[styles.avatarCircleFrame, { borderColor: '#F5B841' }]}>
+              <View style={[styles.avatarCircle, { backgroundColor: colors.primaryTint }]}>
+                <Text style={styles.avatarEmoji}>🧔</Text>
+              </View>
             </View>
+            
             <View style={styles.unifiedNameCol}>
               <Text style={[styles.unifiedNameText, { color: colors.textPrimary }]}>
                 {user?.displayName || (language === 'ar' ? 'المنافس البطل' : 'Challenger Hero')}
@@ -174,10 +172,11 @@ export default function HomeScreen({ navigation }: any) {
               <View style={styles.streakBadge}>
                 <Text style={styles.streakFlameIcon}>🔥</Text>
                 <Text style={styles.streakText}>
-                  {streakDays} {language === 'ar' ? 'أيام متتالية' : 'Day Streak'}
+                  {streakDays} {language === 'ar' ? 'يوم متتالي' : 'Day Streak'}
                 </Text>
               </View>
             </View>
+            
             <View style={styles.leagueBadgeContainer}>
               <Text style={styles.leagueLabel}>{language === 'ar' ? 'النخبة' : 'Gold III'}</Text>
               <Text style={styles.leagueMedal}>🏆</Text>
@@ -199,19 +198,19 @@ export default function HomeScreen({ navigation }: any) {
             </View>
           </View>
 
-          {/* 4 Stats Grid */}
+          {/* 4 Stats Grid with border cells */}
           <View style={[styles.statsGridRow, { borderTopColor: colors.border }]}>
-            <View style={styles.statBox}>
+            <View style={[styles.statBox, styles.statBoxRightBorder, { borderRightColor: colors.border }]}>
               <Text style={styles.statEmoji}>🛡️</Text>
               <Text style={[styles.statValue, { color: colors.textPrimary }]}>{challengesPlayed}</Text>
               <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{language === 'ar' ? 'التحديات' : 'Played'}</Text>
             </View>
-            <View style={styles.statBox}>
+            <View style={[styles.statBox, styles.statBoxRightBorder, { borderRightColor: colors.border }]}>
               <Text style={styles.statEmoji}>🏆</Text>
               <Text style={[styles.statValue, { color: colors.textPrimary }]}>{challengesWon}</Text>
               <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{language === 'ar' ? 'الفوز' : 'Wins'}</Text>
             </View>
-            <View style={styles.statBox}>
+            <View style={[styles.statBox, styles.statBoxRightBorder, { borderRightColor: colors.border }]}>
               <Text style={styles.statEmoji}>📍</Text>
               <Text style={[styles.statValue, { color: colors.textPrimary }]}>#{localRank}</Text>
               <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{language === 'ar' ? 'المحلي' : 'Local Rank'}</Text>
@@ -238,10 +237,23 @@ export default function HomeScreen({ navigation }: any) {
               style={[
                 styles.podiumCard, 
                 { backgroundColor: colors.surface, borderColor: colors.border },
-                winner.isWinner && { borderColor: '#F5B841', borderWidth: 2, scaleX: 1.05, scaleY: 1.05 }
+                winner.isWinner && { borderColor: '#F5B841', borderWidth: 2, transform: [{ scale: 1.04 }] }
               ]}
             >
-              <Text style={styles.podiumMedal}>{winner.medal}</Text>
+              {/* Crown/Medal Custom SVG instead of emojis for better alignment */}
+              <View style={styles.medalIconWrapper}>
+                {winner.rank === 1 ? (
+                  <Svg width="22" height="22" viewBox="0 0 24 24" fill="#F5B841">
+                    <Path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7zm3 14h14v2H5v-2z" />
+                  </Svg>
+                ) : (
+                  <Svg width="18" height="18" viewBox="0 0 24 24" fill={winner.rank === 2 ? '#B0B3B8' : '#D97706'}>
+                    <Circle cx="12" cy="12" r="10" />
+                    <Path d="M12 7l1.5 3.5H17l-3 2.5 1 4-3-2.5-3 2.5 1-4-3-2.5h3.5L12 7z" fill="#FFF" />
+                  </Svg>
+                )}
+              </View>
+
               <View style={[styles.podiumAvatar, { backgroundColor: winner.isWinner ? colors.primaryTint : colors.neutralTint }]}>
                 <Text style={styles.podiumAvatarEmoji}>{winner.rank === 1 ? '🧔' : (winner.rank === 2 ? '👨' : '👩')}</Text>
               </View>
@@ -249,25 +261,37 @@ export default function HomeScreen({ navigation }: any) {
                 {language === 'ar' ? winner.name : winner.nameEn}
               </Text>
               <Text style={[styles.podiumPlaceLabel, { color: colors.textSecondary }]}>
-                {winner.rank === 1 ? (language === 'ar' ? 'المركز 1' : '1st Place') : 
-                 (winner.rank === 2 ? (language === 'ar' ? 'المركز 2' : '2nd Place') : (language === 'ar' ? 'المركز 3' : '3rd Place'))}
+                {winner.rank === 1 ? (language === 'ar' ? 'المركز الأول' : '1st Place') : 
+                 (winner.rank === 2 ? (language === 'ar' ? 'المركز الثاني' : '2nd Place') : (language === 'ar' ? 'المركز الثالث' : '3rd Place'))}
               </Text>
               <Text style={[styles.podiumScoreText, { color: colors.primaryDeep }]}>
                 {winner.score} {language === 'ar' ? 'نقطة' : 'pts'}
               </Text>
               <Text style={[styles.podiumTimeText, { color: colors.textSecondary }]}>
-                ⏱️ {winner.time}
+                ⏱️ {language === 'ar' ? winner.time : winner.timeEn}
               </Text>
             </View>
           ))}
         </View>
 
-        {/* HERO CARD: DAILY GLOBAL CHAMPIONSHIP */}
+        {/* HERO CARD: DAILY GLOBAL CHAMPIONSHIP WITH ARCH BACKGROUND VECTORS */}
         <View style={[styles.dailyChampionshipCard, { backgroundColor: colors.primaryDeep }]}>
+          {/* Custom vector backdrop matching mock-up */}
+          <View style={styles.dailyChampVectors}>
+            <Svg viewBox="0 0 160 160" width="160" height="160" opacity="0.12">
+              <Circle cx="80" cy="80" r="70" fill="none" stroke="#FFFFFF" strokeWidth="2" />
+              <Circle cx="80" cy="80" r="50" fill="none" stroke="#FFFFFF" strokeWidth="2" />
+              <Line x1="10" y1="80" x2="150" y2="80" stroke="#FFFFFF" strokeWidth="2" />
+              <Line x1="80" y1="10" x2="80" y2="150" stroke="#FFFFFF" strokeWidth="2" />
+              <Path d="M30,30 Q80,80 130,30" fill="none" stroke="#FFFFFF" strokeWidth="2" />
+              <Path d="M30,130 Q80,80 130,130" fill="none" stroke="#FFFFFF" strokeWidth="2" />
+            </Svg>
+          </View>
+          
           <View style={styles.dailyChampionshipContent}>
-            <Text style={styles.dailyChampBadge}>🏆 {language === 'ar' ? 'البطولة اليومية' : 'Daily Championship'}</Text>
+            <Text style={styles.dailyChampBadge}>🏆 {language === 'ar' ? 'البطولة اليومية الموحدة' : 'Daily Championship'}</Text>
             <Text style={styles.dailyChampTitle}>
-              {language === 'ar' ? 'تحدي اليوم: السيرة النبوية' : 'Today: Sirah of the Prophet'}
+              {language === 'ar' ? 'تحدي اليوم: السيرة النبوية الكبرى' : 'Today: Sirah of the Prophet'}
             </Text>
             <Text style={styles.dailyChampMeta}>
               ⏱️ {language === 'ar' ? 'ينتهي خلال: 04س 22د' : 'Ends in: 04h 22m'} · 🟢 {language === 'ar' ? '1.8 ألف يلعبون الآن' : '1.8k Active'}
@@ -285,58 +309,68 @@ export default function HomeScreen({ navigation }: any) {
           </View>
         </View>
 
-        {/* HORIZONTAL SWIPEABLE CHALLENGE CAROUSEL */}
+        {/* HORIZONTAL SWIPEABLE CHALLENGE CAROUSEL (WITH EXPLICIT HEIGHT) */}
         <View style={styles.sectionHeaderRow}>
           <Text style={[styles.sectionTitleText, { color: colors.textPrimary }]}>
             {language === 'ar' ? 'اختر ميدان التحدي ⚡' : 'Select Arena Mode ⚡'}
           </Text>
         </View>
 
-        <FlatList
-          data={challengesData}
-          keyExtractor={(item) => item.id}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          snapToInterval={SCREEN_WIDTH - 40}
-          decelerationRate="fast"
-          contentContainerStyle={styles.carouselContainer}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={[styles.carouselCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-              onPress={() => navigation.navigate(item.route, item.params)}
-              activeOpacity={0.9}
-            >
-              {/* Background illustration mock-ups */}
-              <View style={styles.carouselCardVectorHolder}>
-                {item.isDuel ? (
-                  <Svg viewBox="0 0 100 100" width="120" height="120" opacity="0.15">
-                    <Path d="M20,80 L80,20 M80,80 L20,20" stroke={colors.primary} strokeWidth="10" strokeLinecap="round" />
-                  </Svg>
-                ) : (
-                  <Svg viewBox="0 0 100 100" width="120" height="120" opacity="0.15">
-                    <Circle cx="50" cy="55" r="35" fill="none" stroke={colors.primary} strokeWidth="10" />
-                    <Path d="M50,30 L50,55 L70,55" fill="none" stroke={colors.primary} strokeWidth="10" strokeLinecap="round" />
-                  </Svg>
-                )}
-              </View>
+        <View style={styles.carouselOuterWrapper}>
+          <FlatList
+            data={challengesData}
+            keyExtractor={(item) => item.id}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            snapToInterval={CARD_WIDTH + 16}
+            decelerationRate="fast"
+            contentContainerStyle={styles.carouselContainer}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[styles.carouselCard, { backgroundColor: item.color, borderColor: colors.border }]}
+                onPress={() => navigation.navigate(item.route, item.params)}
+                activeOpacity={0.9}
+              >
+                {/* Background illustrations */}
+                <View style={styles.carouselCardVectorHolder}>
+                  {item.isDuel ? (
+                    <Svg viewBox="0 0 100 100" width="110" height="110" opacity="0.2">
+                      {/* Crossed Swords Vector */}
+                      <Path d="M15,85 L85,15 M85,85 L15,15" stroke="#FFFFFF" strokeWidth="6" strokeLinecap="round" />
+                      <Path d="M10,90 L20,80 M90,90 L80,80" stroke="#FFFFFF" strokeWidth="10" strokeLinecap="round" />
+                      <Circle cx="15" cy="85" r="4" fill="#FFFFFF" />
+                      <Circle cx="85" cy="85" r="4" fill="#FFFFFF" />
+                    </Svg>
+                  ) : (
+                    <Svg viewBox="0 0 100 100" width="110" height="110" opacity="0.2">
+                      {/* Stopwatch on Fire Vector */}
+                      <Circle cx="50" cy="55" r="28" fill="none" stroke="#FFFFFF" strokeWidth="6" />
+                      <Path d="M50,15 L50,27 M40,18 L60,18" stroke="#FFFFFF" strokeWidth="8" strokeLinecap="round" />
+                      <Path d="M50,38 L50,55 L65,65" fill="none" stroke="#FFFFFF" strokeWidth="6" strokeLinecap="round" />
+                      {/* Flame curls */}
+                      <Path d="M35,28 Q50,0 65,28" fill="none" stroke="#FFFFFF" strokeWidth="4" />
+                    </Svg>
+                  )}
+                </View>
 
-              <Text style={styles.carouselCardIcon}>{item.isDuel ? '⚔️' : '⏱️'}</Text>
-              <Text style={[styles.carouselCardTitle, { color: colors.textPrimary }]}>
-                {language === 'ar' ? item.titleAr : item.titleEn}
-              </Text>
-              <Text style={[styles.carouselCardDesc, { color: colors.textSecondary }]}>
-                {language === 'ar' ? item.descAr : item.descEn}
-              </Text>
-
-              <View style={[styles.carouselCardButton, { backgroundColor: colors.primary }]}>
-                <Text style={styles.carouselCardButtonText}>
-                  {language === 'ar' ? 'ابدأ المواجهة' : 'Start Arena'}
+                <Text style={styles.carouselCardIcon}>{item.isDuel ? '⚔️' : '⏱️'}</Text>
+                <Text style={styles.carouselCardTitle}>
+                  {language === 'ar' ? item.titleAr : item.titleEn}
                 </Text>
-              </View>
-            </TouchableOpacity>
-          )}
-        />
+                <Text style={styles.carouselCardDesc}>
+                  {language === 'ar' ? item.descAr : item.descEn}
+                </Text>
+
+                <View style={styles.carouselCardButton}>
+                  <Text style={[styles.carouselCardButtonText, { color: item.color }]}>
+                    {language === 'ar' ? 'ابدأ المواجهة ➔' : 'Start Arena ➔'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            )}
+          />
+        </View>
 
         {/* CATEGORY QUICK-SELECT PILLS */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillsScrollContainer}>
@@ -364,7 +398,7 @@ export default function HomeScreen({ navigation }: any) {
           })}
         </ScrollView>
 
-        {/* AYAH OF TODAY CARD */}
+        {/* AYAH OF TODAY CARD (DYNAMIC LOCALIZATION) */}
         <View style={[styles.ayahCard, { backgroundColor: colors.accentTint, borderColor: colors.accentTintBorder }]}>
           <View style={styles.ayahHeaderRow}>
             <Text style={[styles.ayahLabelText, { color: colors.accentOnTint }]}>
@@ -411,7 +445,7 @@ export default function HomeScreen({ navigation }: any) {
             </Text>
           </View>
 
-          {/* Simple Bracket Node list mock */}
+          {/* Bracket Standings list */}
           <View style={styles.bracketContainer}>
             <View style={styles.bracketNode}>
               <Text style={[styles.bracketPos, { color: colors.textSecondary }]}>1</Text>
@@ -548,9 +582,18 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 16,
   },
+  avatarCircleFrame: {
+    width: 52,
+    height: 52,
+    borderRadius: 99,
+    borderWidth: 2,
+    padding: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   avatarCircle: {
-    width: 46,
-    height: 46,
+    width: '100%',
+    height: '100%',
     borderRadius: 99,
     justifyContent: 'center',
     alignItems: 'center',
@@ -561,7 +604,7 @@ const styles = StyleSheet.create({
   unifiedNameCol: {
     flex: 1,
     alignItems: 'flex-end',
-    gap: 2,
+    gap: 4,
   },
   unifiedNameText: {
     fontSize: 16,
@@ -572,14 +615,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: 4,
+    backgroundColor: '#FFF7ED',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 99,
   },
   streakFlameIcon: {
     fontSize: 14,
   },
   streakText: {
-    fontSize: 11,
+    fontSize: 10.5,
     color: '#F97316',
-    fontWeight: '600',
+    fontWeight: '700',
+    fontFamily: 'IBMPlexSansArabic-Bold',
   },
   leagueBadgeContainer: {
     alignItems: 'center',
@@ -590,6 +638,7 @@ const styles = StyleSheet.create({
     fontSize: 9.5,
     fontWeight: '700',
     color: '#D97706',
+    fontFamily: 'IBMPlexSansArabic-Bold',
   },
   leagueMedal: {
     fontSize: 20,
@@ -633,6 +682,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
+  statBoxRightBorder: {
+    borderRightWidth: 1,
+  },
   statEmoji: {
     fontSize: 16,
     marginBottom: 2,
@@ -665,7 +717,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-end',
     paddingHorizontal: 4,
-    height: 160,
+    height: 165,
+    marginTop: 6,
   },
   podiumCard: {
     width: '31%',
@@ -674,27 +727,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     position: 'relative',
-    height: 135,
+    height: 142,
+    shadowColor: '#1D2939',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 3,
+    elevation: 1,
   },
-  podiumMedal: {
-    fontSize: 18,
+  medalIconWrapper: {
     position: 'absolute',
     top: -12,
+    zIndex: 1,
   },
   podiumAvatar: {
-    width: 32,
-    height: 32,
+    width: 34,
+    height: 34,
     borderRadius: 99,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 4,
-    marginTop: 2,
+    marginTop: 6,
   },
   podiumAvatarEmoji: {
-    fontSize: 16,
+    fontSize: 18,
   },
   podiumName: {
-    fontSize: 11,
+    fontSize: 11.5,
     fontWeight: '700',
     fontFamily: 'IBMPlexSansArabic-Bold',
   },
@@ -704,15 +762,15 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   podiumScoreText: {
-    fontSize: 11.5,
+    fontSize: 12,
     fontWeight: '700',
     fontFamily: 'IBMPlexSansArabic-Bold',
-    marginTop: 2,
+    marginTop: 4,
   },
   podiumTimeText: {
-    fontSize: 8.5,
+    fontSize: 9,
     fontFamily: 'IBMPlexSansArabic-Medium',
-    marginTop: 1,
+    marginTop: 2,
   },
 
   // HERO CARD: DAILY GLOBAL CHAMPIONSHIP
@@ -722,9 +780,15 @@ const styles = StyleSheet.create({
     position: 'relative',
     overflow: 'hidden',
   },
+  dailyChampVectors: {
+    position: 'absolute',
+    left: -20,
+    top: -20,
+  },
   dailyChampionshipContent: {
     alignItems: 'flex-end',
     width: '100%',
+    zIndex: 1,
   },
   dailyChampBadge: {
     fontSize: 10,
@@ -763,12 +827,16 @@ const styles = StyleSheet.create({
   },
 
   // HORIZONTAL SWIPEABLE CAROUSEL
+  carouselOuterWrapper: {
+    height: 195,
+  },
   carouselContainer: {
     paddingHorizontal: 2,
     gap: 16,
   },
   carouselCard: {
-    width: SCREEN_WIDTH - 40,
+    width: CARD_WIDTH,
+    height: 185,
     borderRadius: 20,
     borderWidth: 1,
     padding: 16,
@@ -777,16 +845,18 @@ const styles = StyleSheet.create({
   },
   carouselCardVectorHolder: {
     position: 'absolute',
-    right: -20,
-    bottom: -20,
+    left: -15,
+    bottom: -15,
   },
   carouselCardIcon: {
     fontSize: 28,
     marginBottom: 8,
+    textAlign: 'right',
   },
   carouselCardTitle: {
     fontSize: 16,
     fontWeight: '700',
+    color: '#FFFFFF',
     fontFamily: 'IBMPlexSansArabic-Bold',
     marginBottom: 4,
     textAlign: 'right',
@@ -794,6 +864,7 @@ const styles = StyleSheet.create({
   carouselCardDesc: {
     fontSize: 11,
     lineHeight: 16,
+    color: '#E5F6F3',
     fontFamily: 'IBMPlexSansArabic-Regular',
     marginBottom: 16,
     textAlign: 'right',
@@ -803,10 +874,10 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 10,
+    backgroundColor: '#FFFFFF',
   },
   carouselCardButtonText: {
     fontSize: 11,
-    color: '#FFFFFF',
     fontWeight: '700',
     fontFamily: 'IBMPlexSansArabic-Bold',
   },

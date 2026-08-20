@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, Share } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { questionBank, type Question } from '../data/questions';
 import { useAuth } from '../contexts/AuthContext';
-import { saveUserScore, getCurrentUserProfile } from '../firebase/auth';
+import { useLanguage } from '../contexts/LanguageContext';
+import { saveUserScore, getCurrentUserProfile, saveUserChampionshipResult } from '../firebase/auth';
 import { Colors } from '../config/colors';
 import { useInterstitialAd } from '../config/adsService';
 import { AdMobConfig } from '../config/ads';
@@ -25,12 +26,18 @@ type CategoryType = (typeof categories)[number];
 const questionLimits = [5, 10, 15, 20] as const;
 type LimitType = (typeof questionLimits)[number];
 
-export default function TriviaScreen({ navigation }: any) {
+export default function TriviaScreen({ navigation, route }: any) {
   const { user } = useAuth();
+  const { language } = useLanguage();
   
   // Game states: 'config' | 'quiz' | 'completed'
   const [gameState, setGameState] = useState<'config' | 'quiz' | 'completed'>('config');
   const [pendingScore, setPendingScore] = useState<number | null>(null);
+
+  // Timers
+  const [secondsElapsed, setSecondsElapsed] = useState(0);
+  const [countdownTimeLeft, setCountdownTimeLeft] = useState(5);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Interstitial Ad setup
   const { isLoaded, isClosed, load, show } = useInterstitialAd(AdMobConfig.interstitialAdUnitID, {
@@ -53,9 +60,14 @@ export default function TriviaScreen({ navigation }: any) {
     setGameState('completed');
     if (user?.uid) {
       try {
-        const profile = await getCurrentUserProfile(user.uid);
-        const currentScore = profile?.score ?? 0;
-        await saveUserScore(user.uid, currentScore + finalScore);
+        if (route?.params?.mode === 'championship') {
+          // Save championship score and elapsed seconds
+          await saveUserChampionshipResult(user.uid, finalScore, Math.round(secondsElapsed));
+        } else {
+          const profile = await getCurrentUserProfile(user.uid);
+          const currentScore = profile?.score ?? 0;
+          await saveUserScore(user.uid, currentScore + finalScore);
+        }
 
         // Track daily trivia quest completion
         const today = new Date();
@@ -98,15 +110,118 @@ export default function TriviaScreen({ navigation }: any) {
     if (selectedTier === 'Advanced') base = 15;
     if (selectedTier === 'Hero') base = 25;
 
-    // Focused topic gives 1.2x points multiplier
     const multiplier = selectedCategory === 'الكل' ? 1.0 : 1.2;
     return Math.round(base * multiplier);
   };
 
-  const startChallenge = () => {
-    // Build question pool based on filters
-    let pool = questionBank.filter((item) => item.tier === selectedTier);
+  // Direct Launch Hook
+  useEffect(() => {
+    const mode = route?.params?.mode;
+    if (mode === 'championship') {
+      // Seeded random Daily Quiz selector
+      const today = new Date();
+      const dateSeed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+      
+      const pool = questionBank.filter((item) => item.tier === 'Hero');
+      
+      const seededRandom = (seed: number) => {
+        const x = Math.sin(seed) * 10000;
+        return x - Math.floor(x);
+      };
+
+      const shuffled = [...pool].sort((a, b) => {
+        const r1 = seededRandom(dateSeed + a.question.charCodeAt(0));
+        const r2 = seededRandom(dateSeed + b.question.charCodeAt(0));
+        return r1 - r2;
+      });
+
+      const selectedSet = shuffled.slice(0, 5);
+
+      setSelectedTier('Hero');
+      setSelectedCategory('الكل');
+      setQuestionLimit(5);
+      setQuestions(selectedSet);
+      setCurrentIndex(0);
+      setScore(0);
+      setSecondsElapsed(0);
+      setSelectedAnswer('');
+      setFeedback('');
+      setAnswered(false);
+      setStreak(0);
+      setExplanation('');
+      setGameState('quiz');
+
+    } else if (mode === 'hardcore') {
+      const pool = questionBank.filter((item) => item.tier === 'Advanced');
+      const shuffled = [...pool].sort(() => Math.random() - 0.5);
+      const selectedSet = shuffled.slice(0, 10);
+
+      setSelectedTier('Advanced');
+      setSelectedCategory('الكل');
+      setQuestionLimit(10);
+      setQuestions(selectedSet);
+      setCurrentIndex(0);
+      setScore(0);
+      setCountdownTimeLeft(5);
+      setSelectedAnswer('');
+      setFeedback('');
+      setAnswered(false);
+      setStreak(0);
+      setExplanation('');
+      setGameState('quiz');
+    }
+  }, [route?.params?.mode]);
+
+  // Championship Timer Effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    if (gameState === 'quiz' && route?.params?.mode === 'championship' && !answered) {
+      interval = setInterval(() => {
+        setSecondsElapsed((prev) => prev + 0.1);
+      }, 100);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [gameState, answered, route?.params?.mode]);
+
+  // Hardcore countdown Timer Effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    if (gameState === 'quiz' && route?.params?.mode === 'hardcore' && !answered) {
+      setCountdownTimeLeft(5);
+      interval = setInterval(() => {
+        setCountdownTimeLeft((prev) => {
+          if (prev <= 1) {
+            clearInterval(interval!);
+            handleTimeout();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [gameState, currentIndex, answered, route?.params?.mode]);
+
+  const handleTimeout = () => {
+    setFeedback('انتهى الوقت! انتهت المحاولة.');
+    if (currentQuestion) {
+      setExplanation(currentQuestion.explanation);
+    }
+    setAnswered(true);
+    setStreak(0);
     
+    // Hardcore mode timeout is immediate sudden-death game over!
+    setTimeout(() => {
+      completeQuiz(score);
+    }, 2000);
+  };
+
+  const startChallenge = () => {
+    let pool = questionBank.filter((item) => item.tier === selectedTier);
     if (selectedCategory !== 'الكل') {
       pool = pool.filter((item) => item.category === selectedCategory);
     }
@@ -116,16 +231,8 @@ export default function TriviaScreen({ navigation }: any) {
       return;
     }
 
-    // Shuffle and slice
     const shuffled = [...pool].sort(() => Math.random() - 0.5);
     const selectedSet = shuffled.slice(0, Math.min(questionLimit, shuffled.length));
-
-    if (selectedSet.length < questionLimit) {
-      Alert.alert(
-        'أسئلة محدودة',
-        `تتوفر فقط ${selectedSet.length} أسئلة في هذا التصنيف حالياً. سنبدأ التحدي بالأسئلة المتوفرة.`
-      );
-    }
 
     setQuestions(selectedSet);
     setCurrentIndex(0);
@@ -149,7 +256,6 @@ export default function TriviaScreen({ navigation }: any) {
     const isCorrect = selectedAnswer === currentQuestion.answer;
     const nextStreak = isCorrect ? streak + 1 : 0;
     
-    // Dynamic point evaluation + streak bonus (+2 bonus per streak step, capped at +8)
     const pointsPerQuestion = getPointsPerQuestion();
     const streakBonus = isCorrect ? Math.min(8, nextStreak * 2) : 0;
     const earnedPoints = isCorrect ? (pointsPerQuestion + streakBonus) : 0;
@@ -160,6 +266,14 @@ export default function TriviaScreen({ navigation }: any) {
     setFeedback(isCorrect ? 'إجابة صحيحة! أحسنت 🌟' : `إجابة غير صحيحة. الإجابة الصحيحة هي:`);
     setExplanation(currentQuestion.explanation);
     setAnswered(true);
+
+    if (!isCorrect && route?.params?.mode === 'hardcore') {
+      // Hardcore Mode: Sudden death! Ends the game immediately upon mistake.
+      setTimeout(() => {
+        completeQuiz(score);
+      }, 2000);
+      return;
+    }
 
     if (currentIndex + 1 >= questions.length) {
       setPendingScore(nextScore);
@@ -186,8 +300,15 @@ export default function TriviaScreen({ navigation }: any) {
 
   const handleShareChallenge = async () => {
     try {
-      const message = `🏆 لقد أتممت تحدي *بطل مسلم* بنجاح!
-      
+      const mode = route?.params?.mode;
+      const message = mode === 'championship' ? 
+      `🏆 لقد أتممت تحدي *البطولة اليومية* لتطبيق بطل مسلم!
+📊 النتيجة المحرزة: *${score} نقطة*
+⏱️ الزمن المستغرق: *${secondsElapsed.toFixed(1)} ثانية*
+
+هل يمكنك التغلب على زمني في البطولة اليومية؟ شارك الآن! 🚀`
+      :
+      `🏆 لقد أتممت تحدي *بطل مسلم* بنجاح!
 📖 نوع التحدي: تفوق في قسم *${selectedCategory === 'الكل' ? 'المعرفة العامة' : selectedCategory}*
 💪 مستوى الصعوبة: *${tierTranslations[selectedTier]}*
 📊 عدد الأسئلة: *${questions.length} أسئلة*
@@ -195,9 +316,7 @@ export default function TriviaScreen({ navigation }: any) {
 
 هل تجرؤ على منافستي وتحقيق لقب "بطل مسلم"؟ حمّل التطبيق الآن وابدأ التحدي! 🚀`;
 
-      await Share.share({
-        message,
-      });
+      await Share.share({ message });
     } catch (err) {
       console.error(err);
     }
@@ -216,6 +335,7 @@ export default function TriviaScreen({ navigation }: any) {
           <View style={styles.configCard}>
             <Text style={styles.configHeaderTitle}>تخصيص تحدي المعرفة</Text>
             <Text style={styles.configHeaderSub}>اختر مستوى الصعوبة، التصنيف، وعدد الأسئلة لبدء رحلة التحدي</Text>
+
 
             {/* 1. Difficulty Level */}
             <View style={styles.configSection}>
@@ -312,6 +432,21 @@ export default function TriviaScreen({ navigation }: any) {
               <View style={styles.progressBarBg}>
                 <View style={[styles.progressBarFill, { width: `${((currentIndex + 1) / questions.length) * 100}%` }]} />
               </View>
+
+              {/* Visual Active Timers */}
+              {route?.params?.mode === 'championship' && (
+                <View style={styles.activeTimerRow}>
+                  <Text style={styles.activeTimerText}>⏱️ {secondsElapsed.toFixed(1)}s</Text>
+                  <Text style={styles.activeTimerLabel}>{language === 'ar' ? 'عداد الوقت الجاري...' : 'Speedrun timer...'}</Text>
+                </View>
+              )}
+
+              {route?.params?.mode === 'hardcore' && (
+                <View style={styles.activeTimerRow}>
+                  <Text style={[styles.activeTimerText, { color: '#EF4444' }]}>⚡ {countdownTimeLeft}s</Text>
+                  <Text style={styles.activeTimerLabel}>{language === 'ar' ? 'سارع بالإجابة!' : 'Hurry up!'}</Text>
+                </View>
+              )}
             </View>
 
             {/* Question Text */}
@@ -399,7 +534,11 @@ export default function TriviaScreen({ navigation }: any) {
             <Text style={styles.resultEmoji}>🎉</Text>
             <Text style={styles.resultTitle}>انتهت الجولة بنجاح!</Text>
             <Text style={styles.resultSubtitle}>
-              المستوى: {tierTranslations[selectedTier]} | القسم: {selectedCategory === 'الكل' ? 'شامل' : selectedCategory}
+              {route?.params?.mode === 'championship' ? 
+                (language === 'ar' ? 'البطولة اليومية الموحدة' : 'Daily Global Championship')
+                : 
+                `المستوى: ${tierTranslations[selectedTier]} | القسم: ${selectedCategory === 'الكل' ? 'شامل' : selectedCategory}`
+              }
             </Text>
             
             <View style={styles.resultStatsRow}>
@@ -407,10 +546,17 @@ export default function TriviaScreen({ navigation }: any) {
                 <Text style={styles.resultStatVal}>{score}</Text>
                 <Text style={styles.resultStatLbl}>النقاط المكتسبة</Text>
               </View>
-              <View style={styles.resultStatBox}>
-                <Text style={styles.resultStatVal}>{streak}</Text>
-                <Text style={styles.resultStatLbl}>أعلى متتالية</Text>
-              </View>
+              {route?.params?.mode === 'championship' ? (
+                <View style={styles.resultStatBox}>
+                  <Text style={styles.resultStatVal}>{secondsElapsed.toFixed(1)}ث</Text>
+                  <Text style={styles.resultStatLbl}>الزمن الإجمالي</Text>
+                </View>
+              ) : (
+                <View style={styles.resultStatBox}>
+                  <Text style={styles.resultStatVal}>{streak}</Text>
+                  <Text style={styles.resultStatLbl}>أعلى متتالية</Text>
+                </View>
+              )}
             </View>
 
             {/* Share on WhatsApp Button */}
@@ -434,6 +580,26 @@ export default function TriviaScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
+  activeTimerRow: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 10,
+    backgroundColor: '#F8F9FA',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  activeTimerText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#059669',
+  },
+  activeTimerLabel: {
+    fontSize: 11.5,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
   outerContainer: {
     flex: 1,
     backgroundColor: Colors.background,

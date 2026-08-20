@@ -7,6 +7,8 @@ export type AppUser = {
   lastPlayedAt?: string;
   country?: string;
   countryCode?: string;
+  championshipScore?: number;
+  championshipTime?: number;
 };
 
 export const auth = null;
@@ -125,3 +127,23 @@ export async function updateUserCountry(uid: string, country: string, countryCod
     await AsyncStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updatedUser));
   }
 }
+
+export async function saveUserChampionshipResult(uid: string, score: number, seconds: number) {
+  if (!uid) return;
+  const players = await readPlayers();
+  const existing = players[uid];
+  if (!existing) return;
+  
+  const updatedUser: AppUser = {
+    ...existing,
+    championshipScore: score,
+    championshipTime: seconds,
+    score: existing.score + score,
+    lastPlayedAt: new Date().toISOString(),
+  };
+
+  players[uid] = updatedUser;
+  await writePlayers(players);
+  await AsyncStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updatedUser));
+}
+

@@ -100,4 +100,14 @@ export const challenges: Challenge[] = [
     difficulty: 'متقدم',
     points: 50,
   },
+  {
+    id: 'quran-assessment',
+    title: 'تقييم حفظ السور والأجزاء',
+    description: 'اختبر مستوى حفظك في جزء أو سورة محددة، واحصل على بطاقة أداء لمشاركتها.',
+    emoji: '📖',
+    route: 'QuranAssessment',
+    color: '#EAF2F8',
+    difficulty: 'متقدم',
+    points: 25,
+  },
 ];

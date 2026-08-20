@@ -20,6 +20,7 @@ import PrayerTrackerScreen from './screens/PrayerTrackerScreen';
 import FajrChallengeScreen from './screens/FajrChallengeScreen';
 import ReadingChallengeScreen from './screens/ReadingChallengeScreen';
 import MemorizationScreen from './screens/MemorizationScreen';
+import QuranAssessmentScreen from './screens/QuranAssessmentScreen';
 import AdhkarScreen from './screens/AdhkarScreen';
 import HadithChallengeScreen from './screens/HadithChallengeScreen';
 import LiveDuelScreen from './screens/LiveDuelScreen';
@@ -200,6 +201,11 @@ function NavigationWrapper() {
           name="Memorization"
           component={MemorizationScreen}
           options={{ title: language === 'ar' ? 'تحدي حفظ الآيات' : 'Ayah Memorization' }}
+        />
+        <Stack.Screen
+          name="QuranAssessment"
+          component={QuranAssessmentScreen}
+          options={{ title: language === 'ar' ? 'تقييم حفظ القرآن الكريم' : 'Quran Assessment' }}
         />
         <Stack.Screen
           name="Adhkar"

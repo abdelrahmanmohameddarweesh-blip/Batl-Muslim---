@@ -1,27 +1,37 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Share } from 'react-native';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, FlatList, Dimensions, ImageBackground } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Svg, { Path, Rect, Circle, Defs, Pattern } from 'react-native-svg';
+import Svg, { Path, Rect, Circle } from 'react-native-svg';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getCurrentUserProfile } from '../firebase/auth';
 import AdBanner from '../components/AdBanner';
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
+// Mock data for Daily Podium Winner Cards
+const PODIUM_WINNERS = [
+  { rank: 2, name: 'عبد الله', nameEn: 'Abdullah', score: '95', time: '14s', medal: '🥈', border: '#D1D5DB' },
+  { rank: 1, name: 'يوسف أ.', nameEn: 'Yusuf A.', score: '98', time: '12s', medal: '👑', border: '#F5B841', isWinner: true },
+  { rank: 3, name: 'فاطمة', nameEn: 'Fatima', score: '92', time: '15s', medal: '🥉', border: '#D97706' }
+];
+
+// Mock data for Live Activity Feed
+const ACTIVITY_FEED = [
+  { id: 1, ar: 'Zara A. فازت للتو بمبارزة 1v1 ضد Omar!', en: 'Zara A. just won a 1v1 Duel against Omar!' },
+  { id: 2, ar: 'Ibrahim K. وصل إلى المرتبة 50 عالمياً! 🏆', en: 'Ibrahim K. reached World Rank 50! 🏆' },
+  { id: 3, ar: 'تحدي فقه الطهارة الجديد متاح الآن!', en: 'New Quiz Category: Fiqh is now available!' }
+];
 
 export default function HomeScreen({ navigation }: any) {
   const { user } = useAuth();
   const { language } = useLanguage();
   const { colors } = useTheme();
-  
+
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  
-  // Daily tasks completion states
-  const [prayersDone, setPrayersDone] = useState(false);
-  const [adhkarDone, setAdhkarDone] = useState(false);
-  const [triviaDone, setTriviaDone] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<string>('الكل');
 
   const todayStr = useMemo(() => {
     const today = new Date();
@@ -34,26 +44,6 @@ export default function HomeScreen({ navigation }: any) {
     try {
       const currentProfile = await getCurrentUserProfile(user.uid);
       setProfile(currentProfile);
-
-      // Check daily prayers log completion
-      const storedLog = await AsyncStorage.getItem(`accountability-log-${todayStr}`);
-      if (storedLog) {
-        const parsed = JSON.parse(storedLog);
-        const pCompleted = Object.values(parsed.prayers || {}).filter(val => val === 'congregation' || val === 'individual').length;
-        setPrayersDone(pCompleted === 5);
-      }
-
-      // Check morning & evening sets completion
-      const storedSets = await AsyncStorage.getItem(`adhkar-sets-${todayStr}`);
-      if (storedSets) {
-        const parsed = JSON.parse(storedSets);
-        setAdhkarDone(!!parsed[`morning-${todayStr}`] || !!parsed[`evening-${todayStr}`]);
-      }
-
-      // Check trivia quiz completion
-      const triviaPlayed = await AsyncStorage.getItem(`quest-trivia-played-${todayStr}`);
-      setTriviaDone(triviaPlayed === 'true');
-
     } catch (err) {
       console.error(err);
     } finally {
@@ -74,17 +64,16 @@ export default function HomeScreen({ navigation }: any) {
   const currentXP = currentScore % 100;
   const targetXP = 100;
   const streakDays = profile?.streak ?? 0;
-
-  const levelName = useMemo(() => {
-    if (currentScore >= 500) return language === 'ar' ? 'البطل الأسطوري' : 'Legendary Hero';
-    if (currentScore >= 200) return language === 'ar' ? 'بطل ذهبي' : 'Gold Hero';
-    if (currentScore >= 80) return language === 'ar' ? 'بطل فضي' : 'Silver Hero';
-    return language === 'ar' ? 'بطل مبتدئ' : 'Novice Hero';
-  }, [currentScore, language]);
+  
+  // Custom stats with fallbacks
+  const challengesPlayed = profile?.challengesPlayed ?? 142;
+  const challengesWon = profile?.challengesWon ?? 98;
+  const winRate = Math.round((challengesWon / (challengesPlayed || 1)) * 100);
+  const localRank = profile?.localRank ?? 12;
+  const globalRank = profile?.globalRank ?? 384;
 
   const formattedDates = useMemo(() => {
     const today = new Date();
-    
     // Hijri date approximation
     const hijriFormatter = new Intl.DateTimeFormat('ar-SA-u-ca-islamic', {
       day: 'numeric',
@@ -118,25 +107,34 @@ export default function HomeScreen({ navigation }: any) {
     }
   };
 
-  // 7 days checklist mock-up
-  const daysList = [
-    { label: 'س', active: streakDays >= 7 },
-    { label: 'ح', active: streakDays >= 6 },
-    { label: 'ن', active: streakDays >= 5 },
-    { label: 'ث', active: streakDays >= 4 },
-    { label: 'ر', active: streakDays >= 3 },
-    { label: 'خ', active: streakDays >= 2 },
-    { label: 'ج', active: streakDays >= 1 },
+  // Carousel Challenges Data
+  const challengesData = [
+    {
+      id: '1v1',
+      titleAr: 'المبارزة الثنائية ⚔️',
+      titleEn: '1v1 Live Trivia Duel ⚔️',
+      descAr: 'تحدَّ منافساً حقيقياً مباشرة وأجب على الأسئلة بأسرع وقت لتحقيق الفوز.',
+      descEn: 'A fast-paced, real-time speed quiz face-off against a live Muslim peer.',
+      route: 'LiveDuel',
+      isDuel: true,
+    },
+    {
+      id: 'rapid',
+      titleAr: 'الضغط السريع (الموت المفاجئ) ⚡',
+      titleEn: 'Rapid Fire Mode ⚡',
+      descAr: '٥ ثوانٍ للإجابة على كل سؤال. خطأ واحد ينهي التحدي فوراً!',
+      descEn: '5-second timer per question. A single mistake ends the run instantly!',
+      route: 'Trivia',
+      params: { mode: 'hardcore' },
+      isDuel: false,
+    }
   ];
-
-  const totalDoneQuests = [prayersDone, adhkarDone, triviaDone].filter(Boolean).length;
 
   return (
     <ScrollView style={[styles.outerContainer, { backgroundColor: colors.background }]} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-
       <View style={styles.container}>
         
-        {/* Welcome & Top Actions Row */}
+        {/* Welcome & Top Row */}
         <View style={styles.topHeaderRow}>
           <View style={styles.greetingCol}>
             <Text style={[styles.greetingLabelText, { color: colors.textSecondary }]}>
@@ -148,24 +146,12 @@ export default function HomeScreen({ navigation }: any) {
           </View>
           
           <View style={styles.headerRightActions}>
-            {/* Notification Bell */}
             <TouchableOpacity style={[styles.headerBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} activeOpacity={0.75}>
-              <Svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={colors.textSecondary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <Svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={colors.textSecondary} strokeWidth="2">
                 <Path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6z" />
                 <Path d="M10 20a2 2 0 0 0 4 0" />
               </Svg>
               <View style={[styles.unreadDot, { borderColor: colors.surface }]} />
-            </TouchableOpacity>
-
-            {/* Avatar container */}
-            <TouchableOpacity 
-              style={[styles.avatarBorderFrame, { borderColor: colors.primary }]}
-              onPress={() => navigation.navigate('Profile')}
-              activeOpacity={0.75}
-            >
-              <View style={[styles.avatarInnerCircle, { backgroundColor: colors.primaryTint }]}>
-                <Text style={styles.avatarEmojiText}>🧕</Text>
-              </View>
             </TouchableOpacity>
           </View>
         </View>
@@ -175,154 +161,214 @@ export default function HomeScreen({ navigation }: any) {
           {formattedDates.hijri} · {formattedDates.gregorian}
         </Text>
 
-        {/* XP Progress Card */}
-        <View style={[styles.progressCard, { backgroundColor: colors.primaryDeep }]}>
-          {/* Background vector rosette rosette */}
-          <Svg viewBox="0 0 120 120" width="150" height="150" style={styles.cardBgVector}>
-            <Rect x="30" y="30" width="60" height="60" fill="none" stroke="#FFFFFF" strokeWidth="2.5" opacity="0.12" />
-            <Rect x="30" y="30" width="60" height="60" fill="none" stroke="#FFFFFF" strokeWidth="2.5" opacity="0.12" transform="rotate(45 60 60)" />
-          </Svg>
-
-          <View style={styles.progressHeaderRow}>
-            <View style={styles.progressLabelCol}>
-              <Text style={styles.progressSubLabel}>
-                {language === 'ar' ? 'رتبتك الحالية' : 'Current Rank'}
-              </Text>
-              <Text style={styles.progressMainLabel}>
-                {levelName} · {language === 'ar' ? `المستوى ${currentLevel}` : `Level ${currentLevel}`}
-              </Text>
+        {/* UNIFIED CHALLENGER PROFILE CARD */}
+        <View style={[styles.unifiedCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={styles.unifiedHeaderRow}>
+            <View style={[styles.avatarCircle, { backgroundColor: colors.primaryTint }]}>
+              <Text style={styles.avatarEmoji}>🧔</Text>
             </View>
-
-            <View style={[styles.scoreBadge, { backgroundColor: 'rgba(255, 255, 255, 0.15)', borderColor: 'rgba(255, 255, 255, 0.25)' }]}>
-              <Text style={styles.scoreBadgeNum}>{currentScore}</Text>
-              <Text style={styles.scoreBadgeLabel}>{language === 'ar' ? 'نقطة' : 'XP'}</Text>
-            </View>
-          </View>
-
-          {/* Progress bar line */}
-          <View style={styles.progressBarBackground}>
-            <View style={[styles.progressBarFill, { width: `${(currentXP / targetXP) * 100}%` }]} />
-          </View>
-
-          <View style={styles.progressFooterRow}>
-            <Text style={styles.progressFooterText}>
-              {language === 'ar' ? `${targetXP - currentXP} نقطة للمستوى التالي` : `${targetXP - currentXP} XP to next level`}
-            </Text>
-            <Text style={styles.progressValueText}>
-              {currentXP} / {targetXP}
-            </Text>
-          </View>
-        </View>
-
-        {/* Challenge Streak Card */}
-        <View style={[styles.streakCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <View style={styles.streakLeftCol}>
-            <View style={styles.streakFlameIconWrapper}>
-              <Svg width="20" height="20" viewBox="0 0 24 24" fill="#F97316" stroke="none">
-                <Path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
-              </Svg>
-            </View>
-            <View style={styles.streakCountTexts}>
-              <Text style={[styles.streakDaysValText, { color: colors.textPrimary }]}>
-                {streakDays} {language === 'ar' ? 'أيام' : 'Days'}
+            <View style={styles.unifiedNameCol}>
+              <Text style={[styles.unifiedNameText, { color: colors.textPrimary }]}>
+                {user?.displayName || (language === 'ar' ? 'المنافس البطل' : 'Challenger Hero')}
               </Text>
-              <Text style={[styles.streakLabelText, { color: colors.textSecondary }]}>
-                {language === 'ar' ? 'سلسلة التحدي' : 'Daily Streak'}
-              </Text>
-            </View>
-          </View>
-
-          {/* 7 Days Row */}
-          <View style={styles.daysRow}>
-            {daysList.map((day, idx) => (
-              <View
-                key={idx}
-                style={[
-                  styles.dayPill,
-                  { backgroundColor: colors.neutralTint, borderColor: colors.border },
-                  day.active && styles.dayPillActive
-                ]}
-              >
-                <Text style={[styles.dayPillText, day.active ? { color: '#FFFFFF' } : { color: colors.textTertiary }]}>
-                  {day.label}
+              <View style={styles.streakBadge}>
+                <Text style={styles.streakFlameIcon}>🔥</Text>
+                <Text style={styles.streakText}>
+                  {streakDays} {language === 'ar' ? 'أيام متتالية' : 'Day Streak'}
                 </Text>
               </View>
-            ))}
+            </View>
+            <View style={styles.leagueBadgeContainer}>
+              <Text style={styles.leagueLabel}>{language === 'ar' ? 'النخبة' : 'Gold III'}</Text>
+              <Text style={styles.leagueMedal}>🏆</Text>
+            </View>
+          </View>
+
+          {/* Level Progress Gauge */}
+          <View style={styles.levelGaugeContainer}>
+            <View style={styles.levelProgressLabelRow}>
+              <Text style={[styles.levelProgressLabel, { color: colors.textSecondary }]}>
+                {language === 'ar' ? `المستوى ${currentLevel}` : `Level ${currentLevel}`}
+              </Text>
+              <Text style={[styles.levelProgressValue, { color: colors.textPrimary }]}>
+                {currentXP} / {targetXP} XP
+              </Text>
+            </View>
+            <View style={[styles.progressBarBg, { backgroundColor: colors.border }]}>
+              <View style={[styles.progressBarFill, { width: `${(currentXP / targetXP) * 100}%`, backgroundColor: colors.primary }]} />
+            </View>
+          </View>
+
+          {/* 4 Stats Grid */}
+          <View style={[styles.statsGridRow, { borderTopColor: colors.border }]}>
+            <View style={styles.statBox}>
+              <Text style={styles.statEmoji}>🛡️</Text>
+              <Text style={[styles.statValue, { color: colors.textPrimary }]}>{challengesPlayed}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{language === 'ar' ? 'التحديات' : 'Played'}</Text>
+            </View>
+            <View style={styles.statBox}>
+              <Text style={styles.statEmoji}>🏆</Text>
+              <Text style={[styles.statValue, { color: colors.textPrimary }]}>{challengesWon}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{language === 'ar' ? 'الفوز' : 'Wins'}</Text>
+            </View>
+            <View style={styles.statBox}>
+              <Text style={styles.statEmoji}>📍</Text>
+              <Text style={[styles.statValue, { color: colors.textPrimary }]}>#{localRank}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{language === 'ar' ? 'المحلي' : 'Local Rank'}</Text>
+            </View>
+            <View style={styles.statBox}>
+              <Text style={styles.statEmoji}>🌐</Text>
+              <Text style={[styles.statValue, { color: colors.textPrimary }]}>#{globalRank}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{language === 'ar' ? 'العالمي' : 'Global Rank'}</Text>
+            </View>
           </View>
         </View>
 
-        {/* Daily Goals / Quests Card */}
-        <View style={[styles.questsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <View style={styles.questsHeader}>
-            <Text style={[styles.questsTitleText, { color: colors.textPrimary }]}>
-              {language === 'ar' ? 'المهام اليومية' : 'Daily Quests'}
+        {/* YESTERDAY'S DAILY PODIUM (WINNER CARDS) */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={[styles.sectionTitleText, { color: colors.textPrimary }]}>
+            {language === 'ar' ? 'منصة تتويج الأمس 🏆' : "Yesterday's Daily Podium 🏆"}
+          </Text>
+        </View>
+        
+        <View style={styles.podiumContainer}>
+          {PODIUM_WINNERS.map((winner, idx) => (
+            <View 
+              key={idx} 
+              style={[
+                styles.podiumCard, 
+                { backgroundColor: colors.surface, borderColor: colors.border },
+                winner.isWinner && { borderColor: '#F5B841', borderWidth: 2, scaleX: 1.05, scaleY: 1.05 }
+              ]}
+            >
+              <Text style={styles.podiumMedal}>{winner.medal}</Text>
+              <View style={[styles.podiumAvatar, { backgroundColor: winner.isWinner ? colors.primaryTint : colors.neutralTint }]}>
+                <Text style={styles.podiumAvatarEmoji}>{winner.rank === 1 ? '🧔' : (winner.rank === 2 ? '👨' : '👩')}</Text>
+              </View>
+              <Text style={[styles.podiumName, { color: colors.textPrimary }]}>
+                {language === 'ar' ? winner.name : winner.nameEn}
+              </Text>
+              <Text style={[styles.podiumPlaceLabel, { color: colors.textSecondary }]}>
+                {winner.rank === 1 ? (language === 'ar' ? 'المركز 1' : '1st Place') : 
+                 (winner.rank === 2 ? (language === 'ar' ? 'المركز 2' : '2nd Place') : (language === 'ar' ? 'المركز 3' : '3rd Place'))}
+              </Text>
+              <Text style={[styles.podiumScoreText, { color: colors.primaryDeep }]}>
+                {winner.score} {language === 'ar' ? 'نقطة' : 'pts'}
+              </Text>
+              <Text style={[styles.podiumTimeText, { color: colors.textSecondary }]}>
+                ⏱️ {winner.time}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        {/* HERO CARD: DAILY GLOBAL CHAMPIONSHIP */}
+        <View style={[styles.dailyChampionshipCard, { backgroundColor: colors.primaryDeep }]}>
+          <View style={styles.dailyChampionshipContent}>
+            <Text style={styles.dailyChampBadge}>🏆 {language === 'ar' ? 'البطولة اليومية' : 'Daily Championship'}</Text>
+            <Text style={styles.dailyChampTitle}>
+              {language === 'ar' ? 'تحدي اليوم: السيرة النبوية' : 'Today: Sirah of the Prophet'}
             </Text>
-            <View style={[styles.questsRatioBadge, { backgroundColor: colors.primaryTint }]}>
-              <Text style={[styles.questsRatioText, { color: colors.primaryOnTint }]}>
-                {totalDoneQuests} / 3
+            <Text style={styles.dailyChampMeta}>
+              ⏱️ {language === 'ar' ? 'ينتهي خلال: 04س 22د' : 'Ends in: 04h 22m'} · 🟢 {language === 'ar' ? '1.8 ألف يلعبون الآن' : '1.8k Active'}
+            </Text>
+            
+            <TouchableOpacity 
+              style={styles.dailyChampCTA} 
+              onPress={() => navigation.navigate('Trivia', { mode: 'championship' })}
+              activeOpacity={0.9}
+            >
+              <Text style={styles.dailyChampCTAText}>
+                {language === 'ar' ? 'شارك الآن ➔' : 'Participate Now ➔'}
               </Text>
-            </View>
-          </View>
-
-          <View style={styles.questsList}>
-            {/* Quest 1 */}
-            <View style={styles.questItemRow}>
-              <View style={[
-                styles.questCheckbox,
-                { borderColor: prayersDone ? colors.primary : colors.borderStrong, backgroundColor: prayersDone ? colors.primary : 'transparent' }
-              ]}>
-                {prayersDone && (
-                  <Svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
-                    <Path d="M20 6 9 17l-5-5" />
-                  </Svg>
-                )}
-              </View>
-              <Text style={[styles.questText, { color: colors.textPrimary }, prayersDone && styles.questTextDone]}>
-                {language === 'ar' ? '🕌 إتمام الصلوات الخمس المفروضة' : '🕌 Log all 5 daily prayers'}
-              </Text>
-            </View>
-
-            {/* Quest 2 */}
-            <View style={styles.questItemRow}>
-              <View style={[
-                styles.questCheckbox,
-                { borderColor: adhkarDone ? colors.primary : colors.borderStrong, backgroundColor: adhkarDone ? colors.primary : 'transparent' }
-              ]}>
-                {adhkarDone && (
-                  <Svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
-                    <Path d="M20 6 9 17l-5-5" />
-                  </Svg>
-                )}
-              </View>
-              <Text style={[styles.questText, { color: colors.textPrimary }, adhkarDone && styles.questTextDone]}>
-                {language === 'ar' ? '📿 قراءة أوراد الأذكار اليومية' : '📿 Read morning or evening Adhkar'}
-              </Text>
-            </View>
-
-            {/* Quest 3 */}
-            <View style={styles.questItemRow}>
-              <View style={[
-                styles.questCheckbox,
-                { borderColor: triviaDone ? colors.primary : colors.borderStrong, backgroundColor: triviaDone ? colors.primary : 'transparent' }
-              ]}>
-                {triviaDone && (
-                  <Svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
-                    <Path d="M20 6 9 17l-5-5" />
-                  </Svg>
-                )}
-              </View>
-              <Text style={[styles.questText, { color: colors.textPrimary }, triviaDone && styles.questTextDone]}>
-                {language === 'ar' ? '🧠 خوض مسابقة المعلومات اليومية' : '🧠 Play today\'s trivia challenge'}
-              </Text>
-            </View>
+            </TouchableOpacity>
           </View>
         </View>
 
-        {/* Ayah of the Day Card */}
+        {/* HORIZONTAL SWIPEABLE CHALLENGE CAROUSEL */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={[styles.sectionTitleText, { color: colors.textPrimary }]}>
+            {language === 'ar' ? 'اختر ميدان التحدي ⚡' : 'Select Arena Mode ⚡'}
+          </Text>
+        </View>
+
+        <FlatList
+          data={challengesData}
+          keyExtractor={(item) => item.id}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          snapToInterval={SCREEN_WIDTH - 40}
+          decelerationRate="fast"
+          contentContainerStyle={styles.carouselContainer}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={[styles.carouselCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              onPress={() => navigation.navigate(item.route, item.params)}
+              activeOpacity={0.9}
+            >
+              {/* Background illustration mock-ups */}
+              <View style={styles.carouselCardVectorHolder}>
+                {item.isDuel ? (
+                  <Svg viewBox="0 0 100 100" width="120" height="120" opacity="0.15">
+                    <Path d="M20,80 L80,20 M80,80 L20,20" stroke={colors.primary} strokeWidth="10" strokeLinecap="round" />
+                  </Svg>
+                ) : (
+                  <Svg viewBox="0 0 100 100" width="120" height="120" opacity="0.15">
+                    <Circle cx="50" cy="55" r="35" fill="none" stroke={colors.primary} strokeWidth="10" />
+                    <Path d="M50,30 L50,55 L70,55" fill="none" stroke={colors.primary} strokeWidth="10" strokeLinecap="round" />
+                  </Svg>
+                )}
+              </View>
+
+              <Text style={styles.carouselCardIcon}>{item.isDuel ? '⚔️' : '⏱️'}</Text>
+              <Text style={[styles.carouselCardTitle, { color: colors.textPrimary }]}>
+                {language === 'ar' ? item.titleAr : item.titleEn}
+              </Text>
+              <Text style={[styles.carouselCardDesc, { color: colors.textSecondary }]}>
+                {language === 'ar' ? item.descAr : item.descEn}
+              </Text>
+
+              <View style={[styles.carouselCardButton, { backgroundColor: colors.primary }]}>
+                <Text style={styles.carouselCardButtonText}>
+                  {language === 'ar' ? 'ابدأ المواجهة' : 'Start Arena'}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
+        />
+
+        {/* CATEGORY QUICK-SELECT PILLS */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillsScrollContainer}>
+          {['الكل', 'القرآن', 'السنة', 'الفقه', 'السيرة', 'العقيدة', 'التاريخ'].map((cat) => {
+            const isSelected = activeCategory === cat;
+            return (
+              <TouchableOpacity
+                key={cat}
+                style={[
+                  styles.pillBtn,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                  isSelected && { backgroundColor: colors.primaryDeep, borderColor: colors.primaryDeep }
+                ]}
+                onPress={() => {
+                  setActiveCategory(cat);
+                  navigation.navigate('Trivia', { category: cat });
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.pillBtnText, { color: colors.textSecondary }, isSelected && { color: '#FFFFFF', fontWeight: '700' }]}>
+                  {cat}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {/* AYAH OF TODAY CARD */}
         <View style={[styles.ayahCard, { backgroundColor: colors.accentTint, borderColor: colors.accentTintBorder }]}>
           <View style={styles.ayahHeaderRow}>
             <Text style={[styles.ayahLabelText, { color: colors.accentOnTint }]}>
-              {language === 'ar' ? 'آية اليوم' : 'Ayah of the Day'}
+              {language === 'ar' ? 'آية اليوم 📖' : 'Ayah of the Day 📖'}
             </Text>
             <TouchableOpacity style={styles.ayahShareButton} onPress={handleShareAyah} activeOpacity={0.7}>
               <Svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={colors.accentOnTint} strokeWidth="2.5">
@@ -337,9 +383,77 @@ export default function HomeScreen({ navigation }: any) {
             وَفِي ذَٰلِكَ فَلْيَتَنَافَسِ الْمُتَنَافِسُونَ
           </Text>
           
+          {language !== 'ar' && (
+            <Text style={[styles.ayahEnglishText, { color: colors.textSecondary }]}>
+              "And for this let those aspire, who have aspirations."
+            </Text>
+          )}
+          
           <Text style={[styles.ayahMetaText, { color: colors.accentOnTint }]}>
             {language === 'ar' ? 'سورة المطففين · ٢٦' : 'Surah Al-Mutaffifin · 26'}
           </Text>
+        </View>
+
+        {/* WEEKLY LEAGUE STANDINGS BRACKET CARD */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={[styles.sectionTitleText, { color: colors.textPrimary }]}>
+            {language === 'ar' ? 'دوري الفرسان الأسبوعي 🛡️' : 'Weekly Fursan League 🛡️'}
+          </Text>
+        </View>
+
+        <View style={[styles.leagueCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={styles.leagueHeader}>
+            <Text style={[styles.leagueTitleText, { color: colors.textPrimary }]}>
+              {language === 'ar' ? 'المجموعات النشطة' : 'Active Divisions'}
+            </Text>
+            <Text style={[styles.leagueCountdownText, { color: colors.textSecondary }]}>
+              ⏱️ {language === 'ar' ? 'ينتهي خلال: ٢ ي' : 'Ends in: 2d'}
+            </Text>
+          </View>
+
+          {/* Simple Bracket Node list mock */}
+          <View style={styles.bracketContainer}>
+            <View style={styles.bracketNode}>
+              <Text style={[styles.bracketPos, { color: colors.textSecondary }]}>1</Text>
+              <Text style={[styles.bracketName, { color: colors.textPrimary }]}>Aisha R.</Text>
+              <Text style={styles.bracketStatus}>🟢 {language === 'ar' ? 'صعود' : 'Promote'}</Text>
+            </View>
+            <View style={styles.bracketNode}>
+              <Text style={[styles.bracketPos, { color: colors.textSecondary }]}>2</Text>
+              <Text style={[styles.bracketName, { color: colors.textPrimary }]}>Zain B.</Text>
+              <Text style={styles.bracketStatus}>🟢 {language === 'ar' ? 'صعود' : 'Promote'}</Text>
+            </View>
+            <View style={[styles.bracketNode, { backgroundColor: colors.primaryTint }]}>
+              <Text style={[styles.bracketPos, { color: colors.primaryOnTint }]}>3</Text>
+              <Text style={[styles.bracketName, { color: colors.textPrimary, fontWeight: '700' }]}>
+                {language === 'ar' ? 'أنت' : 'You'}
+              </Text>
+              <Text style={[styles.bracketStatus, { color: colors.primaryOnTint }]}>🟢 {language === 'ar' ? 'صعود' : 'Promote'}</Text>
+            </View>
+            <View style={styles.bracketNode}>
+              <Text style={[styles.bracketPos, { color: colors.textSecondary }]}>4</Text>
+              <Text style={[styles.bracketName, { color: colors.textPrimary }]}>Sara K.</Text>
+              <Text style={[styles.bracketStatus, { color: colors.textSecondary }]}>➖ {language === 'ar' ? 'ثابت' : 'Safe'}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* LIVE ACTIVITY FEED */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={[styles.sectionTitleText, { color: colors.textPrimary }]}>
+            {language === 'ar' ? 'الأحداث الحية 🟢' : 'Live Arena Feed 🟢'}
+          </Text>
+        </View>
+
+        <View style={[styles.feedCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          {ACTIVITY_FEED.map((feed) => (
+            <View key={feed.id} style={[styles.feedItem, { borderBottomColor: colors.border }]}>
+              <Text style={styles.feedDot}>•</Text>
+              <Text style={[styles.feedText, { color: colors.textPrimary }]}>
+                {language === 'ar' ? feed.ar : feed.en}
+              </Text>
+            </View>
+          ))}
         </View>
 
         <AdBanner />
@@ -359,7 +473,7 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     paddingTop: 56,
-    gap: 16,
+    gap: 18,
   },
   topHeaderRow: {
     flexDirection: 'row-reverse',
@@ -410,256 +524,322 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5B841',
     borderWidth: 2,
   },
-  avatarBorderFrame: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    padding: 2,
-  },
-  avatarInnerCircle: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarEmojiText: {
-    fontSize: 20,
-  },
   dateTextLabel: {
-    fontSize: 11,
+    fontSize: 11.5,
     fontWeight: '600',
     textAlign: 'center',
-    marginTop: 4,
     fontFamily: 'IBMPlexSansArabic-SemiBold',
   },
-  progressCard: {
+  
+  // UNIFIED CARD
+  unifiedCard: {
     borderRadius: 22,
-    padding: 20,
-    position: 'relative',
-    overflow: 'hidden',
-    shadowColor: '#059669',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.15,
-    shadowRadius: 15,
-    elevation: 3,
-  },
-  cardBgVector: {
-    position: 'absolute',
-    left: -30,
-    top: -24,
-  },
-  progressHeaderRow: {
-    flexDirection: 'row-reverse',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-    zIndex: 1,
-  },
-  progressLabelCol: {
-    alignItems: 'flex-end',
-    gap: 4,
-  },
-  progressSubLabel: {
-    fontSize: 11.5,
-    color: '#A7F3D0',
-    fontWeight: '500',
-    fontFamily: 'IBMPlexSansArabic-Regular',
-  },
-  progressMainLabel: {
-    fontSize: 19,
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontFamily: 'IBMPlexSansArabic-Bold',
-  },
-  scoreBadge: {
-    alignItems: 'center',
-    justifyContent: 'center',
     borderWidth: 1,
-    borderRadius: 14,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    zIndex: 1,
-  },
-  scoreBadgeNum: {
-    fontSize: 19,
-    color: '#FFFFFF',
-    fontWeight: '700',
-    writingDirection: 'ltr',
-  },
-  scoreBadgeLabel: {
-    fontSize: 9.5,
-    color: '#FFFFFF',
-    fontWeight: '600',
-    fontFamily: 'IBMPlexSansArabic-SemiBold',
-    marginTop: -2,
-  },
-  progressBarBackground: {
-    height: 8,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    overflow: 'hidden',
-    marginBottom: 8,
-    width: '100%',
-    zIndex: 1,
-  },
-  progressBarFill: {
-    height: '100%',
-    borderRadius: 999,
-    backgroundColor: '#F5B841',
-  },
-  progressFooterRow: {
-    flexDirection: 'row-reverse',
-    justifyContent: 'space-between',
-    zIndex: 1,
-  },
-  progressFooterText: {
-    fontSize: 10.5,
-    color: '#A7F3D0',
-    fontWeight: '500',
-    fontFamily: 'IBMPlexSansArabic-Regular',
-  },
-  progressValueText: {
-    fontSize: 11,
-    color: '#A7F3D0',
-    fontWeight: '600',
-    writingDirection: 'ltr',
-  },
-  streakCard: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderRadius: 18,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderWidth: 1,
+    padding: 18,
     shadowColor: '#1D2939',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 2,
   },
-  streakLeftCol: {
+  unifiedHeaderRow: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
-    gap: 9,
+    gap: 12,
+    marginBottom: 16,
   },
-  streakFlameIconWrapper: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    backgroundColor: '#FFF7ED',
+  avatarCircle: {
+    width: 46,
+    height: 46,
+    borderRadius: 99,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  streakCountTexts: {
-    alignItems: 'flex-end',
+  avatarEmoji: {
+    fontSize: 22,
   },
-  streakDaysValText: {
+  unifiedNameCol: {
+    flex: 1,
+    alignItems: 'flex-end',
+    gap: 2,
+  },
+  unifiedNameText: {
     fontSize: 16,
     fontWeight: '700',
     fontFamily: 'IBMPlexSansArabic-Bold',
   },
-  streakLabelText: {
-    fontSize: 10.5,
-    fontWeight: '500',
-    fontFamily: 'IBMPlexSansArabic-Regular',
-    marginTop: 2,
-  },
-  daysRow: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  dayPill: {
-    width: 22,
-    height: 26,
-    borderRadius: 7,
-    justifyContent: 'center',
+  streakBadge: {
+    flexDirection: 'row-reverse',
     alignItems: 'center',
-    borderWidth: 1,
+    gap: 4,
   },
-  dayPillActive: {
-    backgroundColor: '#F5B841',
-    borderColor: '#D97706',
+  streakFlameIcon: {
+    fontSize: 14,
   },
-  dayPillText: {
-    fontSize: 10.5,
+  streakText: {
+    fontSize: 11,
+    color: '#F97316',
+    fontWeight: '600',
+  },
+  leagueBadgeContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 1,
+  },
+  leagueLabel: {
+    fontSize: 9.5,
+    fontWeight: '700',
+    color: '#D97706',
+  },
+  leagueMedal: {
+    fontSize: 20,
+  },
+  levelGaugeContainer: {
+    width: '100%',
+    marginBottom: 16,
+  },
+  levelProgressLabelRow: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  levelProgressLabel: {
+    fontSize: 11,
     fontWeight: '600',
     fontFamily: 'IBMPlexSansArabic-SemiBold',
   },
-  questsCard: {
-    borderRadius: 18,
-    borderWidth: 1,
-    padding: 16,
-    shadowColor: '#1D2939',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  questsHeader: {
-    flexDirection: 'row-reverse',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  questsTitleText: {
-    fontSize: 15,
-    fontWeight: '700',
-    fontFamily: 'IBMPlexSansArabic-Bold',
-  },
-  questsRatioBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 999,
-  },
-  questsRatioText: {
-    fontSize: 11.5,
+  levelProgressValue: {
+    fontSize: 11,
     fontWeight: '700',
     fontFamily: 'IBMPlexSansArabic-Bold',
     writingDirection: 'ltr',
   },
-  questsList: {
-    gap: 12,
+  progressBarBg: {
+    height: 6,
+    borderRadius: 99,
+    overflow: 'hidden',
   },
-  questItemRow: {
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 99,
+  },
+  statsGridRow: {
     flexDirection: 'row-reverse',
-    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    paddingTop: 14,
   },
-  questCheckbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 8,
-    borderWidth: 1.5,
+  statBox: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statEmoji: {
+    fontSize: 16,
+    marginBottom: 2,
+  },
+  statValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+  statLabel: {
+    fontSize: 9,
+    fontFamily: 'IBMPlexSansArabic-Regular',
+    marginTop: 1,
+  },
+
+  // SECTION HEADER
+  sectionHeaderRow: {
+    flexDirection: 'row-reverse',
+    marginTop: 4,
+  },
+  sectionTitleText: {
+    fontSize: 15,
+    fontWeight: '700',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+
+  // PODIUM
+  podiumContainer: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    paddingHorizontal: 4,
+    height: 160,
+  },
+  podiumCard: {
+    width: '31%',
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    paddingVertical: 10,
+    position: 'relative',
+    height: 135,
+  },
+  podiumMedal: {
+    fontSize: 18,
+    position: 'absolute',
+    top: -12,
+  },
+  podiumAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 99,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 11,
+    marginBottom: 4,
+    marginTop: 2,
   },
-  questText: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: '500',
-    textAlign: 'right',
+  podiumAvatarEmoji: {
+    fontSize: 16,
+  },
+  podiumName: {
+    fontSize: 11,
+    fontWeight: '700',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+  podiumPlaceLabel: {
+    fontSize: 8.5,
+    fontFamily: 'IBMPlexSansArabic-Regular',
+    marginTop: 1,
+  },
+  podiumScoreText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+    marginTop: 2,
+  },
+  podiumTimeText: {
+    fontSize: 8.5,
     fontFamily: 'IBMPlexSansArabic-Medium',
+    marginTop: 1,
   },
-  questTextDone: {
-    textDecorationLine: 'line-through',
-    opacity: 0.6,
-  },
-  ayahCard: {
-    borderRadius: 18,
-    paddingVertical: 18,
-    paddingHorizontal: 18,
-    borderWidth: 1,
+
+  // HERO CARD: DAILY GLOBAL CHAMPIONSHIP
+  dailyChampionshipCard: {
+    borderRadius: 20,
+    padding: 18,
     position: 'relative',
     overflow: 'hidden',
+  },
+  dailyChampionshipContent: {
+    alignItems: 'flex-end',
+    width: '100%',
+  },
+  dailyChampBadge: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 99,
+    marginBottom: 8,
+  },
+  dailyChampTitle: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+    marginBottom: 4,
+  },
+  dailyChampMeta: {
+    fontSize: 10.5,
+    color: '#A7F3D0',
+    fontFamily: 'IBMPlexSansArabic-Regular',
+    marginBottom: 14,
+  },
+  dailyChampCTA: {
+    backgroundColor: '#F5B841',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+  },
+  dailyChampCTAText: {
+    fontSize: 11.5,
+    color: '#042D23',
+    fontWeight: '700',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+
+  // HORIZONTAL SWIPEABLE CAROUSEL
+  carouselContainer: {
+    paddingHorizontal: 2,
+    gap: 16,
+  },
+  carouselCard: {
+    width: SCREEN_WIDTH - 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 16,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  carouselCardVectorHolder: {
+    position: 'absolute',
+    right: -20,
+    bottom: -20,
+  },
+  carouselCardIcon: {
+    fontSize: 28,
+    marginBottom: 8,
+  },
+  carouselCardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+    marginBottom: 4,
+    textAlign: 'right',
+  },
+  carouselCardDesc: {
+    fontSize: 11,
+    lineHeight: 16,
+    fontFamily: 'IBMPlexSansArabic-Regular',
+    marginBottom: 16,
+    textAlign: 'right',
+  },
+  carouselCardButton: {
+    alignSelf: 'flex-end',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+  },
+  carouselCardButtonText: {
+    fontSize: 11,
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+
+  // PILLS
+  pillsScrollContainer: {
+    gap: 8,
+    flexDirection: 'row-reverse',
+    paddingVertical: 2,
+  },
+  pillBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 99,
+    borderWidth: 1,
+  },
+  pillBtnText: {
+    fontSize: 11.5,
+    fontFamily: 'IBMPlexSansArabic-Medium',
+  },
+
+  // AYAH OF TODAY CARD
+  ayahCard: {
+    borderRadius: 18,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderWidth: 1,
   },
   ayahHeaderRow: {
     flexDirection: 'row-reverse',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   ayahLabelText: {
     fontSize: 11,
@@ -670,17 +850,95 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   ayahArabicText: {
-    fontSize: 17,
-    lineHeight: 30,
+    fontSize: 16,
+    lineHeight: 28,
     fontWeight: '600',
     textAlign: 'center',
     marginBottom: 8,
     fontFamily: 'IBMPlexSansArabic-Medium',
   },
+  ayahEnglishText: {
+    fontSize: 12,
+    lineHeight: 18,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginBottom: 8,
+    fontFamily: 'IBMPlexSansArabic-Regular',
+  },
   ayahMetaText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
     textAlign: 'center',
     fontFamily: 'IBMPlexSansArabic-SemiBold',
+  },
+
+  // WEEKLY LEAGUE STANDINGS
+  leagueCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 14,
+  },
+  leagueHeader: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  leagueTitleText: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+  leagueCountdownText: {
+    fontSize: 10.5,
+    fontFamily: 'IBMPlexSansArabic-Regular',
+  },
+  bracketContainer: {
+    gap: 8,
+  },
+  bracketNode: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+  },
+  bracketPos: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  bracketName: {
+    fontSize: 12.5,
+    fontFamily: 'IBMPlexSansArabic-Medium',
+  },
+  bracketStatus: {
+    fontSize: 10.5,
+    fontWeight: '700',
+  },
+
+  // LIVE ACTIVITY FEED
+  feedCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+  feedItem: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+  },
+  feedDot: {
+    fontSize: 14,
+    color: '#10B981',
+    marginLeft: 6,
+  },
+  feedText: {
+    fontSize: 11,
+    fontFamily: 'IBMPlexSansArabic-Medium',
+    flex: 1,
+    textAlign: 'right',
   },
 });

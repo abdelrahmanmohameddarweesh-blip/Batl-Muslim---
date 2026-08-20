@@ -1,15 +1,14 @@
 export interface QuranAssessmentQuestion {
   id: string;
   type: 'missing_ayah' | 'identify_surah';
-  prompt: string; // The verse text or prompt
-  missingTextBefore?: string;
-  missingTextAfter?: string;
+  prompt: string; // The verse text
   options: string[];
   answer: string;
   surah: string; // Surah name in Arabic
   surahEn: string; // Surah name in English
   juz: number; // Juz number (1-30)
   ayahNumber: number;
+  difficulty: 'easy' | 'medium' | 'hard' | 'expert';
 }
 
 export const quranAssessmentQuestions: QuranAssessmentQuestion[] = [
@@ -28,7 +27,8 @@ export const quranAssessmentQuestions: QuranAssessmentQuestion[] = [
     surah: 'النبأ',
     surahEn: 'An-Naba',
     juz: 30,
-    ayahNumber: 6
+    ayahNumber: 6,
+    difficulty: 'easy'
   },
   {
     id: 'qa2',
@@ -39,7 +39,8 @@ export const quranAssessmentQuestions: QuranAssessmentQuestion[] = [
     surah: 'الغاشية',
     surahEn: 'Al-Ghashiyah',
     juz: 30,
-    ayahNumber: 1
+    ayahNumber: 1,
+    difficulty: 'easy'
   },
   {
     id: 'qa3',
@@ -55,7 +56,8 @@ export const quranAssessmentQuestions: QuranAssessmentQuestion[] = [
     surah: 'الشمس',
     surahEn: 'Ash-Shams',
     juz: 30,
-    ayahNumber: 4
+    ayahNumber: 4,
+    difficulty: 'medium'
   },
   {
     id: 'qa4',
@@ -66,7 +68,8 @@ export const quranAssessmentQuestions: QuranAssessmentQuestion[] = [
     surah: 'القدر',
     surahEn: 'Al-Qadr',
     juz: 30,
-    ayahNumber: 1
+    ayahNumber: 1,
+    difficulty: 'easy'
   },
   {
     id: 'qa5',
@@ -76,18 +79,89 @@ export const quranAssessmentQuestions: QuranAssessmentQuestion[] = [
       'وَلَا يَحُضُّ عَلَىٰ طَعَامِ الْمِسْكِينِ',
       'الَّذِينَ هُمْ عَنْ صَلَاتِهِمْ سَاهُونَ',
       'الَّذِينَ هُمْ يُرَاءُونَ',
-      'وَيَمْنَعُونَ الْمَاعُونَ'
+      'wَيَمْنَعُونَ الْمَاعُونَ'
     ],
     answer: 'وَلَا يَحُضُّ عَلَىٰ طَعَامِ الْمِسْكِينِ',
     surah: 'الماعون',
     surahEn: 'Al-Maun',
     juz: 30,
-    ayahNumber: 3
+    ayahNumber: 3,
+    difficulty: 'easy'
+  },
+  {
+    id: 'qa6',
+    type: 'identify_surah',
+    prompt: 'إِذَا السَّمَاءُ انْفَطَرَتْ ۞ وَإِذَا الْكَوَاكِبُ انْتَثَرَتْ ۞ وَإِذَا الْبِحَارُ فُجِّرَتْ',
+    options: ['الانفطار', 'التكوير', 'الانشقاق', 'البروج'],
+    answer: 'الانفطار',
+    surah: 'الانفطار',
+    surahEn: 'Al-Infitar',
+    juz: 30,
+    ayahNumber: 1,
+    difficulty: 'medium'
+  },
+  {
+    id: 'qa7',
+    type: 'missing_ayah',
+    prompt: 'فَلَا أُقْسِمُ بِالْخُنَّسِ ۞ الْجَوَارِ الْكُنَّسِ ۞ ... ۞ وَمَا هُوَ عَلَى الْغَيْبِ بِضَنِينٍ',
+    options: [
+      'وَاللَّيْلِ إِذَا عَسْعَسَ ۞ وَالصُّبْحِ إِذَا تَنَفَّسَ',
+      'إِنَّهُ لَقَوْلُ رَسُولٍ كَرِيمٍ',
+      'ذِي قُوَّةٍ عِنْدَ ذِي الْعَرْشِ مَكِينٍ',
+      'وَمَا صَاحِبُكُمْ بِمَجْنُونٍ'
+    ],
+    answer: 'وَاللَّيْلِ إِذَا عَسْعَسَ ۞ وَالصُّبْحِ إِذَا تَنَفَّسَ',
+    surah: 'التكوير',
+    surahEn: 'At-Takwir',
+    juz: 30,
+    ayahNumber: 17,
+    difficulty: 'hard'
+  },
+  {
+    id: 'qa8',
+    type: 'identify_surah',
+    prompt: 'وَالسَّمَاءِ ذَاتِ الْبُرُوجِ ۞ وَالْيَوْمِ الْمَوْعُودِ ۞ وَشَاهِدٍ وَمَشْهُودٍ',
+    options: ['البروج', 'الطارق', 'الأعلى', 'الفجر'],
+    answer: 'البروج',
+    surah: 'البروج',
+    surahEn: 'Al-Buruj',
+    juz: 30,
+    ayahNumber: 1,
+    difficulty: 'medium'
+  },
+  {
+    id: 'qa9',
+    type: 'missing_ayah',
+    prompt: 'اقْرَأْ بِاسْمِ رَبِّكَ الَّذِي خَلَقَ ۞ خَلَقَ الْإِنْسَانَ مِنْ عَلَقٍ ۞ ... ۞ الَّذِي عَلَّمَ بِالْقَلَمِ',
+    options: [
+      'اقْرَأْ وَرَبُّكَ الْأَكْرَمُ',
+      'عَلَّمَ الْإِنْسَانَ مَا لَمْ يَعْلَمْ',
+      'كَلَّا إِنَّ الْإِنْسَانَ لَيَطْغَىٰ',
+      'أَنْ رَآهُ اسْتَغْنَىٰ'
+    ],
+    answer: 'اقْرَأْ وَرَبُّكَ الْأَكْرَمُ',
+    surah: 'العلق',
+    surahEn: 'Al-Alaq',
+    juz: 30,
+    ayahNumber: 3,
+    difficulty: 'easy'
+  },
+  {
+    id: 'qa10',
+    type: 'identify_surah',
+    prompt: 'وَالْعَادِيَاتِ ضَبْحًا ۞ فَالْمُورِيَاتِ قَدْحًا ۞ فَالْمُغِيرَاتِ صُبْحًا',
+    options: ['العاديات', 'القارعة', 'الزلزلة', 'القارعة'],
+    answer: 'العاديات',
+    surah: 'العاديات',
+    surahEn: 'Al-Adiyat',
+    juz: 30,
+    ayahNumber: 1,
+    difficulty: 'hard'
   },
 
   // --- JUZ' 29 (TABARAK) ---
   {
-    id: 'qa6',
+    id: 'qa11',
     type: 'identify_surah',
     prompt: 'تَبَارَكَ الَّذِي بِيَدِهِ الْمُلْكُ وَهُوَ عَلَىٰ كُلِّ شَيْءٍ قَدِيرٌ ۞ الَّذِي خَلَقَ الْمَوْتَ وَالْحَيَاةَ لِيَبْلُوَكُمْ أَيُّكُمْ أَحْسَنُ عَمَلًا',
     options: ['الملك', 'القلم', 'الحاقة', 'المزمل'],
@@ -95,10 +169,11 @@ export const quranAssessmentQuestions: QuranAssessmentQuestion[] = [
     surah: 'الملك',
     surahEn: 'Al-Mulk',
     juz: 29,
-    ayahNumber: 1
+    ayahNumber: 1,
+    difficulty: 'easy'
   },
   {
-    id: 'qa7',
+    id: 'qa12',
     type: 'missing_ayah',
     prompt: 'نْ ۚ وَالْقَلَمِ وَمَا يَسْطُرُونَ ۞ مَا أَنْتَ بِنِعْمَةِ رَبِّكَ بِمَجْنُونٍ ۞ ... ۞ فَلَا تُطِعِ الْمُكَذِّبِينَ',
     options: [
@@ -111,10 +186,11 @@ export const quranAssessmentQuestions: QuranAssessmentQuestion[] = [
     surah: 'القلم',
     surahEn: 'Al-Qalam',
     juz: 29,
-    ayahNumber: 3
+    ayahNumber: 3,
+    difficulty: 'medium'
   },
   {
-    id: 'qa8',
+    id: 'qa13',
     type: 'identify_surah',
     prompt: 'الْحَاقَّةُ ۞ مَا الْحَاقَّةُ ۞ وَمَا أَدْرَاكَ مَا الْحَاقَّةُ ۞ كَذَّبَتْ ثَمُودُ وَعَادٌ بِالْقَارِعَةِ',
     options: ['الحاقة', 'القيامة', 'النبأ', 'المرسلات'],
@@ -122,10 +198,11 @@ export const quranAssessmentQuestions: QuranAssessmentQuestion[] = [
     surah: 'الحاقة',
     surahEn: 'Al-Haqqah',
     juz: 29,
-    ayahNumber: 1
+    ayahNumber: 1,
+    difficulty: 'medium'
   },
   {
-    id: 'qa9',
+    id: 'qa14',
     type: 'missing_ayah',
     prompt: 'يَا أَيُّهَا الْمُزَّمِّلُ ۞ قُمِ اللَّيْلِ إِلَّا قَلِيلًا ۞ ... ۞ أَوْ زِدْ عَلَيْهِ وَرَتِّلِ الْقُرْآنَ تَرْتِيلًا',
     options: [
@@ -138,10 +215,11 @@ export const quranAssessmentQuestions: QuranAssessmentQuestion[] = [
     surah: 'المزمل',
     surahEn: 'Al-Muzzammil',
     juz: 29,
-    ayahNumber: 3
+    ayahNumber: 3,
+    difficulty: 'medium'
   },
   {
-    id: 'qa10',
+    id: 'qa15',
     type: 'identify_surah',
     prompt: 'لَا أُقْسِمُ بِيَوْمِ الْقِيَامَةِ ۞ وَلَا أُقْسِمُ بِالنَّفْسِ اللَّوَّامَةِ ۞ أَيَحْسَبُ الْإِنْسَانُ أَلَّنْ نَجْمَعَ عِظَامَهُ',
     options: ['القيامة', 'الانسان', 'البلد', 'الطارق'],
@@ -149,12 +227,42 @@ export const quranAssessmentQuestions: QuranAssessmentQuestion[] = [
     surah: 'القيامة',
     surahEn: 'Al-Qiyamah',
     juz: 29,
-    ayahNumber: 1
+    ayahNumber: 1,
+    difficulty: 'hard'
+  },
+  {
+    id: 'qa16',
+    type: 'missing_ayah',
+    prompt: 'إِنَّا أَرْسَلْنَا نُوحًا إِلَىٰ قَوْمِهِ أَنْ أَنْذِرْ قَوْمَكَ مِنْ قَبْلِ أَنْ يَأْتِيَهُمْ عَذَابٌ أَلِيمٌ ۞ ... ۞ أَنِ اعْبُدُوا اللَّهَ وَاتَّقُوهُ وَأَطِيعُونِ',
+    options: [
+      'قَالَ يَا قَوْمِ إِنِّي لَكُمْ نَذِيرٌ مُبِينٌ',
+      'يَغْفِرْ لَكُمْ مِنْ ذُنُوبِكُمْ وَيُؤَخِّرْكُمْ إِلَىٰ أَجَلٍ مُسَمًّى',
+      'قَالَ رَبِّ إِنِّي دَعَوْتُ قَوْمِي لَيْلًا وَنَهَارًا',
+      'فَلَمْ يَزِدْهُمْ دُعَائِي إِلَّا فِرَارًا'
+    ],
+    answer: 'قَالَ يَا قَوْمِ إِنِّي لَكُمْ نَذِيرٌ مُبِينٌ',
+    surah: 'نوح',
+    surahEn: 'Nuh',
+    juz: 29,
+    ayahNumber: 2,
+    difficulty: 'hard'
+  },
+  {
+    id: 'qa17',
+    type: 'identify_surah',
+    prompt: 'قُلْ أُوحِيَ إِلَيَّ أَنَّهُ اسْتَمَعَ نَفَرٌ مِنَ الْجِنِّ فَقَالُوا إِنَّا سَمِعْنَا قُرْآنًا عَجَبًا ۞ يَهْدِي إِلَى الرُّشْدِ فَآمَنَّا بِهِ',
+    options: ['الجن', 'المزمل', 'المدثر', 'الملك'],
+    answer: 'الجن',
+    surah: 'الجن',
+    surahEn: 'Al-Jinn',
+    juz: 29,
+    ayahNumber: 1,
+    difficulty: 'expert'
   },
 
   // --- JUZ' 28 (QAD SAMI'A) ---
   {
-    id: 'qa11',
+    id: 'qa18',
     type: 'identify_surah',
     prompt: 'قَدْ سَمِعَ اللَّهُ قَوْلَ الَّتِي تُجَادِلُكَ فِي زَوْجِهَا وَتَشْتَكِي إِلَى اللَّهِ وَاللَّهُ يَسْمَعُ تَحَاوُرَكُمَا ۚ إِنَّ اللَّهَ سَمِيعٌ بَصِيرٌ',
     options: ['المجادلة', 'الحشر', 'الممتحنة', 'الصف'],
@@ -162,28 +270,118 @@ export const quranAssessmentQuestions: QuranAssessmentQuestion[] = [
     surah: 'المجادلة',
     surahEn: 'Al-Mujadilah',
     juz: 28,
-    ayahNumber: 1
+    ayahNumber: 1,
+    difficulty: 'hard'
   },
   {
-    id: 'qa12',
+    id: 'qa19',
     type: 'missing_ayah',
     prompt: 'سَبَّحَ لِلَّهِ مَا فِي السَّمَاوَاتِ وَمَا فِي الْأَرْضِ ۖ وَهُوَ الْعَزِيزُ الْحَكِيمُ ۞ هُوَ الَّذِي أَخْرَجَ الَّذِينَ كَفَرُوا مِنْ أَهْلِ الْكِتَابِ مِنْ دِيَارِهِمْ لِأَوَّلِ الْحَشْرِ ۚ ... ۞ يُخْرِبُونَ بُيُوتَهُمْ بِأَيْدِيهِمْ وَأَيْدِي الْمُؤْمِنِينَ فَاعْتَبِرُوا يَا أُولِي الْأَبْصَارِ',
     options: [
       'مَا ظَنَنْتُمْ أَنْ يَخْرُجُوا ۖ وَظَنُّوا أَنَّهُمْ مَانِعَتُهُمْ حُصُونُهُمْ مِنَ اللَّهِ فَأَتَاهُمُ اللَّهُ مِنْ حَيْثُ لَمْ يَحْتَسِبُوا ۖ وَقَذَفَ فِي قُلُوبِهِمُ الرُّعْبَ',
       'وَلَوْلَا أَنْ كَتَبَ اللَّهُ عَلَيْهِمُ الْجَلَاءَ لَعَذَّبَهُمْ فِي الدُّنْيَا',
-      'ذَٰلِكَ بِأَنَّهُمْ شَاقُّوا اللَّهَ وَرَسُولَهُ',
+      'ذَٰلِكَ بِأَنَّهُمْ شَاقُwَا اللَّهَ وَرَسُولَهُ',
       'مَا قَطَعْتُمْ مِنْ لِينَةٍ أَوْ تَرَكْتُمُوهَا قَائِمَةً عَلَىٰ أُصُولِهَا'
     ],
     answer: 'مَا ظَنَنْتُمْ أَنْ يَخْرُجُوا ۖ وَظَنُّوا أَنَّهُمْ مَانِعَتُهُمْ حُصُونُهُمْ مِنَ اللَّهِ فَأَتَاهُمُ اللَّهُ مِنْ حَيْثُ لَمْ يَحْتَسِبُوا ۖ وَقَذَفَ فِي قُلُوبِهِمُ الرُّعْبَ',
     surah: 'الحشر',
     surahEn: 'Al-Hashr',
     juz: 28,
-    ayahNumber: 2
+    ayahNumber: 2,
+    difficulty: 'expert'
+  },
+  {
+    id: 'qa20',
+    type: 'identify_surah',
+    prompt: 'يَا أَيُّهَا الَّذِينَ آمَنُوا إِذَا نُودِيَ لِلصَّلَاةِ مِنْ يَوْمِ الْجُمُعَةِ فَاسْعَوْا إِلَىٰ ذِكْرِ اللَّهِ وَذَرُوا الْبَيْعَ',
+    options: ['الجمعة', 'المنافقون', 'التغابن', 'الطلاق'],
+    answer: 'الجمعة',
+    surah: 'الجمعة',
+    surahEn: 'Al-Jumu\'ah',
+    juz: 28,
+    ayahNumber: 9,
+    difficulty: 'medium'
+  },
+
+  // --- JUZ' 15 (AL-ISRA / AL-KAHF) ---
+  {
+    id: 'qa21',
+    type: 'identify_surah',
+    prompt: 'سُبْحَانَ الَّذِي أَسْرَىٰ بِعَبْدِهِ لَيْلًا مِنَ الْمَسْجِدِ الْحَرَامِ إِلَى الْمَسْجِدِ الْأَقْصَى الَّذِي بَارَكْنَا حَوْلَهُ',
+    options: ['الإسراء', 'الكهف', 'مريم', 'طه'],
+    answer: 'الإسراء',
+    surah: 'الإسراء',
+    surahEn: 'Al-Isra\'',
+    juz: 15,
+    ayahNumber: 1,
+    difficulty: 'medium'
+  },
+  {
+    id: 'qa22',
+    type: 'missing_ayah',
+    prompt: 'الْحَمْدُ لِلَّهِ الَّذِي أَنْزَلَ عَلَىٰ عَبْدِهِ الْكِتَابَ وَلَمْ يَجْعَلْ لَهُ عِوَجًا ۜ ۞ ... ۞ وَيُنْذِرَ الَّذِينَ قَالُوا اتَّخَذَ اللَّهُ وَلَدًا',
+    options: [
+      'قَيِّمًا لِيُنْذِرَ بَأْسًا شَدِيدًا مِنْ لَدُنْهُ وَيُبَشِّرَ الْمُؤْمِنِينَ الَّذِينَ يَعْمَلُونَ الصَّالِحَاتِ أَنَّ لَهُمْ أَجْرًا حَسَنًا',
+      'مَا لَهُمْ بِهِ مِنْ عِلْمٍ وَلَا لِآبَائِهِمْ',
+      'فَلَعَلَّكَ بَاخِعٌ نَفْسَكَ عَلَىٰ آثَارِهِمْ',
+      'إِنَّا جَعَلْنَا مَا عَلَى الْأَرْضِ زِينَةً لَهَا'
+    ],
+    answer: 'قَيِّمًا لِيُنْذِرَ بَأْسًا شَدِيدًا مِنْ لَدُنْهُ وَيُبَشِّرَ الْمُؤْمِنِينَ الَّذِينَ يَعْمَلُونَ الصَّالِحَاتِ أَنَّ لَهُمْ أَجْرًا حَسَنًا',
+    surah: 'الكهف',
+    surahEn: 'Al-Kahf',
+    juz: 15,
+    ayahNumber: 2,
+    difficulty: 'hard'
+  },
+
+  // --- JUZ' 23 (YA-SIN / AS-SAFFAT) ---
+  {
+    id: 'qa23',
+    type: 'identify_surah',
+    prompt: 'يس ۞ وَالْقُرْآنِ الْحَكِيمِ ۞ إِنَّكَ لَمِنَ الْمُرْسَلِينَ ۞ عَلَىٰ صِرَاطٍ مُسْتَقِيمٍ',
+    options: ['يس', 'الصافات', 'الزمر', 'ص'],
+    answer: 'يس',
+    surah: 'يس',
+    surahEn: 'Ya-Sin',
+    juz: 23,
+    ayahNumber: 1,
+    difficulty: 'easy'
+  },
+
+  // --- JUZ' 27 (AR-RAHMAN / AL-WAQI'AH) ---
+  {
+    id: 'qa24',
+    type: 'identify_surah',
+    prompt: 'الرَّحْمَنُ ۞ عَلَّمَ الْقُرْآنَ ۞ خَلَقَ الْإِنْسَانَ ۞ عَلَّمَهُ الْبَيَانَ',
+    options: ['الرحمن', 'الواقعة', 'الحديد', 'المجادلة'],
+    answer: 'الرحمن',
+    surah: 'الرحمن',
+    surahEn: 'Ar-Rahman',
+    juz: 27,
+    ayahNumber: 1,
+    difficulty: 'easy'
+  },
+  {
+    id: 'qa25',
+    type: 'missing_ayah',
+    prompt: 'إِذَا وَقَعَتِ الْوَاقِعَةُ ۞ لَيْسَ لِوَقْعَتِهَا كَاذِبَةٌ ۞ ... ۞ إِذَا رُجَّتِ الْأَرْضُ رَجًّا',
+    options: [
+      'خَافِضَةٌ رَافِعَةٌ',
+      'وَبُسَّتِ الْجِبَالُ بَسًّا',
+      'فَكَانَتْ هَبَاءً مُنْبَثًّا',
+      'وَكُنْتُمْ أَزْوَاجًا ثَلَاثَةً'
+    ],
+    answer: 'خَافِضَةٌ رَافِعَةٌ',
+    surah: 'الواقعة',
+    surahEn: 'Al-Waqi\'ah',
+    juz: 27,
+    ayahNumber: 3,
+    difficulty: 'medium'
   },
 
   // --- JUZ' 1 (ALIF LAM MEEM) ---
   {
-    id: 'qa13',
+    id: 'qa26',
     type: 'identify_surah',
     prompt: 'الم ۞ ذَٰلِكَ الْكِتَابُ لَا رَيْبَ ۛ فِيهِ ۛ هُدًى لِلْمُتَّقِينَ ۞ الَّذِينَ يُؤْمِنُونَ بِالْغَيْبِ وَيُقِيمُونَ الصَّلَاةَ وَمِمَّا رَزَقْنَاهُمْ يُنْفِقُونَ',
     options: ['البقرة', 'آل عمران', 'النساء', 'الفاتحة'],
@@ -191,10 +389,11 @@ export const quranAssessmentQuestions: QuranAssessmentQuestion[] = [
     surah: 'البقرة',
     surahEn: 'Al-Baqarah',
     juz: 1,
-    ayahNumber: 1
+    ayahNumber: 1,
+    difficulty: 'easy'
   },
   {
-    id: 'qa14',
+    id: 'qa27',
     type: 'missing_ayah',
     prompt: 'الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ ۞ الرَّحْمَنِ الرَّحِيمِ ۞ ... ۞ إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ',
     options: [
@@ -207,10 +406,11 @@ export const quranAssessmentQuestions: QuranAssessmentQuestion[] = [
     surah: 'الفاتحة',
     surahEn: 'Al-Fatiha',
     juz: 1,
-    ayahNumber: 4
+    ayahNumber: 4,
+    difficulty: 'easy'
   },
   {
-    id: 'qa15',
+    id: 'qa28',
     type: 'missing_ayah',
     prompt: 'إِنَّ الَّذِينَ كَفَرُوا سَوَاءٌ عَلَيْهِمْ أَأَنْذَرْتَهُمْ أَمْ لَمْ تُنْذِرْهُمْ لَا يُؤْمِنُونَ ۞ ... ۞ وَلَهُمْ عَذَابٌ عَظِيمٌ',
     options: [
@@ -223,6 +423,57 @@ export const quranAssessmentQuestions: QuranAssessmentQuestion[] = [
     surah: 'البقرة',
     surahEn: 'Al-Baqarah',
     juz: 1,
-    ayahNumber: 7
+    ayahNumber: 7,
+    difficulty: 'hard'
+  },
+
+  // --- GENERAL QURANIC FALLBACK / OTHER JUZ'S ---
+  {
+    id: 'qa29',
+    type: 'identify_surah',
+    prompt: 'شَهْرُ رَمَضَانَ الَّذِي أُنْزِلَ فِيهِ الْقُرْآنُ هُدًى لِلنَّاسِ وَبَيِّنَاتٍ مِنَ الْهُدَىٰ وَالْفُرْقَانِ',
+    options: ['البقرة', 'آل عمران', 'النساء', 'المائدة'],
+    answer: 'البقرة',
+    surah: 'البقرة',
+    surahEn: 'Al-Baqarah',
+    juz: 2,
+    ayahNumber: 185,
+    difficulty: 'medium'
+  },
+  {
+    id: 'qa30',
+    type: 'identify_surah',
+    prompt: 'إِنَّ اللَّهَ يَأْمُرُكُمْ أَنْ تُؤَدُّوا الْأَمَانَاتِ إِلَىٰ أَهْلِهَا وَإِذَا حَكَمْتُمْ بَيْنَ النَّاسِ أَنْ تَحْكُمُوا بِالْعَدْلِ',
+    options: ['النساء', 'البقرة', 'آل عمران', 'المائدة'],
+    answer: 'النساء',
+    surah: 'النساء',
+    surahEn: 'An-Nisa\'',
+    juz: 5,
+    ayahNumber: 58,
+    difficulty: 'hard'
+  },
+  {
+    id: 'qa31',
+    type: 'identify_surah',
+    prompt: 'الْيَوْمَ أَكْمَلْتُ لَكُمْ دِينَكُمْ وَأَتْمَمْتُ عَلَيْكُمْ نِعْمَتِي وَرَضِيتُ لَكُمُ الْإِسْلَامَ دِينًا',
+    options: ['المائدة', 'الأنعام', 'الأعراف', 'الأنفال'],
+    answer: 'المائدة',
+    surah: 'المائدة',
+    surahEn: 'Al-Ma\'idah',
+    juz: 6,
+    ayahNumber: 3,
+    difficulty: 'medium'
+  },
+  {
+    id: 'qa32',
+    type: 'identify_surah',
+    prompt: 'قُلْ هُوَ اللَّهُ أَحَدٌ ۞ اللَّهُ الصَّمَدُ ۞ لَمْ يَلِدْ وَلَمْ يُولَدْ',
+    options: ['الإخلاص', 'الفلق', 'الناس', 'المسد'],
+    answer: 'الإخلاص',
+    surah: 'الإخلاص',
+    surahEn: 'Al-Ikhlas',
+    juz: 30,
+    ayahNumber: 1,
+    difficulty: 'easy'
   }
 ];

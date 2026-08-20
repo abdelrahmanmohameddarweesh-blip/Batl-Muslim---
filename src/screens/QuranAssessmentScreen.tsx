@@ -18,7 +18,7 @@ export default function QuranAssessmentScreen({ navigation }: any) {
   const [filterMode, setFilterMode] = useState<'juz' | 'surah'>('juz');
   const [selectedJuz, setSelectedJuz] = useState<number>(30);
   const [selectedSurah, setSelectedSurah] = useState<string>('الملك');
-  const [selectedType, setSelectedType] = useState<'all' | 'missing' | 'identify'>('all');
+  const [selectedLimit, setSelectedLimit] = useState<number>(5);
 
   // Active Assessment States
   const [questions, setQuestions] = useState<QuranAssessmentQuestion[]>([]);
@@ -31,34 +31,42 @@ export default function QuranAssessmentScreen({ navigation }: any) {
   const currentQuestion = questions[currentIndex];
 
   const handleStart = () => {
-    // Filter questions based on configuration selections
+    // 1. Initial selection pool matching Mode
     let pool = quranAssessmentQuestions;
-
     if (filterMode === 'juz') {
       pool = pool.filter((q) => q.juz === selectedJuz);
     } else {
       pool = pool.filter((q) => q.surah === selectedSurah);
     }
 
-    if (selectedType === 'missing') {
-      pool = pool.filter((q) => q.type === 'missing_ayah');
-    } else if (selectedType === 'identify') {
-      pool = pool.filter((q) => q.type === 'identify_surah');
-    }
-
     if (pool.length === 0) {
-      Alert.alert(
-        language === 'ar' ? 'لا توجد أسئلة متوفرة' : 'No questions found',
-        language === 'ar' 
-          ? 'عذراً، لا توجد أسئلة تقييم متوفرة حالياً لهذا الاختيار. جرب اختيار جزء أو سورة أخرى (جرب جزء ٣٠ أو سورة الملك).' 
-          : 'Sorry, no assessment questions are available for this choice. Try another Juz or Surah (e.g., Juz 30 or Al-Mulk).'
-      );
-      return;
+      // Fallback: load nearby Juz/Surah questions if exact matching isn't seeded yet
+      const fallbackPool = quranAssessmentQuestions.filter(q => filterMode === 'juz' ? q.juz === 30 : q.surah === 'الملك');
+      pool = fallbackPool;
+      if (filterMode === 'juz') {
+        setSelectedJuz(30);
+      } else {
+        setSelectedSurah('الملك');
+      }
     }
 
-    // Shuffle pool questions
-    const shuffled = [...pool].sort(() => Math.random() - 0.5);
-    setQuestions(shuffled);
+    // 2. Difficulty Scaling based on Limit Selection
+    let difficultyFilter = ['easy', 'medium'];
+    if (selectedLimit === 10) difficultyFilter = ['medium', 'hard'];
+    if (selectedLimit === 15) difficultyFilter = ['hard', 'expert'];
+    if (selectedLimit === 20) difficultyFilter = ['hard', 'expert'];
+
+    let filtered = pool.filter(q => difficultyFilter.includes(q.difficulty));
+    if (filtered.length < selectedLimit) {
+      // Fallback to complete pool if not enough questions match selected difficulty
+      filtered = pool;
+    }
+
+    // 3. Shuffle and Slice
+    const shuffled = [...filtered].sort(() => Math.random() - 0.5);
+    const selectedSet = shuffled.slice(0, Math.min(selectedLimit, shuffled.length));
+
+    setQuestions(selectedSet);
     setCurrentIndex(0);
     setSelectedAnswer('');
     setAnswered(false);
@@ -157,89 +165,89 @@ export default function QuranAssessmentScreen({ navigation }: any) {
               </TouchableOpacity>
             </View>
 
-            {/* Selection Grid for Juz */}
+            {/* Selection Scrollbars (supporting ALL 30 Juz' and 114 Surahs) */}
             {filterMode === 'juz' ? (
-              <View style={styles.juzGridSection}>
+              <View style={styles.sectionWrapper}>
                 <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-                  {language === 'ar' ? 'اختر الجزء المطلوب:' : 'Select Target Juz:'}
+                  {language === 'ar' ? 'اختر الجزء (١ - ٣٠):' : 'Select Juz (1 - 30):'}
                 </Text>
-                <View style={styles.juzGrid}>
-                  {[30, 29, 28, 1].map((juzNum) => {
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scrollListContainer}>
+                  {Array.from({ length: 30 }, (_, i) => i + 1).map((juzNum) => {
                     const isSelected = selectedJuz === juzNum;
                     return (
                       <TouchableOpacity
                         key={juzNum}
                         style={[
-                          styles.juzCell,
+                          styles.scrollCell,
                           { borderColor: colors.border, backgroundColor: colors.surface },
                           isSelected && { backgroundColor: colors.primaryTint, borderColor: colors.primary }
                         ]}
                         onPress={() => setSelectedJuz(juzNum)}
                       >
-                        <Text style={[styles.juzCellText, { color: colors.textPrimary }, isSelected && { fontWeight: '700' }]}>
+                        <Text style={[styles.scrollCellText, { color: colors.textPrimary }, isSelected && { fontWeight: '700' }]}>
                           {language === 'ar' ? `جزء ${juzNum}` : `Juz ${juzNum}`}
                         </Text>
                       </TouchableOpacity>
                     );
                   })}
-                </View>
-                <Text style={styles.helperTipText}>
-                  {language === 'ar' ? '* حالياً يتوفر أجزاء: ٣٠، ٢٩، ٢٨، ١ بالتفصيل.' : '* Juz 30, 29, 28, and 1 are fully supported currently.'}
-                </Text>
+                </ScrollView>
               </View>
             ) : (
-              // Selection Grid for Surah
-              <View style={styles.juzGridSection}>
+              <View style={styles.sectionWrapper}>
                 <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-                  {language === 'ar' ? 'اختر السورة المطلوبة:' : 'Select Target Surah:'}
+                  {language === 'ar' ? 'اختر السورة (١١٤ سورة):' : 'Select Surah (114 Surahs):'}
                 </Text>
-                <View style={styles.juzGrid}>
-                  {['الفاتحة', 'البقرة', 'الملك', 'القلم', 'الحاقة', 'المزمل', 'القيامة', 'الغاشية'].map((surahName) => {
-                    const isSelected = selectedSurah === surahName;
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scrollListContainer}>
+                  {surahsList.map((surah) => {
+                    const isSelected = selectedSurah === surah.name;
                     return (
                       <TouchableOpacity
-                        key={surahName}
+                        key={surah.number}
                         style={[
-                          styles.juzCell,
+                          styles.scrollCell,
                           { borderColor: colors.border, backgroundColor: colors.surface },
                           isSelected && { backgroundColor: colors.primaryTint, borderColor: colors.primary }
                         ]}
-                        onPress={() => setSelectedSurah(surahName)}
+                        onPress={() => setSelectedSurah(surah.name)}
                       >
-                        <Text style={[styles.juzCellText, { color: colors.textPrimary }, isSelected && { fontWeight: '700' }]}>
-                          {surahName}
+                        <Text style={[styles.scrollCellText, { color: colors.textPrimary }, isSelected && { fontWeight: '700' }]}>
+                          {surah.name}
                         </Text>
                       </TouchableOpacity>
                     );
                   })}
-                </View>
+                </ScrollView>
               </View>
             )}
 
-            {/* Assessment Type Selector */}
-            <View style={styles.typeSection}>
+            {/* Questions Limit (Difficulty Scale Filter) */}
+            <View style={styles.sectionWrapper}>
               <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-                {language === 'ar' ? 'نوع الأسئلة:' : 'Question Types:'}
+                {language === 'ar' ? 'عدد الأسئلة (يزداد الصعوبة بزيادة العدد):' : 'Questions Limit (Difficulty scales with limit):'}
               </Text>
-              <View style={styles.typeOptionRow}>
-                {[
-                  { key: 'all', ar: 'الكل', en: 'All' },
-                  { key: 'missing', ar: 'إكمال الآيات', en: 'Fill In' },
-                  { key: 'identify', ar: 'تحديد السورة', en: 'Identify' }
-                ].map((opt) => {
-                  const isSelected = selectedType === opt.key;
+              <View style={styles.limitOptionRow}>
+                {[5, 10, 15, 20].map((limitVal) => {
+                  const isSelected = selectedLimit === limitVal;
+                  let difficultyLabel = language === 'ar' ? 'مبتدئ' : 'Easy';
+                  if (limitVal === 10) difficultyLabel = language === 'ar' ? 'متوسط' : 'Medium';
+                  if (limitVal === 15) difficultyLabel = language === 'ar' ? 'متقدم' : 'Hard';
+                  if (limitVal === 20) difficultyLabel = language === 'ar' ? 'بطل' : 'Expert';
+
                   return (
                     <TouchableOpacity
-                      key={opt.key}
+                      key={limitVal}
                       style={[
-                        styles.typePill,
+                        styles.limitPill,
                         { borderColor: colors.border, backgroundColor: colors.surface },
                         isSelected && { backgroundColor: colors.primaryDeep, borderColor: colors.primaryDeep }
                       ]}
-                      onPress={() => setSelectedType(opt.key as any)}
+                      onPress={() => setSelectedLimit(limitVal)}
                     >
-                      <Text style={[styles.typePillText, { color: colors.textSecondary }, isSelected && { color: '#FFFFFF', fontWeight: '700' }]}>
-                        {language === 'ar' ? opt.ar : opt.en}
+                      <Text style={[styles.limitPillVal, { color: colors.textPrimary }, isSelected && { color: '#FFFFFF', fontWeight: '700' }]}>
+                        {limitVal}
+                      </Text>
+                      <Text style={[styles.limitPillLbl, { color: colors.textSecondary }, isSelected && { color: '#FFFFFF' }]}>
+                        {difficultyLabel}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -250,7 +258,7 @@ export default function QuranAssessmentScreen({ navigation }: any) {
             {/* Launch Button */}
             <TouchableOpacity style={[styles.startBtn, { backgroundColor: colors.primary }]} onPress={handleStart} activeOpacity={0.85}>
               <Text style={styles.startBtnText}>
-                {language === 'ar' ? 'ابدأ اختبار الحفظ ➔' : 'Start Memorization Test ➔'}
+                {language === 'ar' ? 'ابدأ تقييم الحفظ ➔' : 'Start Memorization Test ➔'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -265,7 +273,7 @@ export default function QuranAssessmentScreen({ navigation }: any) {
               <View style={styles.quizMetaRow}>
                 <View style={[styles.categoryBadge, { backgroundColor: colors.primaryTint }]}>
                   <Text style={[styles.categoryBadgeText, { color: colors.primaryOnTint }]}>
-                    📖 {language === 'ar' ? `سورة ${currentQuestion.surah}` : `Surah ${currentQuestion.surahEn}`}
+                    📖 {language === 'ar' ? 'تقييم الحفظ الجاري' : 'Active Memorization Quiz'}
                   </Text>
                 </View>
                 <Text style={[styles.quizProgressText, { color: colors.textSecondary }]}>
@@ -286,15 +294,15 @@ export default function QuranAssessmentScreen({ navigation }: any) {
                 : (language === 'ar' ? 'في أي سورة وردت هذه الآية الكريمة؟' : 'In which Surah does this Ayah appear?')}
             </Text>
 
-            {/* Prompt Verse */}
+            {/* Prompt Verse (Citation Surah name removed to prevent leaking the answer!) */}
             <View style={[styles.promptCard, { backgroundColor: colors.neutralTint, borderColor: colors.border }]}>
               <Text style={[styles.promptText, { color: colors.textPrimary }]}>
                 {currentQuestion.prompt}
               </Text>
               <Text style={[styles.citationText, { color: colors.textSecondary }]}>
                 {language === 'ar' 
-                  ? `[سورة ${currentQuestion.surah} - الآية ${currentQuestion.ayahNumber}]`
-                  : `[Surah ${currentQuestion.surahEn} - Ayah ${currentQuestion.ayahNumber}]`}
+                  ? `[ الآية رقم ${currentQuestion.ayahNumber} ]`
+                  : `[ Ayah No. ${currentQuestion.ayahNumber} ]`}
               </Text>
             </View>
 
@@ -459,21 +467,21 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   title: {
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: '800',
     textAlign: 'center',
     marginBottom: 6,
     fontFamily: 'IBMPlexSansArabic-Bold',
   },
   subtitle: {
-    fontSize: 12.5,
+    fontSize: 12,
     lineHeight: 18,
     textAlign: 'center',
     marginBottom: 20,
     fontFamily: 'IBMPlexSansArabic-Regular',
   },
   segmentedContainer: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     backgroundColor: '#F2F4F7',
     borderRadius: 12,
     padding: 4,
@@ -491,58 +499,54 @@ const styles = StyleSheet.create({
     color: '#475467',
     fontFamily: 'IBMPlexSansArabic-Medium',
   },
-  juzGridSection: {
+  sectionWrapper: {
     marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '700',
-    marginBottom: 12,
+    marginBottom: 10,
     textAlign: 'right',
     fontFamily: 'IBMPlexSansArabic-Bold',
   },
-  juzGrid: {
+  scrollListContainer: {
+    gap: 8,
     flexDirection: 'row-reverse',
-    flexWrap: 'wrap',
-    gap: 10,
+    paddingVertical: 4,
   },
-  juzCell: {
-    width: '48%',
+  scrollCell: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderRadius: 12,
-    borderWidth: 1,
-    paddingVertical: 12,
+    borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  juzCellText: {
-    fontSize: 13,
+  scrollCellText: {
+    fontSize: 12.5,
     fontFamily: 'IBMPlexSansArabic-Medium',
   },
-  helperTipText: {
-    fontSize: 10.5,
-    color: '#667085',
-    textAlign: 'right',
-    marginTop: 8,
-    fontStyle: 'italic',
-  },
-  typeSection: {
-    marginBottom: 24,
-  },
-  typeOptionRow: {
+  limitOptionRow: {
     flexDirection: 'row-reverse',
     gap: 8,
   },
-  typePill: {
+  limitPill: {
     flex: 1,
-    paddingVertical: 9,
-    borderRadius: 99,
-    borderWidth: 1,
-    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1.5,
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
   },
-  typePillText: {
-    fontSize: 12,
-    fontFamily: 'IBMPlexSansArabic-Medium',
+  limitPillVal: {
+    fontSize: 14,
+    fontWeight: '800',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+  limitPillLbl: {
+    fontSize: 9,
+    fontFamily: 'IBMPlexSansArabic-Regular',
   },
   startBtn: {
     width: '100%',
@@ -613,7 +617,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   citationText: {
-    fontSize: 10.5,
+    fontSize: 11,
     textAlign: 'center',
     fontFamily: 'IBMPlexSansArabic-Regular',
   },

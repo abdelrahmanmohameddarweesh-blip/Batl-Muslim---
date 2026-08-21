@@ -663,6 +663,8 @@ export default function QuranAssessmentScreen({ navigation }: any) {
     const surahObj = surahsList.find(s => s.name === selectedSurah);
     const surahNumber = surahObj ? surahObj.number : 67;
 
+    let errorDetails = '';
+
     // Helper to fetch verses with dual-redundancy API mirrors
     const downloadVerses = async (mode: 'surah' | 'juz', val: number): Promise<QuranVerse[]> => {
       // 1. Primary API: api.alquran.cloud
@@ -698,6 +700,7 @@ export default function QuranAssessmentScreen({ navigation }: any) {
         }
       } catch (err) {
         console.log('Primary api.alquran.cloud failed. Trying secondary backup...', err);
+        errorDetails += `[Primary API: ${String(err)}] `;
       }
 
       // 2. Secondary API Mirror Fallback: api.quran.com (Highly reliable, served on Cloudflare CDN)
@@ -727,6 +730,7 @@ export default function QuranAssessmentScreen({ navigation }: any) {
         }
       } catch (err) {
         console.log('Secondary api.quran.com mirror failed/offline.', err);
+        errorDetails += `[Secondary API: ${String(err)}]`;
       }
 
       return [];
@@ -746,8 +750,8 @@ export default function QuranAssessmentScreen({ navigation }: any) {
           Alert.alert(
             language === 'ar' ? 'فشل الاتصال بالشبكة' : 'Network Connection Failed',
             language === 'ar'
-              ? `عذراً، يتطلب اختبار سورة ${selectedSurah} اتصالاً بالإنترنت لتحميل الآيات. يرجى التحقق من اتصالك بالشبكة أو تجربة السور المتاحة دون اتصال (الفاتحة، البقرة، الملك، الغاشية).`
-              : `Testing Surah ${selectedSurah} requires an active internet connection to download the verses. Please check your network or try one of the offline-available Surahs (Al-Fatiha, Al-Baqarah, Al-Mulk, Al-Ghashiyah).`
+              ? `عذراً، يتطلب اختبار سورة ${selectedSurah} اتصالاً بالإنترنت لتحميل الآيات. يرجى التحقق من اتصالك بالشبكة أو تجربة السور المتاحة دون اتصال.\n\nتفاصيل الخطأ:\n${errorDetails}`
+              : `Testing Surah ${selectedSurah} requires an active internet connection to download the verses. Please check your network or try one of the offline-available Surahs.\n\nError Details:\n${errorDetails}`
           );
           return;
         }
@@ -758,8 +762,8 @@ export default function QuranAssessmentScreen({ navigation }: any) {
           Alert.alert(
             language === 'ar' ? 'فشل الاتصال بالشبكة' : 'Network Connection Failed',
             language === 'ar'
-              ? `عذراً، يتطلب اختبار جزء ${selectedJuz} اتصالاً بالإنترنت. يرجى التحقق من اتصالك بالشبكة أو تجربة جزء ٣٠ المتاح دون اتصال.`
-              : `Testing Juz ${selectedJuz} requires an active internet connection. Please check your network or try Juz 30 (available offline).`
+              ? `عذراً، يتطلب اختبار جزء ${selectedJuz} اتصالاً بالإنترنت. يرجى التحقق من اتصالك بالشبكة أو تجربة جزء ٣٠ المتاح دون اتصال.\n\nتفاصيل الخطأ:\n${errorDetails}`
+              : `Testing Juz ${selectedJuz} requires an active internet connection. Please check your network or try Juz 30 (available offline).\n\nError Details:\n${errorDetails}`
           );
           return;
         }

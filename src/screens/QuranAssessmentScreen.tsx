@@ -60,10 +60,7 @@ export default function QuranAssessmentScreen({ navigation }: any) {
       }
 
       if (type === 'missing_ayah') {
-        // High Difficulty: Randomize surrounding context styles to test memory boundaries
-        const contextType = attempt % 4;
-
-        // Locate surrounding verses in the provided list
+        // Find neighboring verses
         const prevVerse = versesSource.find(
           v => v.surah === targetVerse.surah && v.ayahNumber === targetVerse.ayahNumber - 1
         );
@@ -75,14 +72,56 @@ export default function QuranAssessmentScreen({ navigation }: any) {
         let answer = '';
         let distractors: string[] = [];
 
-        if (contextType === 3) {
+        // Check if neighboring verses are available for full-verse context mode
+        const contextType = attempt % 4;
+        let canDoFullVerseQuiz = false;
+        if (contextType === 0 && prevVerse && nextVerse) canDoFullVerseQuiz = true;
+        if (contextType === 1 && prevVerse) canDoFullVerseQuiz = true;
+        if (contextType === 2 && nextVerse) canDoFullVerseQuiz = true;
+
+        if (canDoFullVerseQuiz) {
+          // FULL VERSE MISSING MODE:
+          // The correct answer is the full target verse.
+          answer = targetVerse.text;
+
+          if (contextType === 0 && prevVerse && nextVerse) {
+            promptText = `... ۞ ${prevVerse.text} ۞ [ ....... ] ۞ ${nextVerse.text} ۞ ...`;
+          } else if (contextType === 1 && prevVerse) {
+            promptText = `... ۞ ${prevVerse.text} ۞ [ ....... ]`;
+          } else if (nextVerse) {
+            promptText = `[ ....... ] ۞ ${nextVerse.text} ۞ ...`;
+          } else {
+            promptText = `[ ....... ]`;
+          }
+
+          // EXCLUDE ALL DUPLICATE CONTEXT (prev/next verses) from distractors pool!
+          // This prevents clue leaks (e.g. seeing a distractor that is already printed in the prompt)
+          let distractorPool = versesSource.filter(
+            v => v.text !== answer && 
+                 v.text !== prevVerse?.text && 
+                 v.text !== nextVerse?.text
+          );
+
+          if (filterMode === 'surah') {
+            distractorPool = distractorPool.filter(v => v.surah === selectedSurah);
+          }
+
+          if (distractorPool.length < 3) {
+            distractorPool = quranVerses.filter(v => v.text !== answer);
+          }
+
+          distractors = distractorPool
+            .sort(() => Math.random() - 0.5)
+            .slice(0, 3)
+            .map(v => v.text);
+        } else {
           // SPLIT VERSE MODE (No prompt-option overlap):
           // Split the target verse in half. The prompt displays only the first half.
           // The correct answer option is strictly the second half.
           const words = targetVerse.text.split(' ');
           const half = Math.floor(words.length / 2);
           
-          if (words.length > 3) {
+          if (words.length > 2) {
             const firstHalf = words.slice(0, half).join(' ');
             promptText = `${firstHalf} [ ....... ]`;
             answer = words.slice(half).join(' ');
@@ -107,54 +146,23 @@ export default function QuranAssessmentScreen({ navigation }: any) {
                 return dWords.slice(dHalf).join(' ');
               });
           } else {
-            // Fallback context if target verse is too short
-            promptText = `[ ....... ] ۞ ${targetVerse.text}`;
-            answer = targetVerse.text;
+            // Word level split fallback for very short verses
+            const firstWord = words[0] || '';
+            promptText = `${firstWord} [ ....... ]`;
+            answer = words.slice(1).join(' ') || targetVerse.text;
 
-            let distractorPool = versesSource.filter(v => v.text !== answer);
+            let distractorPool = versesSource.filter(v => v.text !== targetVerse.text);
             if (filterMode === 'surah') {
               distractorPool = distractorPool.filter(v => v.surah === selectedSurah);
             }
             distractors = distractorPool
               .sort(() => Math.random() - 0.5)
               .slice(0, 3)
-              .map(v => v.text);
+              .map(v => {
+                const dWords = v.text.split(' ');
+                return dWords.slice(1).join(' ') || v.text;
+              });
           }
-        } else {
-          // FULL VERSE MISSING MODE:
-          // Correct answer is the full target verse.
-          answer = targetVerse.text;
-
-          if (contextType === 0 && prevVerse && nextVerse) {
-            promptText = `... ۞ ${prevVerse.text} ۞ [ ....... ] ۞ ${nextVerse.text} ۞ ...`;
-          } else if (contextType === 1 && prevVerse) {
-            promptText = `... ۞ ${prevVerse.text} ۞ [ ....... ]`;
-          } else if (contextType === 2 && nextVerse) {
-            promptText = `[ ....... ] ۞ ${nextVerse.text} ۞ ...`;
-          } else {
-            promptText = `[ ....... ]`; 
-          }
-
-          // EXCLUDE ALL DUPLICATE CONTEXT (prev/next verses) from distractors pool!
-          // This prevents clue leaks (e.g. seeing a distractor that is already printed in the prompt)
-          let distractorPool = versesSource.filter(
-            v => v.text !== answer && 
-                 v.text !== prevVerse?.text && 
-                 v.text !== nextVerse?.text
-          );
-
-          if (filterMode === 'surah') {
-            distractorPool = distractorPool.filter(v => v.surah === selectedSurah);
-          }
-
-          if (distractorPool.length < 3) {
-            distractorPool = quranVerses.filter(v => v.text !== answer);
-          }
-
-          distractors = distractorPool
-            .sort(() => Math.random() - 0.5)
-            .slice(0, 3)
-            .map(v => v.text);
         }
 
         // Mix correct answer with distractors and shuffle choice positions completely
@@ -520,7 +528,7 @@ export default function QuranAssessmentScreen({ navigation }: any) {
                 : (language === 'ar' ? 'في أي سورة وردت هذه الآية الكريمة؟' : 'In which Surah does this Ayah appear?')}
             </Text>
 
-            {/* Prompt Verse (Ayah number citation removed as requested) */}
+            {/* Prompt Verse */}
             <View style={[styles.promptCard, { backgroundColor: colors.neutralTint, borderColor: colors.border }]}>
               <Text style={[styles.promptText, { color: colors.textPrimary }]}>
                 {currentQuestion.prompt}

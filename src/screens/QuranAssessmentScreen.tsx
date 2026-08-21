@@ -43,7 +43,7 @@ export default function QuranAssessmentScreen({ navigation }: any) {
 
   const currentQuestion = questions[currentIndex];
 
-  // Helper to compile dynamic questions from a provided list of verses
+  // Advanced Quran Question Generator Engine (Eliminates text overlap clues completely)
   const compileQuestionsFromVerses = (versesSource: QuranVerse[]): DynamicQuestion[] => {
     const shuffledVerses = [...versesSource].sort(() => Math.random() - 0.5);
     const generated: DynamicQuestion[] = [];
@@ -72,42 +72,92 @@ export default function QuranAssessmentScreen({ navigation }: any) {
         );
 
         let promptText = '';
-        if (contextType === 0 && prevVerse && nextVerse) {
-          promptText = `... ۞ ${prevVerse.text} ۞ [ ....... ] ۞ ${nextVerse.text} ۞ ...`;
-        } else if (contextType === 1 && prevVerse) {
-          promptText = `... ۞ ${prevVerse.text} ۞ [ ....... ]`;
-        } else if (contextType === 2 && nextVerse) {
-          promptText = `[ ....... ] ۞ ${nextVerse.text} ۞ ...`;
-        } else {
-          // Splitting target verse in half and making the second half blank (extremely difficult!)
+        let answer = '';
+        let distractors: string[] = [];
+
+        if (contextType === 3) {
+          // SPLIT VERSE MODE (No prompt-option overlap):
+          // Split the target verse in half. The prompt displays only the first half.
+          // The correct answer option is strictly the second half.
           const words = targetVerse.text.split(' ');
-          if (words.length > 4) {
-            const half = Math.floor(words.length / 2);
+          const half = Math.floor(words.length / 2);
+          
+          if (words.length > 3) {
             const firstHalf = words.slice(0, half).join(' ');
             promptText = `${firstHalf} [ ....... ]`;
+            answer = words.slice(half).join(' ');
+
+            // Strictly filter distractors from the same Surah/Juz
+            let distractorPool = versesSource.filter(v => v.text !== targetVerse.text);
+            if (filterMode === 'surah') {
+              distractorPool = distractorPool.filter(v => v.surah === selectedSurah);
+            }
+
+            if (distractorPool.length < 3) {
+              distractorPool = quranVerses.filter(v => v.text !== targetVerse.text);
+            }
+
+            // Split distractor verses at their half-points and take their second halves
+            distractors = distractorPool
+              .sort(() => Math.random() - 0.5)
+              .slice(0, 3)
+              .map(v => {
+                const dWords = v.text.split(' ');
+                const dHalf = Math.floor(dWords.length / 2);
+                return dWords.slice(dHalf).join(' ');
+              });
           } else {
+            // Fallback context if target verse is too short
             promptText = `[ ....... ] ۞ ${targetVerse.text}`;
+            answer = targetVerse.text;
+
+            let distractorPool = versesSource.filter(v => v.text !== answer);
+            if (filterMode === 'surah') {
+              distractorPool = distractorPool.filter(v => v.surah === selectedSurah);
+            }
+            distractors = distractorPool
+              .sort(() => Math.random() - 0.5)
+              .slice(0, 3)
+              .map(v => v.text);
           }
+        } else {
+          // FULL VERSE MISSING MODE:
+          // Correct answer is the full target verse.
+          answer = targetVerse.text;
+
+          if (contextType === 0 && prevVerse && nextVerse) {
+            promptText = `... ۞ ${prevVerse.text} ۞ [ ....... ] ۞ ${nextVerse.text} ۞ ...`;
+          } else if (contextType === 1 && prevVerse) {
+            promptText = `... ۞ ${prevVerse.text} ۞ [ ....... ]`;
+          } else if (contextType === 2 && nextVerse) {
+            promptText = `[ ....... ] ۞ ${nextVerse.text} ۞ ...`;
+          } else {
+            promptText = `[ ....... ]`; 
+          }
+
+          // EXCLUDE ALL DUPLICATE CONTEXT (prev/next verses) from distractors pool!
+          // This prevents clue leaks (e.g. seeing a distractor that is already printed in the prompt)
+          let distractorPool = versesSource.filter(
+            v => v.text !== answer && 
+                 v.text !== prevVerse?.text && 
+                 v.text !== nextVerse?.text
+          );
+
+          if (filterMode === 'surah') {
+            distractorPool = distractorPool.filter(v => v.surah === selectedSurah);
+          }
+
+          if (distractorPool.length < 3) {
+            distractorPool = quranVerses.filter(v => v.text !== answer);
+          }
+
+          distractors = distractorPool
+            .sort(() => Math.random() - 0.5)
+            .slice(0, 3)
+            .map(v => v.text);
         }
 
-        const answer = targetVerse.text;
-
-        // Pull distractors strictly from same Surah/Juz to ensure similar rhythm and style
-        let distractorPool = versesSource.filter(v => v.text !== answer);
-        if (filterMode === 'surah') {
-          distractorPool = distractorPool.filter(v => v.surah === selectedSurah);
-        }
-
-        if (distractorPool.length < 3) {
-          // Fallback to global database if live Surah lacks enough verses
-          distractorPool = quranVerses.filter(v => v.text !== answer);
-        }
-
-        const distractors = distractorPool
-          .sort(() => Math.random() - 0.5)
-          .slice(0, 3)
-          .map(v => v.text);
-
+        // Mix correct answer with distractors and shuffle choice positions completely
         const options = [answer, ...distractors].sort(() => Math.random() - 0.5);
 
         generated.push({
@@ -470,7 +520,7 @@ export default function QuranAssessmentScreen({ navigation }: any) {
                 : (language === 'ar' ? 'في أي سورة وردت هذه الآية الكريمة؟' : 'In which Surah does this Ayah appear?')}
             </Text>
 
-            {/* Prompt Verse */}
+            {/* Prompt Verse (Ayah number citation removed as requested) */}
             <View style={[styles.promptCard, { backgroundColor: colors.neutralTint, borderColor: colors.border }]}>
               <Text style={[styles.promptText, { color: colors.textPrimary }]}>
                 {currentQuestion.prompt}

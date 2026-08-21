@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Share, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Share, ActivityIndicator, Dimensions } from 'react-native';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { surahsList } from '../data/surahs';
 import { quranVerses, type QuranVerse } from '../data/quranVerses';
@@ -26,11 +26,12 @@ export default function QuranAssessmentScreen({ navigation }: any) {
   // Screen State: 'lobby' | 'assessment' | 'results'
   const [screenState, setScreenState] = useState<'lobby' | 'assessment' | 'results'>('lobby');
 
-  // Configuration Choices
+  // Lobby Configuration Choices
   const [filterMode, setFilterMode] = useState<'juz' | 'surah'>('juz');
   const [selectedJuz, setSelectedJuz] = useState<number>(30);
   const [selectedSurah, setSelectedSurah] = useState<string>('الملك');
   const [selectedLimit, setSelectedLimit] = useState<number>(5);
+  const [fetching, setFetching] = useState(false);
 
   // Active Assessment States
   const [questions, setQuestions] = useState<DynamicQuestion[]>([]);
@@ -42,48 +43,31 @@ export default function QuranAssessmentScreen({ navigation }: any) {
 
   const currentQuestion = questions[currentIndex];
 
-  // Advanced Quran Question Generator Engine (High Difficulty + Exact Count Guarantee)
-  const generateQuestions = (): DynamicQuestion[] => {
-    // 1. Filter verses based on selection
-    let matchedVerses = quranVerses;
-    if (filterMode === 'juz') {
-      matchedVerses = quranVerses.filter(v => v.juz === selectedJuz);
-    } else {
-      matchedVerses = quranVerses.filter(v => v.surah === selectedSurah);
-    }
-
-    // Fallback: If selected Surah/Juz does not have seeded verses, default to Al-Mulk
-    if (matchedVerses.length === 0) {
-      matchedVerses = quranVerses.filter(v => v.surah === 'الملك');
-    }
-
-    // Shuffle matched verses initial pool
-    const shuffledVerses = [...matchedVerses].sort(() => Math.random() - 0.5);
-
+  // Helper to compile dynamic questions from a provided list of verses
+  const compileQuestionsFromVerses = (versesSource: QuranVerse[]): DynamicQuestion[] => {
+    const shuffledVerses = [...versesSource].sort(() => Math.random() - 0.5);
     const generated: DynamicQuestion[] = [];
     let attempt = 0;
 
-    // Loop until we generate EXACTLY the number of questions the user requested
-    while (generated.length < selectedLimit) {
+    // Loop until we satisfy the requested questions limit
+    while (generated.length < selectedLimit && shuffledVerses.length > 0) {
       const targetVerse = shuffledVerses[attempt % shuffledVerses.length];
       attempt++;
 
-      // Determine question type:
-      // Surah mode strictly uses missing_ayah
-      // Juz mode mixes both types dynamically
       let type: 'missing_ayah' | 'identify_surah' = 'missing_ayah';
       if (filterMode === 'juz') {
         type = Math.random() > 0.5 ? 'identify_surah' : 'missing_ayah';
       }
 
       if (type === 'missing_ayah') {
-        // High Difficulty: Randomize surrounding context frames to test precise memory boundaries
-        const contextType = attempt % 4; 
-        
-        const prevVerse = quranVerses.find(
+        // High Difficulty: Randomize surrounding context styles to test memory boundaries
+        const contextType = attempt % 4;
+
+        // Locate surrounding verses in the provided list
+        const prevVerse = versesSource.find(
           v => v.surah === targetVerse.surah && v.ayahNumber === targetVerse.ayahNumber - 1
         );
-        const nextVerse = quranVerses.find(
+        const nextVerse = versesSource.find(
           v => v.surah === targetVerse.surah && v.ayahNumber === targetVerse.ayahNumber + 1
         );
 
@@ -95,7 +79,7 @@ export default function QuranAssessmentScreen({ navigation }: any) {
         } else if (contextType === 2 && nextVerse) {
           promptText = `[ ....... ] ۞ ${nextVerse.text} ۞ ...`;
         } else {
-          // Splitting target verse in half and making second half missing (extremely difficult for advanced level!)
+          // Splitting target verse in half and making the second half blank (extremely difficult!)
           const words = targetVerse.text.split(' ');
           if (words.length > 4) {
             const half = Math.floor(words.length / 2);
@@ -108,17 +92,14 @@ export default function QuranAssessmentScreen({ navigation }: any) {
 
         const answer = targetVerse.text;
 
-        // Maximum Difficulty: Pull distractors strictly from the SAME Surah or Juz.
-        // This ensures options sound extremely similar and share the same rhyming scheme!
-        let distractorPool = quranVerses.filter(v => v.text !== answer);
+        // Pull distractors strictly from same Surah/Juz to ensure similar rhythm and style
+        let distractorPool = versesSource.filter(v => v.text !== answer);
         if (filterMode === 'surah') {
           distractorPool = distractorPool.filter(v => v.surah === selectedSurah);
-        } else {
-          distractorPool = distractorPool.filter(v => v.juz === selectedJuz);
         }
 
-        // If not enough local distractors, fall back to global
         if (distractorPool.length < 3) {
+          // Fallback to global database if live Surah lacks enough verses
           distractorPool = quranVerses.filter(v => v.text !== answer);
         }
 
@@ -127,7 +108,6 @@ export default function QuranAssessmentScreen({ navigation }: any) {
           .slice(0, 3)
           .map(v => v.text);
 
-        // Mix correct answer with distractors and shuffle choice positions completely
         const options = [answer, ...distractors].sort(() => Math.random() - 0.5);
 
         generated.push({
@@ -146,13 +126,13 @@ export default function QuranAssessmentScreen({ navigation }: any) {
         const promptText = targetVerse.text;
         const answer = targetVerse.surah;
 
-        // Maximum Difficulty: Prioritize Surahs within the same Juz'
-        const surahsInJuz = Array.from(new Set(quranVerses.filter(v => v.juz === selectedJuz).map(v => v.surah)));
-        const cleanJuzSurahs = surahsInJuz.filter(name => name !== answer);
+        // Get Surahs present in the current target set
+        const surahsInPool = Array.from(new Set(versesSource.map(v => v.surah)));
+        const cleanPool = surahsInPool.filter(name => name !== answer);
 
         let distractors: string[] = [];
-        if (cleanJuzSurahs.length >= 3) {
-          distractors = cleanJuzSurahs.sort(() => Math.random() - 0.5).slice(0, 3);
+        if (cleanPool.length >= 3) {
+          distractors = cleanPool.sort(() => Math.random() - 0.5).slice(0, 3);
         } else {
           distractors = surahsList
             .filter(s => s.name !== answer)
@@ -180,8 +160,70 @@ export default function QuranAssessmentScreen({ navigation }: any) {
     return generated;
   };
 
-  const handleStart = () => {
-    const generated = generateQuestions();
+  const handleStart = async () => {
+    setFetching(true);
+    let finalVerses: QuranVerse[] = [];
+
+    // Find the selected Surah index object if applicable
+    const surahObj = surahsList.find(s => s.name === selectedSurah);
+    const surahNumber = surahObj ? surahObj.number : 67;
+
+    try {
+      if (filterMode === 'surah') {
+        // Fetch ALL ayahs of any Surah dynamically from the Alquran API
+        const response = await fetch(`https://api.alquran.cloud/v1/surah/${surahNumber}`);
+        const json = await response.json();
+        
+        if (json.code === 200 && json.data && json.data.ayahs) {
+          finalVerses = json.data.ayahs.map((a: any) => ({
+            surah: selectedSurah,
+            surahEn: surahObj?.english || 'Al-Mulk',
+            juz: a.juz,
+            ayahNumber: a.numberInSurah,
+            text: a.text
+          }));
+        }
+      } else {
+        // Fetch ALL ayahs of any Juz' dynamically
+        const response = await fetch(`https://api.alquran.cloud/v1/juz/${selectedJuz}/quran-simple`);
+        const json = await response.json();
+        
+        if (json.code === 200 && json.data && json.data.ayahs) {
+          finalVerses = json.data.ayahs.map((a: any) => {
+            // Find Surah name from surahsList mapping
+            const matchSurah = surahsList.find(s => s.number === a.surah.number);
+            return {
+              surah: matchSurah ? matchSurah.name : a.surah.name,
+              surahEn: matchSurah ? matchSurah.english : a.surah.english,
+              juz: selectedJuz,
+              ayahNumber: a.numberInSurah,
+              text: a.text
+            };
+          });
+        }
+      }
+    } catch (error) {
+      console.log('Dynamic API Fetch failed/offline. Falling back to local dataset.', error);
+    }
+
+    // Fallback: If live fetch failed/offline, use the local pre-seeded quranVerses list
+    if (finalVerses.length === 0) {
+      if (filterMode === 'surah') {
+        finalVerses = quranVerses.filter(v => v.surah === selectedSurah);
+        // If Surah is not pre-seeded, fallback to Al-Mulk pre-seeded
+        if (finalVerses.length === 0) {
+          finalVerses = quranVerses.filter(v => v.surah === 'الملك');
+        }
+      } else {
+        finalVerses = quranVerses.filter(v => v.juz === selectedJuz);
+        if (finalVerses.length === 0) {
+          finalVerses = quranVerses.filter(v => v.juz === 30);
+        }
+      }
+    }
+
+    setFetching(false);
+    const generated = compileQuestionsFromVerses(finalVerses);
 
     if (generated.length === 0) {
       Alert.alert(
@@ -380,12 +422,21 @@ export default function QuranAssessmentScreen({ navigation }: any) {
               </View>
             </View>
 
-            {/* Launch Button */}
-            <TouchableOpacity style={[styles.startBtn, { backgroundColor: colors.primary }]} onPress={handleStart} activeOpacity={0.85}>
-              <Text style={styles.startBtnText}>
-                {language === 'ar' ? 'ابدأ تقييم الحفظ ➔' : 'Start Memorization Test ➔'}
-              </Text>
-            </TouchableOpacity>
+            {/* Launch Button / Loading Indicator */}
+            {fetching ? (
+              <View style={styles.loadingWrapper}>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+                  {language === 'ar' ? 'جاري تحميل آيات السورة بدقة...' : 'Loading Surah Ayahs precisely...'}
+                </Text>
+              </View>
+            ) : (
+              <TouchableOpacity style={[styles.startBtn, { backgroundColor: colors.primary }]} onPress={handleStart} activeOpacity={0.85}>
+                <Text style={styles.startBtnText}>
+                  {language === 'ar' ? 'ابدأ تقييم الحفظ ➔' : 'Start Memorization Test ➔'}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -419,7 +470,7 @@ export default function QuranAssessmentScreen({ navigation }: any) {
                 : (language === 'ar' ? 'في أي سورة وردت هذه الآية الكريمة؟' : 'In which Surah does this Ayah appear?')}
             </Text>
 
-            {/* Prompt Verse (Ayah number citation removed as requested) */}
+            {/* Prompt Verse */}
             <View style={[styles.promptCard, { backgroundColor: colors.neutralTint, borderColor: colors.border }]}>
               <Text style={[styles.promptText, { color: colors.textPrimary }]}>
                 {currentQuestion.prompt}
@@ -681,6 +732,15 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '700',
     fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+  loadingWrapper: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    gap: 10,
+  },
+  loadingText: {
+    fontSize: 12,
+    fontFamily: 'IBMPlexSansArabic-Medium',
   },
 
   // QUIZ STATE

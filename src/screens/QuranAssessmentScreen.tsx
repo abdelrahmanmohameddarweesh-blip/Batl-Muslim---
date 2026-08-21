@@ -773,6 +773,13 @@ export default function QuranAssessmentScreen({ navigation }: any) {
   };
 
   const handleNext = () => {
+    // Stop and unload any playing sound when moving to the next question or screen
+    if (sound) {
+      sound.unloadAsync().catch(() => {});
+      setSound(null);
+      setIsPlaying(false);
+    }
+
     const nextIndex = currentIndex + 1;
     if (nextIndex < questions.length) {
       setCurrentIndex(nextIndex);
@@ -1291,13 +1298,35 @@ export default function QuranAssessmentScreen({ navigation }: any) {
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.nextBtn, { backgroundColor: colors.primary }]} onPress={() => setScreenState('lobby')} activeOpacity={0.85}>
+            <TouchableOpacity 
+              style={[styles.nextBtn, { backgroundColor: colors.primary }]} 
+              onPress={() => {
+                if (sound) {
+                  sound.unloadAsync().catch(() => {});
+                  setSound(null);
+                  setIsPlaying(false);
+                }
+                setScreenState('lobby');
+              }} 
+              activeOpacity={0.85}
+            >
               <Text style={styles.nextBtnText}>
                 {language === 'ar' ? 'تقييم جديد 🔄' : 'New Assessment 🔄'}
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.backToHomeBtn, { borderColor: colors.border }]} onPress={() => navigation.navigate('Home')} activeOpacity={0.85}>
+            <TouchableOpacity 
+              style={[styles.backToHomeBtn, { borderColor: colors.border }]} 
+              onPress={() => {
+                if (sound) {
+                  sound.unloadAsync().catch(() => {});
+                  setSound(null);
+                  setIsPlaying(false);
+                }
+                navigation.navigate('Home');
+              }} 
+              activeOpacity={0.85}
+            >
               <Text style={[styles.backToHomeBtnText, { color: colors.textSecondary }]}>
                 {language === 'ar' ? 'العودة للرئيسية' : 'Back to Lobby'}
               </Text>

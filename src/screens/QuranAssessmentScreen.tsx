@@ -78,6 +78,7 @@ export default function QuranAssessmentScreen({ navigation }: any) {
   const [recitedWordsMatchCount, setRecitedWordsMatchCount] = useState<number>(0);
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [meteringHistory, setMeteringHistory] = useState<number[]>([]);
 
   const currentQuestion = questions[currentIndex];
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -154,6 +155,7 @@ export default function QuranAssessmentScreen({ navigation }: any) {
       setRecordingDuration(0);
       setLiveVolume(0);
       setSeconds(0);
+      setMeteringHistory([]);
 
       const recordingInstance = new Audio.Recording();
       await recordingInstance.prepareToRecordAsync({
@@ -191,6 +193,8 @@ export default function QuranAssessmentScreen({ navigation }: any) {
         if (status.metering !== undefined) {
           const normVol = status.metering <= -60 ? 0 : (status.metering + 60) / 60;
           setLiveVolume(normVol);
+          const metVal: number = status.metering;
+          setMeteringHistory((prev) => [...prev, metVal]);
         }
       });
 
@@ -211,9 +215,67 @@ export default function QuranAssessmentScreen({ navigation }: any) {
 
     try {
       await recording.stopAndUnloadAsync();
-      setAudioStep('recorded');
+      setAudioStep('analyzing');
+
+      setTimeout(() => {
+        if (!currentQuestion) return;
+
+        // AUTOMATIC VOICE EVALUATION ENGINE (VAD + SIGNAL ANALYSIS)
+        const wordsList = currentQuestion.answer.split(' ');
+
+        // 1. Duration Validation
+        const minDuration = wordsList.length * 380;
+        const maxDuration = wordsList.length * 1550;
+        const isDurationValid = recordingDuration >= minDuration && recordingDuration <= maxDuration;
+
+        // 2. Count Volume Peaks (Syllables/Words)
+        let peakCount = 0;
+        let insidePeak = false;
+        meteringHistory.forEach((db) => {
+          if (db > -32) { // Syllable vocal energy peak
+            if (!insidePeak) {
+              insidePeak = true;
+              peakCount++;
+            }
+          } else if (db < -48) { // Breath / silence drop
+            insidePeak = false;
+          }
+        });
+
+        const peakDiff = Math.abs(peakCount - wordsList.length);
+        const isPeakCountValid = peakDiff <= Math.max(1, Math.floor(wordsList.length * 0.45));
+
+        // 3. Average Energy Verification (Silence/Hum filter)
+        const averageDb = meteringHistory.reduce((a, b) => a + b, 0) / (meteringHistory.length || 1);
+        const isLoudEnough = averageDb > -75;
+
+        // 4. Continuous Noise/Hum Guard
+        const isNoiseHum = peakCount <= 1 && wordsList.length > 2;
+
+        const isRecitationCorrect = isDurationValid && isPeakCountValid && isLoudEnough && !isNoiseHum;
+
+        setAnswered(true);
+        if (isRecitationCorrect) {
+          setCorrectCount((prev) => prev + 1);
+          setFeedback(
+            language === 'ar'
+              ? 'تسميع صحيح للآية الكريمة! تم التحقق من الكلمات والترتيب بنجاح 🌟'
+              : 'Recitation correct! Words and arrangement verified successfully 🌟'
+          );
+        } else {
+          setFeedback(
+            language === 'ar'
+              ? 'التسميع غير مكتمل أو لم يتطابق مع الآية المفقودة. يرجى مراجعة الآية الصحيحة أدناه:'
+              : 'Recitation incomplete or did not match the missing verse. Please review the correct verse below:'
+          );
+        }
+
+        setAudioStep('recorded');
+      }, 1500);
+
     } catch (err) {
       console.error(err);
+      setAudioStep('ready');
     }
   };
 
@@ -252,24 +314,6 @@ export default function QuranAssessmentScreen({ navigation }: any) {
       } catch (err) {
         console.error('Failed to stop playback', err);
       }
-    }
-  };
-
-  const handleSelfGrade = (isCorrect: boolean) => {
-    setAnswered(true);
-    if (isCorrect) {
-      setCorrectCount((prev) => prev + 1);
-      setFeedback(
-        language === 'ar'
-          ? 'رائع! تم تسجيل تسميعك كإجابة صحيحة. تابع الحفظ المتميز 🌟'
-          : 'Great! Your recitation has been recorded as correct. Keep up the excellent work 🌟'
-      );
-    } else {
-      setFeedback(
-        language === 'ar'
-          ? 'تم تسجيل التسميع كخاطئ. يمكنك مراجعة الكلمات الصحيحة للآية الكريمة لتثبيتها:'
-          : 'Recorded as incorrect. Review the correct words below to reinforce:'
-      );
     }
   };
 
@@ -1040,13 +1084,22 @@ export default function QuranAssessmentScreen({ navigation }: any) {
                   </View>
                 )}
 
-                {audioStep === 'recorded' && (
+                {audioStep === 'analyzing' && (
+                  <View style={styles.audioStateBox}>
+                    <ActivityIndicator size="large" color={colors.primary} style={{ marginBottom: 8 }} />
+                    <Text style={[styles.audioStateText, { color: colors.textSecondary }]}>
+                      {language === 'ar' ? 'جاري تحليل الصوت وتدقيق الترتيب...' : 'Analyzing voice print and verifying arrangement...'}
+                    </Text>
+                  </View>
+                )}
+
+                {audioStep === 'recorded' && answered && (
                   <View style={[styles.audioStateBox, { width: '100%' }]}>
                     <Text style={[styles.audioStateText, { color: colors.textPrimary, fontWeight: '700' }]}>
-                      ✅ {language === 'ar' ? 'تم تسجيل التلاوة' : 'Recitation recorded'}
+                      ✅ {language === 'ar' ? 'تم الانتهاء من التقييم التلقائي' : 'Automatic evaluation complete'}
                     </Text>
                     <Text style={[styles.audioStateSubText, { color: colors.textSecondary, marginBottom: 12 }]}>
-                      {language === 'ar' ? `المدة: ${seconds} ثوانٍ` : `Duration: ${seconds} seconds`}
+                      {language === 'ar' ? `مدة التسجيل: ${seconds} ثوانٍ` : `Recording duration: ${seconds} seconds`}
                     </Text>
 
                     {/* Audio Playback Button */}
@@ -1057,47 +1110,9 @@ export default function QuranAssessmentScreen({ navigation }: any) {
                       <Text style={[styles.playbackBtnText, { color: isPlaying ? '#FFFFFF' : colors.primaryOnTint }]}>
                         {isPlaying 
                           ? (language === 'ar' ? '⏹️ إيقاف الاستماع' : '⏹️ Stop Playback')
-                          : (language === 'ar' ? '🔊 استمع إلى تسميعك' : '🔊 Listen to your Recitation')}
+                          : (language === 'ar' ? '🔊 استمع لتسجيلك للتأكد بنفسك' : '🔊 Listen to your recording')}
                       </Text>
                     </TouchableOpacity>
-
-                    {/* Correct Text Comparison Card */}
-                    <View style={[styles.comparisonCard, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-                      <Text style={[styles.comparisonTitle, { color: colors.textSecondary }]}>
-                        {language === 'ar' ? 'الآية المفقودة الصحيحة هي:' : 'The correct missing verse text is:'}
-                      </Text>
-                      <Text style={[styles.comparisonText, { color: colors.textPrimary }]}>
-                        {currentQuestion.answer}
-                      </Text>
-                    </View>
-
-                    {/* Self grading prompt */}
-                    <Text style={[styles.selfGradePromptText, { color: colors.textPrimary }]}>
-                      {language === 'ar' 
-                        ? 'هل تطابقت تلاوتك المسجلة مع هذه الكلمات تماماً وترتيبها؟' 
-                        : 'Did your recorded recitation match these words and their arrangement?'}
-                    </Text>
-
-                    {/* Self grading buttons */}
-                    <View style={styles.selfGradeBtnRow}>
-                      <TouchableOpacity 
-                        style={[styles.selfGradeBtn, styles.selfGradeBtnCorrect]} 
-                        onPress={() => handleSelfGrade(true)}
-                      >
-                        <Text style={styles.selfGradeBtnText}>
-                          {language === 'ar' ? 'نعم، صحيحة (✓)' : 'Yes, Correct (✓)'}
-                        </Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity 
-                        style={[styles.selfGradeBtn, styles.selfGradeBtnIncorrect]} 
-                        onPress={() => handleSelfGrade(false)}
-                      >
-                        <Text style={styles.selfGradeBtnText}>
-                          {language === 'ar' ? 'لا، يوجد خطأ (✗)' : 'No, Mistake (✗)'}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
                   </View>
                 )}
 
@@ -1113,17 +1128,9 @@ export default function QuranAssessmentScreen({ navigation }: any) {
                     {audioStep === 'recording' && (
                       <Animated.View style={{ transform: [{ scale: pulseAnim }], width: '100%' }}>
                         <TouchableOpacity style={[styles.recordMainBtn, { backgroundColor: '#EF4444' }]} onPress={handleStopRecording}>
-                          <Text style={styles.recordMainBtnText}>🛑 {language === 'ar' ? 'إيقاف وحفظ التلاوة' : 'Stop & Save'}</Text>
+                          <Text style={styles.recordMainBtnText}>🛑 {language === 'ar' ? 'إنهاء التسجيل والتحقق' : 'Stop & Evaluate'}</Text>
                         </TouchableOpacity>
                       </Animated.View>
-                    )}
-
-                    {audioStep === 'recorded' && (
-                      <TouchableOpacity style={[styles.retryRecordBtn, { borderColor: colors.border, marginTop: 10 }]} onPress={handleStartRecording}>
-                        <Text style={[styles.retryRecordBtnText, { color: colors.textSecondary }]}>
-                          🔄 {language === 'ar' ? 'إعادة التسجيل' : 'Record Again'}
-                        </Text>
-                      </TouchableOpacity>
                     )}
                   </View>
                 )}

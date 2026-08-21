@@ -156,5 +156,47 @@ export const quranVerses: QuranVerse[] = [
   { surah: 'الغاشية', surahEn: 'Al-Ghashiyah', juz: 30, ayahNumber: 23, text: 'إِلَّا مَنْ تَوَلَّىٰ وَكَفَرَ' },
   { surah: 'الغاشية', surahEn: 'Al-Ghashiyah', juz: 30, ayahNumber: 24, text: 'فَيُعَذِّبُهُ اللَّهُ الْعَذَابَ الْأَكْبَرَ' },
   { surah: 'الغاشية', surahEn: 'Al-Ghashiyah', juz: 30, ayahNumber: 25, text: 'إِنَّ إِلَيْنَا إِيَابَهُمْ' },
-  { surah: 'الغاشية', surahEn: 'Al-Ghashiyah', juz: 30, ayahNumber: 26, text: 'ثُمَّ إِنَّ عَلَيْنَا حِسَابَهُمْ' }
+  { surah: 'الغاشية', surahEn: 'Al-Ghashiyah', juz: 30, ayahNumber: 26, text: 'ثُمَّ إِنَّ عَلَيْنَا حِسَابَهُمْ' },
+
+  // --- SURAH AL-A'LA (Juz 30) ---
+  { surah: 'الأعلى', surahEn: 'Al-A\'la', juz: 30, ayahNumber: 1, text: 'سَبِّحِ اسْمَ رَبِّكَ الْأَعْلَى' },
+  { surah: 'الأعلى', surahEn: 'Al-A\'la', juz: 30, ayahNumber: 2, text: 'الَّذِي خَلَقَ فَسَوَّى' },
+  { surah: 'الأعلى', surahEn: 'Al-A\'la', juz: 30, ayahNumber: 3, text: 'وَالَّذِي قَدَّرَ فَهَدَى' },
+  { surah: 'الأعلى', surahEn: 'Al-A\'la', juz: 30, ayahNumber: 4, text: 'وَالَّذِي أَخْرَجَ الْمَرْعَى' },
+  { surah: 'الأعلى', surahEn: 'Al-A\'la', juz: 30, ayahNumber: 5, text: 'فَجَعَلَهُ غُثَاءً أَحْوَى' },
+  { surah: 'الأعلى', surahEn: 'Al-A\'la', juz: 30, ayahNumber: 6, text: 'سَنُقْرِئُكَ فَلَا تَنْسَى' },
+  { surah: 'الأعلى', surahEn: 'Al-A\'la', juz: 30, ayahNumber: 7, text: 'إِلَّا مَا شَاءَ اللَّهُ إِنَّهُ يَعْلَمُ الْجَهْرَ وَمَا يَخْفَى' },
+  { surah: 'الأعلى', surahEn: 'Al-A\'la', juz: 30, ayahNumber: 8, text: 'وَنُيَسِّرُكَ لِلْيُسْرَى' },
+  { surah: 'الأعلى', surahEn: 'Al-A\'la', juz: 30, ayahNumber: 9, text: 'فَذَكِّرْ إِنْ نَفَعَتِ الذِّكْرَى' },
+  { surah: 'الأعلى', surahEn: 'Al-A\'la', juz: 30, ayahNumber: 10, text: 'سَيَذَّكَّرُ مَنْ يَخْشَى' },
+  { surah: 'الأعلى', surahEn: 'Al-A\'la', juz: 30, ayahNumber: 11, text: 'وَيَتَجَنَّبُهَا الْأَشْقَى' },
+  { surah: 'الأعلى', surahEn: 'Al-A\'la', juz: 30, ayahNumber: 12, text: 'الَّذِي يَصْلَى النَّارَ الْكُبْرَى' },
+  { surah: 'الأعلى', surahEn: 'Al-A\'la', juz: 30, ayahNumber: 13, text: 'ثُمَّ لَا يَمُوتُ فِيهَا وَلَا يَحْيَى' },
+  { surah: 'الأعلى', surahEn: 'Al-A\'la', juz: 30, ayahNumber: 14, text: 'قَدْ أَفْلَحَ مَنْ تَزَكَّى' },
+  { surah: 'الأعلى', surahEn: 'Al-A\'la', juz: 30, ayahNumber: 15, text: 'وَذَكَرَ اسْمَ رَبِّهِ فَصَلَّى' },
+  { surah: 'الأعلى', surahEn: 'Al-A\'la', juz: 30, ayahNumber: 16, text: 'بَلْ تُؤْثِرُونَ الْحَيَاةَ الدُّنْيَا' },
+  { surah: 'الأعلى', surahEn: 'Al-A\'la', juz: 30, ayahNumber: 17, text: 'وَالْآخِرَةُ خَيْرٌ وَأَبْقَى' },
+  { surah: 'الأعلى', surahEn: 'Al-A\'la', juz: 30, ayahNumber: 18, text: 'إِنَّ هَٰذَا لَفِي الصُّحُفِ الْأُولَى' },
+  { surah: 'الأعلى', surahEn: 'Al-A\'la', juz: 30, ayahNumber: 19, text: 'صُحُفِ إِبْرَاهِيمَ وَمُوسَى' },
+
+  // --- SURAH AL-IKHLAS (Juz 30) ---
+  { surah: 'الإخلاص', surahEn: 'Al-Ikhlas', juz: 30, ayahNumber: 1, text: 'قُلْ هُوَ اللَّهُ أَحَدٌ' },
+  { surah: 'الإخلاص', surahEn: 'Al-Ikhlas', juz: 30, ayahNumber: 2, text: 'اللَّهُ الصَّمَدُ' },
+  { surah: 'الإخلاص', surahEn: 'Al-Ikhlas', juz: 30, ayahNumber: 3, text: 'لَمْ يَلِدْ وَلَمْ يُولَدْ' },
+  { surah: 'الإخلاص', surahEn: 'Al-Ikhlas', juz: 30, ayahNumber: 4, text: 'وَلَمْ يَكُنْ لَهُ كُفُوًا أَحَدٌ' },
+
+  // --- SURAH AL-FALAQ (Juz 30) ---
+  { surah: 'الفلق', surahEn: 'Al-Falaq', juz: 30, ayahNumber: 1, text: 'قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ' },
+  { surah: 'الفلق', surahEn: 'Al-Falaq', juz: 30, ayahNumber: 2, text: 'مِنْ شَرِّ مَا خَلَقَ' },
+  { surah: 'الفلق', surahEn: 'Al-Falaq', juz: 30, ayahNumber: 3, text: 'وَمِنْ شَرِّ غَاسِقٍ إِذَا وَقَبَ' },
+  { surah: 'الفلق', surahEn: 'Al-Falaq', juz: 30, ayahNumber: 4, text: 'وَمِنْ شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ' },
+  { surah: 'الفلق', surahEn: 'Al-Falaq', juz: 30, ayahNumber: 5, text: 'مِنْ شَرِّ حَاسِدٍ إِذَا حَسَدَ' },
+
+  // --- SURAH AN-NAS (Juz 30) ---
+  { surah: 'الناس', surahEn: 'Al-Nas', juz: 30, ayahNumber: 1, text: 'قُلْ أَعُوذُ بِرَبِّ النَّاسِ' },
+  { surah: 'الناس', surahEn: 'Al-Nas', juz: 30, ayahNumber: 2, text: 'مَلِكِ النَّاسِ' },
+  { surah: 'الناس', surahEn: 'Al-Nas', juz: 30, ayahNumber: 3, text: 'إِلَٰهِ النَّاسِ' },
+  { surah: 'الناس', surahEn: 'Al-Nas', juz: 30, ayahNumber: 4, text: 'مِنْ شَرِّ الْوَسْوَاسِ الْخَنَّاسِ' },
+  { surah: 'الناس', surahEn: 'Al-Nas', juz: 30, ayahNumber: 5, text: 'الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ' },
+  { surah: 'الناس', surahEn: 'Al-Nas', juz: 30, ayahNumber: 6, text: 'مِنَ الْجِنَّةِ وَالنَّاسِ' }
 ];

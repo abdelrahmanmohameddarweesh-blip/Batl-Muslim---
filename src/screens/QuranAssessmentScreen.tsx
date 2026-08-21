@@ -242,9 +242,9 @@ export default function QuranAssessmentScreen({ navigation }: any) {
         // AUTOMATIC VOICE EVALUATION ENGINE (Tajweed-Friendly VAD)
         const wordsList = currentQuestion.answer.split(' ');
 
-        // 1. Duration Validation (Adaptive speed: 280ms to 1900ms per word)
+        // 1. Duration Validation (Adaptive speed: 280ms to 1800ms per word)
         const minDuration = wordsList.length * 280;
-        const maxDuration = wordsList.length * 1900;
+        const maxDuration = wordsList.length * 1800;
         const isDurationValid = finalDuration >= minDuration && finalDuration <= maxDuration;
 
         // Filter out extreme silent artifacts using the persistent Ref
@@ -259,13 +259,40 @@ export default function QuranAssessmentScreen({ navigation }: any) {
             const averageDb = validMeters.reduce((a, b) => a + b, 0) / validMeters.length;
 
             const isFlatLine = (maxDb - minDb) < 8; // Metering not working or flat silence
-            const actuallySpoke = !isFlatLine && maxDb > -52 && averageDb > -78;
 
-            if (isFlatLine || actuallySpoke) {
-              isRecitationCorrect = true; // Correct recitation!
+            if (isFlatLine) {
+              isRecitationCorrect = true; // Fallback to duration check if metering failed
+            } else {
+              // Analyze vocal peak pattern (adaptive VAD peaks)
+              const peakStartThreshold = maxDb - 9;
+              const peakEndThreshold = maxDb - 23;
+
+              let peakCount = 0;
+              let insidePeak = false;
+
+              validMeters.forEach((db) => {
+                if (db > peakStartThreshold) {
+                  if (!insidePeak) {
+                    insidePeak = true;
+                    peakCount++;
+                  }
+                } else if (db < peakEndThreshold) {
+                  insidePeak = false;
+                }
+              });
+
+              // Strict bounds: Syllables/peaks must fall in a tight window matching target verse word count!
+              const minExpectedPeaks = Math.max(2, Math.floor(wordsList.length * 0.52));
+              const maxExpectedPeaks = Math.ceil(wordsList.length * 1.55);
+              const isPeakCountValid = peakCount >= minExpectedPeaks && peakCount <= maxExpectedPeaks;
+
+              const isLoudEnough = averageDb > -78 && maxDb > -52;
+              const isNoiseHum = peakCount <= 1 && wordsList.length > 2;
+
+              isRecitationCorrect = isPeakCountValid && isLoudEnough && !isNoiseHum;
             }
           } else {
-            // If no meters collected (hardware latency), fallback to duration check only
+            // Fallback to duration check if no meters collected
             isRecitationCorrect = true;
           }
         }

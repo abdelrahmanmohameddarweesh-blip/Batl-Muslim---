@@ -476,12 +476,26 @@ export default function QuranAssessmentScreen({ navigation }: any) {
       if (filterMode === 'surah') {
         finalVerses = quranVerses.filter(v => v.surah === selectedSurah);
         if (finalVerses.length === 0) {
-          finalVerses = quranVerses.filter(v => v.surah === 'الملك');
+          setFetching(false);
+          Alert.alert(
+            language === 'ar' ? 'فشل الاتصال بالشبكة' : 'Network Connection Failed',
+            language === 'ar'
+              ? `عذراً، يتطلب اختبار سورة ${selectedSurah} اتصالاً بالإنترنت لتحميل الآيات. يرجى التحقق من اتصالك بالشبكة أو تجربة السور المتاحة دون اتصال (الفاتحة، البقرة، الملك، الغاشية).`
+              : `Testing Surah ${selectedSurah} requires an active internet connection to download the verses. Please check your network or try one of the offline-available Surahs (Al-Fatiha, Al-Baqarah, Al-Mulk, Al-Ghashiyah).`
+          );
+          return;
         }
       } else {
         finalVerses = quranVerses.filter(v => v.juz === selectedJuz);
         if (finalVerses.length === 0) {
-          finalVerses = quranVerses.filter(v => v.juz === 30);
+          setFetching(false);
+          Alert.alert(
+            language === 'ar' ? 'فشل الاتصال بالشبكة' : 'Network Connection Failed',
+            language === 'ar'
+              ? `عذراً، يتطلب اختبار جزء ${selectedJuz} اتصالاً بالإنترنت. يرجى التحقق من اتصالك بالشبكة أو تجربة جزء ٣٠ المتاح دون اتصال.`
+              : `Testing Juz ${selectedJuz} requires an active internet connection. Please check your network or try Juz 30 (available offline).`
+          );
+          return;
         }
       }
     }

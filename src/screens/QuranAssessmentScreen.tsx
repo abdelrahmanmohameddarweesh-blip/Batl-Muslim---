@@ -837,21 +837,7 @@ export default function QuranAssessmentScreen({ navigation }: any) {
               </View>
             </View>
 
-            {/* Precise Start & End Context Instructions */}
-            {currentQuestion.type === 'missing_ayah' && (
-              <View style={[styles.contextBoundsCard, { backgroundColor: colors.neutralTint, borderColor: colors.border }]}>
-                {currentQuestion.introContext ? (
-                  <Text style={[styles.contextBoundsText, { color: colors.textPrimary }]}>
-                    🟢 <Text style={{ fontWeight: '700' }}>{language === 'ar' ? 'البداية:' : 'Start:'}</Text> {currentQuestion.introContext}
-                  </Text>
-                ) : null}
-                {currentQuestion.outroContext ? (
-                  <Text style={[styles.contextBoundsText, { color: colors.textPrimary, marginTop: 4 }]}>
-                    🛑 <Text style={{ fontWeight: '700' }}>{language === 'ar' ? 'النهاية:' : 'Stop:'}</Text> {currentQuestion.outroContext}
-                  </Text>
-                ) : null}
-              </View>
-            )}
+
 
             {/* Instructions */}
             <Text style={[styles.instructionLabelText, { color: colors.textSecondary }]}>

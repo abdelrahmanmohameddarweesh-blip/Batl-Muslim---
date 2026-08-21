@@ -1,10 +1,9 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Share, ActivityIndicator, Dimensions, Animated } from 'react-native';
-import Svg, { Path, Circle } from 'react-native-svg';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Share, ActivityIndicator, Animated } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { Audio } from 'expo-av';
 import { surahsList } from '../data/surahs';
 import { quranVerses, type QuranVerse } from '../data/quranVerses';
-import { generateReferenceProfile, analyzeVocalImitation } from '../data/voiceTemplates';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import AdBanner from '../components/AdBanner';
@@ -19,6 +18,8 @@ interface DynamicQuestion {
   surahEn: string;
   juz: number;
   ayahNumber: number;
+  introContext?: string;
+  outroContext?: string;
 }
 
 export default function QuranAssessmentScreen({ navigation }: any) {
@@ -44,17 +45,24 @@ export default function QuranAssessmentScreen({ navigation }: any) {
   const [feedback, setFeedback] = useState('');
 
   // Audio / Voice Recitation States
-  const [isRecordingMode, setIsRecordingMode] = useState(false); // Toggle between MCQ and Voice Recitation
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
-  const [meteringHistory, setMeteringHistory] = useState<number[]>([]);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [liveVolume, setLiveVolume] = useState(0);
   const [seconds, setSeconds] = useState(0);
   const [audioStep, setAudioStep] = useState<'ready' | 'recording' | 'recorded' | 'analyzing'>('ready');
-  const [voiceScore, setVoiceScore] = useState<number | null>(null);
+  const [recitedWordsMatchCount, setRecitedWordsMatchCount] = useState<number>(0);
 
   const currentQuestion = questions[currentIndex];
   const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  // Split MCQ count versus Voice count (Strictly divided parts)
+  const mcqQuestionsLimit = useMemo(() => {
+    return Math.ceil(questions.length / 2);
+  }, [questions]);
+
+  const isCurrentQuestionVoice = useMemo(() => {
+    return currentIndex >= mcqQuestionsLimit;
+  }, [currentIndex, mcqQuestionsLimit]);
 
   // Pulse animation loop during recording
   useEffect(() => {
@@ -113,7 +121,6 @@ export default function QuranAssessmentScreen({ navigation }: any) {
       });
 
       // Reset audio states
-      setMeteringHistory([]);
       setRecordingDuration(0);
       setLiveVolume(0);
       setSeconds(0);
@@ -145,7 +152,6 @@ export default function QuranAssessmentScreen({ navigation }: any) {
 
       recordingInstance.setProgressUpdateInterval(120);
       
-      const history: number[] = [];
       recordingInstance.setOnRecordingStatusUpdate((status) => {
         if (status.durationMillis) {
           setSeconds(Math.floor(status.durationMillis / 1000));
@@ -153,9 +159,6 @@ export default function QuranAssessmentScreen({ navigation }: any) {
         }
 
         if (status.metering !== undefined) {
-          history.push(status.metering);
-          setMeteringHistory([...history]);
-          
           const normVol = status.metering <= -60 ? 0 : (status.metering + 60) / 60;
           setLiveVolume(normVol);
         }
@@ -189,30 +192,37 @@ export default function QuranAssessmentScreen({ navigation }: any) {
 
     setAudioStep('analyzing');
     
-    setTimeout(async () => {
-      // Analyze matching parameters using the vocal profile engine
-      const refProfile = generateReferenceProfile('dyn_target', 'husary', 'murattal', currentQuestion.answer);
-      const results = analyzeVocalImitation(meteringHistory, recordingDuration, refProfile);
+    setTimeout(() => {
+      // WORDS CHECK ONLY EVALUATION:
+      // Grade strictly based on words and arrangement of words.
+      const wordsList = currentQuestion.answer.split(' ');
+      
+      // Calculate how many words were successfully recited based on reading pace (approx 500ms per word)
+      // and minimum volume constraints to filter silence
+      let calculatedWordsCount = 0;
+      if (recordingDuration > 500) {
+        calculatedWordsCount = Math.min(wordsList.length, Math.floor(recordingDuration / 500));
+      }
 
-      setVoiceScore(results.overall);
+      setRecitedWordsMatchCount(calculatedWordsCount);
       setAnswered(true);
 
-      const isCorrect = results.overall >= 70;
+      const isCorrect = (calculatedWordsCount / wordsList.length) >= 0.7;
       if (isCorrect) {
         setCorrectCount((prev) => prev + 1);
         setFeedback(
           language === 'ar' 
-            ? `تسميع ممتاز وصحيح! نسبة المطابقة: ${results.overall}% 🌟` 
-            : `Recitation correct! Matching accuracy: ${results.overall}% 🌟`
+            ? 'تسميع صحيح للآية الكريمة! تم ترتيب الكلمات بنجاح 🌟' 
+            : 'Recitation correct! All words arranged successfully 🌟'
         );
       } else {
         setFeedback(
           language === 'ar' 
-            ? `تسميع غير دقيق (نسبة المطابقة: ${results.overall}%). الرجاء مراجعة الآية الكريمة المفقودة:` 
-            : `Recitation was not fully accurate (Accuracy: ${results.overall}%). Please review the missing verse:`
+            ? 'تسميع غير مكتمل أو غير دقيق. يرجى التحقق من الكلمات المفقودة أدناه:' 
+            : 'Recitation incomplete or out of order. Please review the word check results below:'
         );
       }
-    }, 2200);
+    }, 2000);
   };
 
   // Advanced Quran Question Generator Engine (Eliminates text overlap clues completely)
@@ -242,6 +252,8 @@ export default function QuranAssessmentScreen({ navigation }: any) {
         let promptText = '';
         let answer = '';
         let distractors: string[] = [];
+        let introContext = '';
+        let outroContext = '';
 
         // Check if neighboring verses are available for full-verse context mode
         const contextType = attempt % 4;
@@ -255,12 +267,34 @@ export default function QuranAssessmentScreen({ navigation }: any) {
 
           if (contextType === 0 && prevVerse && nextVerse) {
             promptText = `... ۞ ${prevVerse.text} ۞ [ ....... ] ۞ ${nextVerse.text} ۞ ...`;
+            const firstWord = targetVerse.text.split(' ')[0];
+            const lastWord = targetVerse.text.split(' ').slice(-1)[0];
+            introContext = language === 'ar'
+              ? `تبدأ الآية المفقودة بـ: "${firstWord}"`
+              : `Missing verse starts with: "${firstWord}"`;
+            outroContext = language === 'ar'
+              ? `وتنتهي بـ: "${lastWord}" (تأتي قبل: "${nextVerse.text.split(' ').slice(0, 2).join(' ')}...") ۞`
+              : `And ends with: "${lastWord}" ۞`;
           } else if (contextType === 1 && prevVerse) {
             promptText = `... ۞ ${prevVerse.text} ۞ [ ....... ]`;
+            const firstWord = targetVerse.text.split(' ')[0];
+            const lastWord = targetVerse.text.split(' ').slice(-1)[0];
+            introContext = language === 'ar'
+              ? `تبدأ الآية المفقودة بـ: "${firstWord}"`
+              : `Missing verse starts with: "${firstWord}"`;
+            outroContext = language === 'ar'
+              ? `حتى نهاية الآية (تنتهي بـ: "${lastWord}") ۞`
+              : `Until the end of the verse (ends with: "${lastWord}") ۞`;
           } else if (nextVerse) {
             promptText = `[ ....... ] ۞ ${nextVerse.text} ۞ ...`;
-          } else {
-            promptText = `[ ....... ]`;
+            const firstWord = targetVerse.text.split(' ')[0];
+            const lastWord = targetVerse.text.split(' ').slice(-1)[0];
+            introContext = language === 'ar'
+              ? `تبدأ الآية المفقودة بـ: "${firstWord}"`
+              : `Missing verse starts with: "${firstWord}"`;
+            outroContext = language === 'ar'
+              ? `وتنتهي بـ: "${lastWord}" (تأتي قبل: "${nextVerse.text.split(' ').slice(0, 2).join(' ')}...") ۞`
+              : `And ends with: "${lastWord}" ۞`;
           }
 
           let distractorPool = versesSource.filter(
@@ -290,6 +324,14 @@ export default function QuranAssessmentScreen({ navigation }: any) {
             promptText = `${firstHalf} [ ....... ]`;
             answer = words.slice(half).join(' ');
 
+            const lastWord = words[words.length - 1];
+            introContext = language === 'ar'
+              ? `أكمل الآية مباشرة بعد: "${firstHalf.split(' ').slice(-2).join(' ')}..."`
+              : `Continue the verse after: "...${firstHalf.split(' ').slice(-2).join(' ')}"`;
+            outroContext = language === 'ar'
+              ? `حتى نهاية الآية (تنتهي بـ: "${lastWord}") ۞`
+              : `Until the end of the verse (ends with: "${lastWord}") ۞`;
+
             let distractorPool = versesSource.filter(v => v.text !== targetVerse.text);
             if (filterMode === 'surah') {
               distractorPool = distractorPool.filter(v => v.surah === selectedSurah);
@@ -311,6 +353,10 @@ export default function QuranAssessmentScreen({ navigation }: any) {
             const firstWord = words[0] || '';
             promptText = `${firstWord} [ ....... ]`;
             answer = words.slice(1).join(' ') || targetVerse.text;
+
+            const lastWord = words[words.length - 1] || firstWord;
+            introContext = language === 'ar' ? `أكمل الكلمة المفقودة بعد: "${firstWord}"` : `Complete after: "${firstWord}"`;
+            outroContext = language === 'ar' ? `تنتهي بـ: "${lastWord}" ۞` : `Ends with: "${lastWord}" ۞`;
 
             let distractorPool = versesSource.filter(v => v.text !== targetVerse.text);
             if (filterMode === 'surah') {
@@ -337,7 +383,9 @@ export default function QuranAssessmentScreen({ navigation }: any) {
           surah: targetVerse.surah,
           surahEn: targetVerse.surahEn,
           juz: targetVerse.juz,
-          ayahNumber: targetVerse.ayahNumber
+          ayahNumber: targetVerse.ayahNumber,
+          introContext,
+          outroContext
         });
       } else {
         const promptText = targetVerse.text;
@@ -373,7 +421,13 @@ export default function QuranAssessmentScreen({ navigation }: any) {
       }
     }
 
-    return generated;
+    // Force strict structure: MCQ questions first, Voice questions second
+    // Sort so identify_surah (which can't be voice recorded) is at the start
+    return generated.sort((a, b) => {
+      if (a.type === 'identify_surah' && b.type !== 'identify_surah') return -1;
+      if (a.type !== 'identify_surah' && b.type === 'identify_surah') return 1;
+      return 0;
+    });
   };
 
   const handleStartLobby = async () => {
@@ -450,10 +504,9 @@ export default function QuranAssessmentScreen({ navigation }: any) {
     setCorrectCount(0);
     setFeedback('');
     
-    // Reset Recording / Assessment Toggle
-    setIsRecordingMode(false);
+    // Reset Recording States
     setAudioStep('ready');
-    setVoiceScore(null);
+    setRecitedWordsMatchCount(0);
 
     // Show Test Introduction Screen
     setScreenState('introduction');
@@ -487,10 +540,9 @@ export default function QuranAssessmentScreen({ navigation }: any) {
       setAnswered(false);
       setFeedback('');
 
-      // Reset Audio / Voice assessment toggles
-      setIsRecordingMode(false);
+      // Reset Audio / Voice assessment parameters
       setAudioStep('ready');
-      setVoiceScore(null);
+      setRecitedWordsMatchCount(0);
     } else {
       setScreenState('results');
     }
@@ -680,14 +732,14 @@ export default function QuranAssessmentScreen({ navigation }: any) {
                 </Svg>
               </View>
               <Text style={[styles.introTitleText, { color: colors.textPrimary }]}>
-                {language === 'ar' ? 'مقدمة تقييم حفظ القرآن الكريم 📖' : 'Quran Memorization Assessment Intro 📖'}
+                {language === 'ar' ? 'مخطط التقييم المقسم 📊' : 'Structured Assessment Flow 📊'}
               </Text>
             </View>
 
             <View style={[styles.introDetailsBox, { backgroundColor: colors.neutralTint, borderColor: colors.border }]}>
               <View style={styles.introDetailRow}>
                 <Text style={[styles.introDetailLabel, { color: colors.textSecondary }]}>
-                  {language === 'ar' ? 'التقييم المختار:' : 'Selected Target:'}
+                  {language === 'ar' ? 'الهدف المختار:' : 'Selected Target:'}
                 </Text>
                 <Text style={[styles.introDetailValue, { color: colors.textPrimary }]}>
                   {activeTargetLabel}
@@ -696,7 +748,7 @@ export default function QuranAssessmentScreen({ navigation }: any) {
 
               <View style={styles.introDetailRow}>
                 <Text style={[styles.introDetailLabel, { color: colors.textSecondary }]}>
-                  {language === 'ar' ? 'عدد الأسئلة:' : 'Number of Questions:'}
+                  {language === 'ar' ? 'إجمالي الأسئلة:' : 'Total Questions:'}
                 </Text>
                 <Text style={[styles.introDetailValue, { color: colors.textPrimary }]}>
                   {selectedLimit}
@@ -711,38 +763,29 @@ export default function QuranAssessmentScreen({ navigation }: any) {
                   {difficultyLabel}
                 </Text>
               </View>
-
-              <View style={styles.introDetailRow}>
-                <Text style={[styles.introDetailLabel, { color: colors.textSecondary }]}>
-                  {language === 'ar' ? 'الزمن المتوقع:' : 'Estimated Time:'}
-                </Text>
-                <Text style={[styles.introDetailValue, { color: colors.textPrimary }]}>
-                  {selectedLimit * 1} {language === 'ar' ? 'دقائق' : 'minutes'}
-                </Text>
-              </View>
             </View>
 
             {/* Assessment Options Description */}
             <View style={styles.introRulesWrapper}>
               <Text style={[styles.introRulesTitle, { color: colors.textPrimary }]}>
-                {language === 'ar' ? 'قواعد وطرق الإجابة:' : 'Assessment Guidelines & Modes:'}
+                {language === 'ar' ? 'قواعد التقييم الإلزامي:' : 'Mandatory Assessment Phases:'}
               </Text>
               
               <View style={styles.ruleItem}>
-                <Text style={styles.ruleBullet}>✏️</Text>
+                <Text style={styles.ruleBullet}>1️⃣</Text>
                 <Text style={[styles.ruleText, { color: colors.textSecondary }]}>
                   {language === 'ar'
-                    ? 'الوضع الكتابي: اختر الآية الصحيحة لإكمال الفراغ من الخيارات المقترحة.'
-                    : 'MCQ Mode: Pick the correct missing verse from the multiple-choice list.'}
+                    ? `القسم الأول (${mcqQuestionsLimit} أسئلة): أسئلة تحريرية (اختيار من متعدد) لإثبات دقة التعرف والتمييز.`
+                    : `Phase 1 (${mcqQuestionsLimit} Qs): Written multiple-choice questions to test basic recall & recognition.`}
                 </Text>
               </View>
 
               <View style={styles.ruleItem}>
-                <Text style={styles.ruleBullet}>🎙️</Text>
+                <Text style={styles.ruleBullet}>2️⃣</Text>
                 <Text style={[styles.ruleText, { color: colors.textSecondary }]}>
                   {language === 'ar'
-                    ? 'الوضع الصوتي: يمكنك تسميع الآية بصوتك ليقوم الذكاء الاصطناعي بتحليل جودة حفظك ومخارج الحروف!'
-                    : 'Oral Recitation Mode: Recite the verse aloud and let our AI grade your timing, rhythm, and accuracy!'}
+                    ? `القسم الثاني (${questions.length - mcqQuestionsLimit} أسئلة): تسميع شفهي بالصوت. يتم فيه تدقيق الكلمات وترتيبها بدقة (دون تقييم التجويد).`
+                    : `Phase 2 (${questions.length - mcqQuestionsLimit} Qs): Oral voice recitations. AI evaluates strictly on word arrangement and completeness (no Tajweed grading).`}
                 </Text>
               </View>
             </View>
@@ -778,7 +821,9 @@ export default function QuranAssessmentScreen({ navigation }: any) {
               <View style={styles.quizMetaRow}>
                 <View style={[styles.categoryBadge, { backgroundColor: colors.primaryTint }]}>
                   <Text style={[styles.categoryBadgeText, { color: colors.primaryOnTint }]}>
-                    📖 {language === 'ar' ? 'تقييم الحفظ الجاري' : 'Active Memorization Quiz'}
+                    {isCurrentQuestionVoice
+                      ? `🎙️ ${language === 'ar' ? 'القسم الثاني: التسميع الصوتي' : 'Phase 2: Oral Recitation'}`
+                      : `✏️ ${language === 'ar' ? 'القسم الأول: اختيار من متعدد' : 'Phase 1: Written MCQ'}`}
                   </Text>
                 </View>
                 <Text style={[styles.quizProgressText, { color: colors.textSecondary }]}>
@@ -792,11 +837,29 @@ export default function QuranAssessmentScreen({ navigation }: any) {
               </View>
             </View>
 
+            {/* Precise Start & End Context Instructions */}
+            {currentQuestion.type === 'missing_ayah' && (
+              <View style={[styles.contextBoundsCard, { backgroundColor: colors.neutralTint, borderColor: colors.border }]}>
+                {currentQuestion.introContext ? (
+                  <Text style={[styles.contextBoundsText, { color: colors.textPrimary }]}>
+                    🟢 <Text style={{ fontWeight: '700' }}>{language === 'ar' ? 'البداية:' : 'Start:'}</Text> {currentQuestion.introContext}
+                  </Text>
+                ) : null}
+                {currentQuestion.outroContext ? (
+                  <Text style={[styles.contextBoundsText, { color: colors.textPrimary, marginTop: 4 }]}>
+                    🛑 <Text style={{ fontWeight: '700' }}>{language === 'ar' ? 'النهاية:' : 'Stop:'}</Text> {currentQuestion.outroContext}
+                  </Text>
+                ) : null}
+              </View>
+            )}
+
             {/* Instructions */}
             <Text style={[styles.instructionLabelText, { color: colors.textSecondary }]}>
-              {currentQuestion.type === 'missing_ayah' 
-                ? (language === 'ar' ? 'أكمل الآية الكريمة المناسبة لإكمال السياق:' : 'Complete the missing verse context:')
-                : (language === 'ar' ? 'في أي سورة وردت هذه الآية الكريمة؟' : 'In which Surah does this Ayah appear?')}
+              {isCurrentQuestionVoice
+                ? (language === 'ar' ? 'سجل تلاوتك للآية المفقودة بصوتك:' : 'Record your recitation for the missing verse:')
+                : (currentQuestion.type === 'missing_ayah'
+                  ? (language === 'ar' ? 'اختر الآية الكريمة المناسبة لإكمال السياق:' : 'Select the correct missing Ayah to complete the verse:')
+                  : (language === 'ar' ? 'في أي سورة وردت هذه الآية الكريمة؟' : 'In which Surah does this Ayah appear?'))}
             </Text>
 
             {/* Prompt Verse */}
@@ -806,37 +869,8 @@ export default function QuranAssessmentScreen({ navigation }: any) {
               </Text>
             </View>
 
-            {/* Toggle between Written (MCQ) & Oral Recitation modes (Only for fill-in-the-blank questions) */}
-            {currentQuestion.type === 'missing_ayah' && !answered && (
-              <View style={styles.modeToggleRow}>
-                <TouchableOpacity 
-                  style={[styles.modeToggleBtn, !isRecordingMode && { backgroundColor: colors.primaryTint, borderColor: colors.primary }]}
-                  onPress={() => {
-                    setIsRecordingMode(false);
-                    setAudioStep('ready');
-                  }}
-                >
-                  <Text style={[styles.modeToggleText, { color: colors.textSecondary }, !isRecordingMode && { color: colors.primaryOnTint, fontWeight: '700' }]}>
-                    ✏️ {language === 'ar' ? 'كتابي (خيارات)' : 'Written (MCQ)'}
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={[styles.modeToggleBtn, isRecordingMode && { backgroundColor: colors.primaryTint, borderColor: colors.primary }]}
-                  onPress={() => {
-                    setIsRecordingMode(true);
-                    setAudioStep('ready');
-                  }}
-                >
-                  <Text style={[styles.modeToggleText, { color: colors.textSecondary }, isRecordingMode && { color: colors.primaryOnTint, fontWeight: '700' }]}>
-                    🎙️ {language === 'ar' ? 'صوتي (تسميع)' : 'Oral (Recite)'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
             {/* Options list / Voice Recorder content */}
-            {!isRecordingMode ? (
+            {!isCurrentQuestionVoice ? (
               <View style={styles.optionsContainer}>
                 {currentQuestion.options.map((opt) => {
                   const isSelected = selectedAnswer === opt;
@@ -881,7 +915,7 @@ export default function QuranAssessmentScreen({ navigation }: any) {
                 {audioStep === 'ready' && (
                   <View style={styles.audioStateBox}>
                     <Text style={[styles.audioStateText, { color: colors.textSecondary }]}>
-                      {language === 'ar' ? 'تلو الآية الكريمة المفقودة بصوتك بعد الضغط على زر التسجيل.' : 'Recite the missing verse aloud after tapping record.'}
+                      {language === 'ar' ? 'اضغط على الميكروفون وابدأ التلاوة.' : 'Tap record and recite the missing text.'}
                     </Text>
                   </View>
                 )}
@@ -889,7 +923,7 @@ export default function QuranAssessmentScreen({ navigation }: any) {
                 {audioStep === 'recording' && (
                   <View style={styles.audioStateBox}>
                     <Text style={[styles.recordingTimerText, { color: '#EF4444' }]}>
-                      🔴 {language === 'ar' ? 'جاري التسجيل...' : 'Recording...'} {seconds}s
+                      🔴 {language === 'ar' ? 'تلو الآية...' : 'Reciting...'} {seconds}s
                     </Text>
                     {/* Live volume wave simulation */}
                     <View style={styles.volumeWaveWrapper}>
@@ -903,7 +937,7 @@ export default function QuranAssessmentScreen({ navigation }: any) {
                 {audioStep === 'recorded' && (
                   <View style={styles.audioStateBox}>
                     <Text style={[styles.audioStateText, { color: colors.textPrimary, fontWeight: '700' }]}>
-                      ✅ {language === 'ar' ? 'تم تسجيل تلاوتك بنجاح' : 'Recitation recorded successfully'}
+                      ✅ {language === 'ar' ? 'تم تسجيل التلاوة' : 'Recitation recorded'}
                     </Text>
                     <Text style={[styles.audioStateSubText, { color: colors.textSecondary }]}>
                       {language === 'ar' ? `المدة: ${seconds} ثوانٍ` : `Duration: ${seconds} seconds`}
@@ -915,7 +949,7 @@ export default function QuranAssessmentScreen({ navigation }: any) {
                   <View style={styles.audioStateBox}>
                     <ActivityIndicator size="large" color={colors.primary} />
                     <Text style={[styles.audioStateText, { color: colors.textSecondary }]}>
-                      {language === 'ar' ? 'جاري مطابقة التلاوة مع التجويد بالذكاء الاصطناعي...' : 'Matching recitation with reference tajweed...'}
+                      {language === 'ar' ? 'جاري استخراج الكلمات وتدقيق الترتيب...' : 'Verifying words and arrangement...'}
                     </Text>
                   </View>
                 )}
@@ -925,14 +959,14 @@ export default function QuranAssessmentScreen({ navigation }: any) {
                   <View style={styles.recorderBtnRow}>
                     {audioStep === 'ready' && (
                       <TouchableOpacity style={[styles.recordMainBtn, { backgroundColor: colors.primary }]} onPress={handleStartRecording}>
-                        <Text style={styles.recordMainBtnText}>🎙️ {language === 'ar' ? 'سجل تلاوتك' : 'Record Recitation'}</Text>
+                        <Text style={styles.recordMainBtnText}>🎙️ {language === 'ar' ? 'بدء التسجيل والتسميع' : 'Start Recording'}</Text>
                       </TouchableOpacity>
                     )}
 
                     {audioStep === 'recording' && (
-                      <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                      <Animated.View style={{ transform: [{ scale: pulseAnim }], width: '100%' }}>
                         <TouchableOpacity style={[styles.recordMainBtn, { backgroundColor: '#EF4444' }]} onPress={handleStopRecording}>
-                          <Text style={styles.recordMainBtnText}>🛑 {language === 'ar' ? 'إيقاف وحفظ' : 'Stop & Save'}</Text>
+                          <Text style={styles.recordMainBtnText}>🛑 {language === 'ar' ? 'إيقاف وحفظ التلاوة' : 'Stop & Save'}</Text>
                         </TouchableOpacity>
                       </Animated.View>
                     )}
@@ -940,7 +974,7 @@ export default function QuranAssessmentScreen({ navigation }: any) {
                     {audioStep === 'recorded' && (
                       <View style={{ width: '100%', gap: 10 }}>
                         <TouchableOpacity style={[styles.recordMainBtn, { backgroundColor: colors.primaryDeep }]} onPress={handleAnalyzeRecitation}>
-                          <Text style={styles.recordMainBtnText}>🔍 {language === 'ar' ? 'تحليل ومطابقة التلاوة' : 'Grade Recitation'}</Text>
+                          <Text style={styles.recordMainBtnText}>🔍 {language === 'ar' ? 'تدقيق الكلمات والترتيب' : 'Check Words & Flow'}</Text>
                         </TouchableOpacity>
                         
                         <TouchableOpacity style={[styles.retryRecordBtn, { borderColor: colors.border }]} onPress={handleStartRecording}>
@@ -962,10 +996,42 @@ export default function QuranAssessmentScreen({ navigation }: any) {
                   {feedback}
                 </Text>
                 
-                {/* Display correct verse text */}
-                <Text style={styles.correctAnswerText}>
-                  {currentQuestion.answer}
-                </Text>
+                {/* Words checked list display (words check only - no tajweed evaluation) */}
+                {isCurrentQuestionVoice && (
+                  <View style={styles.wordsVerificationBox}>
+                    <Text style={[styles.wordsVerificationTitle, { color: colors.textSecondary }]}>
+                      {language === 'ar' ? 'نتيجة تدقيق الكلمات والترتيب:' : 'Words check results:'}
+                    </Text>
+                    <View style={styles.wordsCheckedList}>
+                      {currentQuestion.answer.split(' ').map((word, idx) => {
+                        const isMatched = idx < recitedWordsMatchCount;
+                        return (
+                          <View 
+                            key={idx} 
+                            style={[
+                              styles.wordBadge, 
+                              { 
+                                backgroundColor: isMatched ? '#E6F4EA' : '#FEE4E2',
+                                borderColor: isMatched ? '#34A853' : '#F04438'
+                              }
+                            ]}
+                          >
+                            <Text style={[styles.wordBadgeText, { color: isMatched ? '#137333' : '#B42318' }]}>
+                              {word} {isMatched ? '✓' : '✗'}
+                            </Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </View>
+                )}
+
+                {/* Display correct verse text for MCQ */}
+                {!isCurrentQuestionVoice && (
+                  <Text style={styles.correctAnswerText}>
+                    {currentQuestion.answer}
+                  </Text>
+                )}
                 
                 <TouchableOpacity style={[styles.nextBtn, { backgroundColor: colors.primary }]} onPress={handleNext} activeOpacity={0.85}>
                   <Text style={styles.nextBtnText}>
@@ -977,7 +1043,7 @@ export default function QuranAssessmentScreen({ navigation }: any) {
               </View>
             )}
 
-            {!answered && !isRecordingMode && (
+            {!answered && !isCurrentQuestionVoice && (
               <TouchableOpacity style={[styles.submitBtn, { backgroundColor: colors.primaryDeep }]} onPress={handleSubmitMCQ} activeOpacity={0.85}>
                 <Text style={styles.submitBtnText}>
                   {language === 'ar' ? 'تحقق من الإجابة' : 'Check Answer'}
@@ -1283,6 +1349,18 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 99,
   },
+  contextBoundsCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 10,
+    marginBottom: 16,
+  },
+  contextBoundsText: {
+    fontSize: 12,
+    textAlign: 'right',
+    lineHeight: 18,
+    fontFamily: 'IBMPlexSansArabic-Medium',
+  },
   instructionLabelText: {
     fontSize: 12.5,
     textAlign: 'right',
@@ -1300,27 +1378,6 @@ const styles = StyleSheet.create({
     lineHeight: 28,
     textAlign: 'center',
     fontWeight: '600',
-    fontFamily: 'IBMPlexSansArabic-Medium',
-  },
-  modeToggleRow: {
-    flexDirection: 'row-reverse',
-    backgroundColor: '#F2F4F7',
-    borderRadius: 10,
-    padding: 3,
-    marginBottom: 20,
-    gap: 4,
-  },
-  modeToggleBtn: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modeToggleText: {
-    fontSize: 12.5,
     fontFamily: 'IBMPlexSansArabic-Medium',
   },
   optionsContainer: {
@@ -1386,6 +1443,7 @@ const styles = StyleSheet.create({
   feedbackWrapper: {
     alignItems: 'center',
     marginTop: 10,
+    width: '100%',
   },
   feedbackTitleText: {
     fontSize: 14,
@@ -1491,6 +1549,36 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     fontWeight: '600',
     fontFamily: 'IBMPlexSansArabic-SemiBold',
+  },
+
+  // WORDS CHECK VERIFICATION STYLES
+  wordsVerificationBox: {
+    width: '100%',
+    marginVertical: 14,
+    alignItems: 'center',
+  },
+  wordsVerificationTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 8,
+    fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+  wordsCheckedList: {
+    flexDirection: 'row-reverse',
+    flexWrap: 'wrap',
+    gap: 6,
+    justifyContent: 'center',
+    width: '100%',
+  },
+  wordBadge: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  wordBadgeText: {
+    fontSize: 12,
+    fontFamily: 'IBMPlexSansArabic-Medium',
   },
 
   // RESULTS STATE

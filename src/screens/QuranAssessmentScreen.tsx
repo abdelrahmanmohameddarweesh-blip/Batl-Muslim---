@@ -477,7 +477,7 @@ export default function QuranAssessmentScreen({ navigation }: any) {
           }));
         }
       } else {
-        const response = await fetch(`https://api.alquran.cloud/v1/juz/${selectedJuz}/quran-simple`);
+        const response = await fetch(`https://api.alquran.cloud/v1/juz/${selectedJuz}`);
         const json = await response.json();
         
         if (json.code === 200 && json.data && json.data.ayahs) {

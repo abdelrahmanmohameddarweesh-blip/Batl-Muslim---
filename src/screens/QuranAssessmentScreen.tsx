@@ -82,6 +82,8 @@ export default function QuranAssessmentScreen({ navigation }: any) {
 
   const currentQuestion = questions[currentIndex];
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const meteringHistoryRef = useRef<number[]>([]);
+  const recordingDurationRef = useRef<number>(0);
 
   // Split MCQ count versus Voice count (Strictly divided parts)
   const mcqQuestionsLimit = useMemo(() => {
@@ -157,6 +159,8 @@ export default function QuranAssessmentScreen({ navigation }: any) {
       setLiveVolume(0);
       setSeconds(0);
       setMeteringHistory([]);
+      meteringHistoryRef.current = [];
+      recordingDurationRef.current = 0;
 
       const recordingInstance = new Audio.Recording();
       await recordingInstance.prepareToRecordAsync({
@@ -189,6 +193,7 @@ export default function QuranAssessmentScreen({ navigation }: any) {
         if (status.durationMillis) {
           setSeconds(Math.floor(status.durationMillis / 1000));
           setRecordingDuration(status.durationMillis);
+          recordingDurationRef.current = status.durationMillis;
         }
 
         if (status.metering !== undefined) {
@@ -196,6 +201,7 @@ export default function QuranAssessmentScreen({ navigation }: any) {
           setLiveVolume(normVol);
           const metVal: number = status.metering;
           setMeteringHistory((prev) => [...prev, metVal]);
+          meteringHistoryRef.current.push(metVal);
         }
       });
 
@@ -215,7 +221,8 @@ export default function QuranAssessmentScreen({ navigation }: any) {
     if (!recording) return;
 
     try {
-      await recording.stopAndUnloadAsync();
+      const finalStatus = await recording.stopAndUnloadAsync();
+      const finalDuration = finalStatus.durationMillis || recordingDurationRef.current || 0;
       
       // Deactivate iOS recording category to release mic resources and prevent 'NONE' conflicts
       try {
@@ -238,10 +245,10 @@ export default function QuranAssessmentScreen({ navigation }: any) {
         // 1. Duration Validation
         const minDuration = wordsList.length * 300;
         const maxDuration = wordsList.length * 1800;
-        const isDurationValid = recordingDuration >= minDuration && recordingDuration <= maxDuration;
+        const isDurationValid = finalDuration >= minDuration && finalDuration <= maxDuration;
 
-        // Filter out extreme silent artifacts
-        const validMeters = meteringHistory.filter(db => db !== undefined && db > -120);
+        // Filter out extreme silent artifacts using the persistent Ref
+        const validMeters = meteringHistoryRef.current.filter(db => db !== undefined && db > -120);
 
         let isRecitationCorrect = false;
 

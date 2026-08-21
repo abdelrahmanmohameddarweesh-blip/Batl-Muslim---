@@ -319,6 +319,38 @@ export default function QuranAssessmentScreen({ navigation }: any) {
 
   // Advanced Quran Question Generator Engine (Eliminates text overlap clues completely)
   const compileQuestionsFromVerses = (versesSource: QuranVerse[]): DynamicQuestion[] => {
+    // Helper to generate precision endings distractors (Mutashabihat style)
+    const generatePrecisionDistractors = (correctText: string): string[] => {
+      const words = correctText.trim().split(' ');
+      if (words.length < 3) return [];
+
+      const lastWord = words[words.length - 1];
+      const baseText = words.slice(0, -1).join(' ');
+
+      // Common endings categorized by suffix
+      const endings_een = ['لِلْمُتَّقِينَ', 'الْمُؤْمِنِينَ', 'الْكَافِرِينَ', 'الظَّالِمِينَ', 'الْفَاسِقِينَ', 'الصَّابِرِينَ', 'الْخَاشِعِينَ', 'الْمُحْسِنِينَ'];
+      const endings_oon = ['الْمُفْلِحُونَ', 'يُوقِنُونَ', 'يَعْمَلُونَ', 'تَشْكُرُونَ', 'يَعْقِلُونَ', 'تَعْلَمُونَ', 'يَشْعُرُونَ', 'يُبْصِرُونَ', 'تَتَّقُونَ', 'يُؤْمِنُونَ', 'يَكْذِبُونَ', 'يَسْتَغْفِرُونَ'];
+      const endings_un = ['عَظِيمٌ', 'أَلِيمٌ', 'حَكِيمٌ', 'عَلِيمٌ', 'خَبِيرٌ', 'بَصِيرٌ', 'قَدِيرٌ', 'رَحِيمٌ', 'غَفُورٌ', 'شَدِيدٌ', 'حَمِيدٌ', 'مَجِيدٌ'];
+
+      let pool = endings_een;
+      if (lastWord.endsWith('ون') || lastWord.endsWith('ونَ') || lastWord.endsWith('ونٌ') || lastWord.includes('ون')) {
+        pool = endings_oon;
+      } else if (lastWord.endsWith('ين') || lastWord.endsWith('ينَ') || lastWord.endsWith('ينِ') || lastWord.includes('ين')) {
+        pool = endings_een;
+      } else if (lastWord.endsWith('ٌ') || lastWord.endsWith('مٌ') || lastWord.endsWith('رٌ') || lastWord.endsWith('دٌ')) {
+        pool = endings_un;
+      } else {
+        // Fallback: mix of everything
+        pool = [...endings_een, ...endings_oon, ...endings_un];
+      }
+
+      // Filter out the actual last word to prevent duplicates
+      const filteredPool = pool.filter(w => w !== lastWord && !lastWord.includes(w));
+      const selectedEndings = filteredPool.sort(() => Math.random() - 0.5).slice(0, 3);
+
+      return selectedEndings.map(ending => `${baseText} ${ending}`);
+    };
+
     // Group verses by Surah
     const versesBySurah: Record<string, QuranVerse[]> = {};
     versesSource.forEach(v => {
@@ -427,24 +459,29 @@ export default function QuranAssessmentScreen({ navigation }: any) {
               : `Ends with: "...${lastWord}"`;
           }
 
-          let distractorPool = versesSource.filter(
-            v => v.text !== answer && 
-                 v.text !== prevVerse?.text && 
-                 v.text !== nextVerse?.text
-          );
+          // Try to generate high-difficulty precision distractors (Mutashabihat)
+          distractors = generatePrecisionDistractors(answer);
 
-          if (filterMode === 'surah') {
-            distractorPool = distractorPool.filter(v => v.surah === selectedSurah);
+          if (distractors.length < 3) {
+            let distractorPool = versesSource.filter(
+              v => v.text !== answer && 
+                   v.text !== prevVerse?.text && 
+                   v.text !== nextVerse?.text
+            );
+
+            if (filterMode === 'surah') {
+              distractorPool = distractorPool.filter(v => v.surah === selectedSurah);
+            }
+
+            if (distractorPool.length < 3) {
+              distractorPool = quranVerses.filter(v => v.text !== answer);
+            }
+
+            distractors = distractorPool
+              .sort(() => Math.random() - 0.5)
+              .slice(0, 3)
+              .map(v => v.text);
           }
-
-          if (distractorPool.length < 3) {
-            distractorPool = quranVerses.filter(v => v.text !== answer);
-          }
-
-          distractors = distractorPool
-            .sort(() => Math.random() - 0.5)
-            .slice(0, 3)
-            .map(v => v.text);
         } else {
           // SPLIT VERSE MODE:
           // Ensure prompt has at least 3-4 words context
@@ -463,23 +500,28 @@ export default function QuranAssessmentScreen({ navigation }: any) {
               ? `حتى نهاية الآية (تنتهي بـ: "${lastWord}") ۞`
               : `Until the end of the verse (ends with: "${lastWord}") ۞`;
 
-            let distractorPool = versesSource.filter(v => v.text !== targetVerse.text);
-            if (filterMode === 'surah') {
-              distractorPool = distractorPool.filter(v => v.surah === selectedSurah);
-            }
+            // Try to generate high-difficulty precision distractors (Mutashabihat)
+            distractors = generatePrecisionDistractors(answer);
 
-            if (distractorPool.length < 3) {
-              distractorPool = quranVerses.filter(v => v.text !== targetVerse.text);
-            }
+            if (distractors.length < 3) {
+              let distractorPool = versesSource.filter(v => v.text !== targetVerse.text);
+              if (filterMode === 'surah') {
+                distractorPool = distractorPool.filter(v => v.surah === selectedSurah);
+              }
 
-            distractors = distractorPool
-              .sort(() => Math.random() - 0.5)
-              .slice(0, 3)
-              .map(v => {
-                const dWords = v.text.split(' ');
-                const dHalf = Math.max(3, Math.floor(dWords.length / 2));
-                return dWords.slice(dHalf).join(' ');
-              });
+              if (distractorPool.length < 3) {
+                distractorPool = quranVerses.filter(v => v.text !== targetVerse.text);
+              }
+
+              distractors = distractorPool
+                .sort(() => Math.random() - 0.5)
+                .slice(0, 3)
+                .map(v => {
+                  const dWords = v.text.split(' ');
+                  const dHalf = Math.max(3, Math.floor(dWords.length / 2));
+                  return dWords.slice(dHalf).join(' ');
+                });
+            }
           } else {
             // If the verse is too short to split meaningfully, fallback to full verse with neighbors
             answer = targetVerse.text;
@@ -500,24 +542,29 @@ export default function QuranAssessmentScreen({ navigation }: any) {
               answer = targetVerse.text;
             }
 
-            let distractorPool = versesSource.filter(
-              v => v.text !== answer && 
-                   v.text !== prevVerse?.text && 
-                   v.text !== nextVerse?.text
-            );
+            // Try to generate high-difficulty precision distractors (Mutashabihat)
+            distractors = generatePrecisionDistractors(answer);
 
-            if (filterMode === 'surah') {
-              distractorPool = distractorPool.filter(v => v.surah === selectedSurah);
+            if (distractors.length < 3) {
+              let distractorPool = versesSource.filter(
+                v => v.text !== answer && 
+                     v.text !== prevVerse?.text && 
+                     v.text !== nextVerse?.text
+              );
+
+              if (filterMode === 'surah') {
+                distractorPool = distractorPool.filter(v => v.surah === selectedSurah);
+              }
+
+              if (distractorPool.length < 3) {
+                distractorPool = quranVerses.filter(v => v.text !== answer);
+              }
+
+              distractors = distractorPool
+                .sort(() => Math.random() - 0.5)
+                .slice(0, 3)
+                .map(v => v.text);
             }
-
-            if (distractorPool.length < 3) {
-              distractorPool = quranVerses.filter(v => v.text !== answer);
-            }
-
-            distractors = distractorPool
-              .sort(() => Math.random() - 0.5)
-              .slice(0, 3)
-              .map(v => v.text);
           }
         }
 

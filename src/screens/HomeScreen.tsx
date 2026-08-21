@@ -9,7 +9,8 @@ import { getCurrentUserProfile } from '../firebase/auth';
 import AdBanner from '../components/AdBanner';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_WIDTH = SCREEN_WIDTH - 40;
+const CARD_WIDTH = SCREEN_WIDTH * 0.78;
+const CARD_GAP = 12;
 
 // Mock data for Daily Podium Winner Cards
 const PODIUM_WINNERS = [
@@ -33,6 +34,11 @@ export default function HomeScreen({ navigation }: any) {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>('الكل');
+
+  const todayStr = useMemo(() => {
+    const today = new Date();
+    return `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+  }, []);
 
   const loadData = async () => {
     if (!user?.uid) return;
@@ -108,7 +114,7 @@ export default function HomeScreen({ navigation }: any) {
       descAr: 'تحدَّ منافساً حقيقياً مباشرة وأجب على الأسئلة بأسرع وقت لتحقيق الفوز.',
       descEn: 'A fast-paced, real-time speed quiz face-off against a live Muslim peer.',
       route: 'LiveDuel',
-      isDuel: true,
+      icon: '⚔️',
       color: '#044E3F',
     },
     {
@@ -119,8 +125,38 @@ export default function HomeScreen({ navigation }: any) {
       descEn: '5-second timer per question. A single mistake ends the run instantly!',
       route: 'Trivia',
       params: { mode: 'hardcore' },
-      isDuel: false,
+      icon: '⚡',
       color: '#D97706',
+    },
+    {
+      id: 'quran-assess',
+      titleAr: 'تقييم الحفظ المتقن 📖',
+      titleEn: 'Quran Memorization Assessment 📖',
+      descAr: 'تقييم مخصص بالسور والأجزاء لتمكين المدرسين والطلاب من قياس جودة الحفظ.',
+      descEn: 'Custom Juz/Surah memorization assessments designed for teacher/student handoff.',
+      route: 'QuranAssessment',
+      icon: '📖',
+      color: '#1C64F2',
+    },
+    {
+      id: 'hadith-verify',
+      titleAr: 'تحدي الحديث الشريف 💬',
+      titleEn: 'Hadith Verification 💬',
+      descAr: 'اختبر معلوماتك في رواة الأحاديث الشريفة، وصحتها، ودلالاتها التربوية.',
+      descEn: 'Verify Sahih narrations, test your chains of transmission, and unlock Hadith badges.',
+      route: 'HadithChallenge',
+      icon: '💬',
+      color: '#6E11B0',
+    },
+    {
+      id: 'sirah-quest',
+      titleAr: 'خريطة السيرة النبوية 🗺️',
+      titleEn: 'Sirah Biography Quest 🗺️',
+      descAr: 'رحلة تفاعلية تفصيلية تتبع حياة نبينا ﷺ من ولادته بمكة إلى المدينة المنورة.',
+      descEn: 'A step-by-step interactive map tracking the Prophet\'s biography with unlockable milestones.',
+      route: 'SirahQuest',
+      icon: '🗺️',
+      color: '#78281F',
     }
   ];
 
@@ -321,9 +357,10 @@ export default function HomeScreen({ navigation }: any) {
             data={challengesData}
             keyExtractor={(item) => item.id}
             horizontal
-            pagingEnabled
+            pagingEnabled={false}
             showsHorizontalScrollIndicator={false}
-            snapToInterval={CARD_WIDTH + 16}
+            snapToInterval={CARD_WIDTH + CARD_GAP}
+            snapToAlignment="center"
             decelerationRate="fast"
             contentContainerStyle={styles.carouselContainer}
             renderItem={({ item }) => (
@@ -334,7 +371,7 @@ export default function HomeScreen({ navigation }: any) {
               >
                 {/* Background illustrations */}
                 <View style={styles.carouselCardVectorHolder}>
-                  {item.isDuel ? (
+                  {item.id === '1v1' && (
                     <Svg viewBox="0 0 100 100" width="110" height="110" opacity="0.2">
                       {/* Crossed Swords Vector */}
                       <Path d="M15,85 L85,15 M85,85 L15,15" stroke="#FFFFFF" strokeWidth="6" strokeLinecap="round" />
@@ -342,19 +379,38 @@ export default function HomeScreen({ navigation }: any) {
                       <Circle cx="15" cy="85" r="4" fill="#FFFFFF" />
                       <Circle cx="85" cy="85" r="4" fill="#FFFFFF" />
                     </Svg>
-                  ) : (
+                  )}
+                  {item.id === 'rapid' && (
                     <Svg viewBox="0 0 100 100" width="110" height="110" opacity="0.2">
                       {/* Stopwatch on Fire Vector */}
                       <Circle cx="50" cy="55" r="28" fill="none" stroke="#FFFFFF" strokeWidth="6" />
                       <Path d="M50,15 L50,27 M40,18 L60,18" stroke="#FFFFFF" strokeWidth="8" strokeLinecap="round" />
                       <Path d="M50,38 L50,55 L65,65" fill="none" stroke="#FFFFFF" strokeWidth="6" strokeLinecap="round" />
-                      {/* Flame curls */}
                       <Path d="M35,28 Q50,0 65,28" fill="none" stroke="#FFFFFF" strokeWidth="4" />
+                    </Svg>
+                  )}
+                  {item.id === 'quran-assess' && (
+                    <Svg viewBox="0 0 24 24" width="110" height="110" opacity="0.2" fill="none" stroke="#FFFFFF" strokeWidth="2">
+                      {/* Book Open SVG */}
+                      <Path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20M4 19.5V3a1 1 0 0 1 1-1h15v18H6.5a2.5 2.5 0 0 0-2.5 2.5z" />
+                    </Svg>
+                  )}
+                  {item.id === 'hadith-verify' && (
+                    <Svg viewBox="0 0 24 24" width="110" height="110" opacity="0.2" fill="none" stroke="#FFFFFF" strokeWidth="2">
+                      {/* Speech Bubble SVG */}
+                      <Path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                    </Svg>
+                  )}
+                  {item.id === 'sirah-quest' && (
+                    <Svg viewBox="0 0 24 24" width="110" height="110" opacity="0.2" fill="none" stroke="#FFFFFF" strokeWidth="2">
+                      {/* Compass/Map SVG */}
+                      <Circle cx="12" cy="12" r="10" />
+                      <Path d="m16.24 7.76-2.12 6.36-6.36 2.12 2.12-6.36z" />
                     </Svg>
                   )}
                 </View>
 
-                <Text style={styles.carouselCardIcon}>{item.isDuel ? '⚔️' : '⏱️'}</Text>
+                <Text style={styles.carouselCardIcon}>{item.icon}</Text>
                 <Text style={styles.carouselCardTitle}>
                   {language === 'ar' ? item.titleAr : item.titleEn}
                 </Text>

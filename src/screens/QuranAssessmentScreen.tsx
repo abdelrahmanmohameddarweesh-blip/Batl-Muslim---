@@ -2,10 +2,22 @@ import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Share, Dimensions } from 'react-native';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { surahsList } from '../data/surahs';
-import { quranAssessmentQuestions, type QuranAssessmentQuestion } from '../data/quranAssessment';
+import { quranVerses, type QuranVerse } from '../data/quranVerses';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import AdBanner from '../components/AdBanner';
+
+interface DynamicQuestion {
+  id: string;
+  type: 'missing_ayah' | 'identify_surah';
+  prompt: string;
+  options: string[];
+  answer: string;
+  surah: string;
+  surahEn: string;
+  juz: number;
+  ayahNumber: number;
+}
 
 export default function QuranAssessmentScreen({ navigation }: any) {
   const { colors } = useTheme();
@@ -21,7 +33,7 @@ export default function QuranAssessmentScreen({ navigation }: any) {
   const [selectedLimit, setSelectedLimit] = useState<number>(5);
 
   // Active Assessment States
-  const [questions, setQuestions] = useState<QuranAssessmentQuestion[]>([]);
+  const [questions, setQuestions] = useState<DynamicQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState('');
   const [answered, setAnswered] = useState(false);
@@ -30,49 +42,125 @@ export default function QuranAssessmentScreen({ navigation }: any) {
 
   const currentQuestion = questions[currentIndex];
 
-  const handleStart = () => {
-    // 1. Initial selection pool matching Mode
-    let pool = quranAssessmentQuestions;
+  // Dynamic Question Generator Engine
+  const generateQuestions = (): DynamicQuestion[] => {
+    // 1. Filter verses based on selection
+    let matchedVerses = quranVerses;
     if (filterMode === 'juz') {
-      // Juz Mode contains both missing_ayah and identify_surah questions
-      pool = pool.filter((q) => q.juz === selectedJuz);
+      matchedVerses = quranVerses.filter(v => v.juz === selectedJuz);
     } else {
-      // Surah Mode strictly only allows missing_ayah type (Identify Surah would be self-revealing!)
-      pool = pool.filter((q) => q.surah === selectedSurah && q.type === 'missing_ayah');
+      matchedVerses = quranVerses.filter(v => v.surah === selectedSurah);
     }
 
-    if (pool.length === 0) {
-      // Fallback: load nearby Juz/Surah questions if exact matching isn't seeded yet
-      const fallbackPool = quranAssessmentQuestions.filter(q => 
-        filterMode === 'juz' 
-          ? q.juz === 30 
-          : (q.surah === 'الملك' && q.type === 'missing_ayah')
-      );
-      pool = fallbackPool;
+    // Fallback: If selected Surah/Juz does not have seeded verses, default to Al-Mulk
+    if (matchedVerses.length === 0) {
+      matchedVerses = quranVerses.filter(v => v.surah === 'الملك');
+    }
+
+    // Shuffle the matching verses to guarantee random selection on every start
+    const shuffledVerses = [...matchedVerses].sort(() => Math.random() - 0.5);
+
+    const generated: DynamicQuestion[] = [];
+    const questionsCount = Math.min(selectedLimit, shuffledVerses.length);
+
+    for (let i = 0; i < questionsCount; i++) {
+      const targetVerse = shuffledVerses[i];
+      
+      // Determine question type:
+      // Surah mode strictly uses missing_ayah (Identify Surah would be self-revealing)
+      // Juz mode shuffles both types dynamically
+      let type: 'missing_ayah' | 'identify_surah' = 'missing_ayah';
       if (filterMode === 'juz') {
-        setSelectedJuz(30);
+        type = Math.random() > 0.5 ? 'identify_surah' : 'missing_ayah';
+      }
+
+      if (type === 'missing_ayah') {
+        // Generate prompt with surrounding verses context
+        const prevVerse = quranVerses.find(
+          v => v.surah === targetVerse.surah && v.ayahNumber === targetVerse.ayahNumber - 1
+        );
+        const nextVerse = quranVerses.find(
+          v => v.surah === targetVerse.surah && v.ayahNumber === targetVerse.ayahNumber + 1
+        );
+
+        let promptText = '';
+        if (prevVerse && nextVerse) {
+          promptText = `... ۞ ${prevVerse.text} ۞ [ ....... ] ۞ ${nextVerse.text} ۞ ...`;
+        } else if (prevVerse) {
+          promptText = `... ۞ ${prevVerse.text} ۞ [ ....... ]`;
+        } else if (nextVerse) {
+          promptText = `[ ....... ] ۞ ${nextVerse.text} ۞ ...`;
+        } else {
+          promptText = `[ ....... ]`; // Fallback to single blank
+        }
+
+        // Correct Answer is the verse text itself
+        const answer = targetVerse.text;
+
+        // Generate distractors (other random verses from the database)
+        const distractorsPool = quranVerses
+          .filter(v => v.text !== answer)
+          .sort(() => Math.random() - 0.5)
+          .slice(0, 3)
+          .map(v => v.text);
+
+        // Combine and Shuffle Options (Fisher-Yates style shuffle to avoid answer positioning bias)
+        const options = [answer, ...distractorsPool].sort(() => Math.random() - 0.5);
+
+        generated.push({
+          id: `dyn_${targetVerse.surah}_${targetVerse.ayahNumber}_${i}`,
+          type,
+          prompt: promptText,
+          options,
+          answer,
+          surah: targetVerse.surah,
+          surahEn: targetVerse.surahEn,
+          juz: targetVerse.juz,
+          ayahNumber: targetVerse.ayahNumber
+        });
       } else {
-        setSelectedSurah('الملك');
+        // Identify Surah type question
+        const promptText = targetVerse.text;
+        const answer = targetVerse.surah;
+
+        // Get 3 other random Surah names
+        const distractorsPool = surahsList
+          .filter(s => s.name !== answer)
+          .sort(() => Math.random() - 0.5)
+          .slice(0, 3)
+          .map(s => s.name);
+
+        const options = [answer, ...distractorsPool].sort(() => Math.random() - 0.5);
+
+        generated.push({
+          id: `dyn_id_${targetVerse.surah}_${targetVerse.ayahNumber}_${i}`,
+          type,
+          prompt: promptText,
+          options,
+          answer,
+          surah: targetVerse.surah,
+          surahEn: targetVerse.surahEn,
+          juz: targetVerse.juz,
+          ayahNumber: targetVerse.ayahNumber
+        });
       }
     }
 
-    // 2. Difficulty Scaling based on Limit Selection
-    let difficultyFilter = ['easy', 'medium'];
-    if (selectedLimit === 10) difficultyFilter = ['medium', 'hard'];
-    if (selectedLimit === 15) difficultyFilter = ['hard', 'expert'];
-    if (selectedLimit === 20) difficultyFilter = ['hard', 'expert'];
+    return generated;
+  };
 
-    let filtered = pool.filter(q => difficultyFilter.includes(q.difficulty));
-    if (filtered.length < selectedLimit) {
-      // Fallback to complete pool if not enough questions match selected difficulty
-      filtered = pool;
+  const handleStart = () => {
+    const generated = generateQuestions();
+
+    if (generated.length === 0) {
+      Alert.alert(
+        language === 'ar' ? 'خطأ' : 'Error',
+        language === 'ar' ? 'فشل في توليد الأسئلة.' : 'Failed to generate questions.'
+      );
+      return;
     }
 
-    // 3. Shuffle and Slice
-    const shuffled = [...filtered].sort(() => Math.random() - 0.5);
-    const selectedSet = shuffled.slice(0, Math.min(selectedLimit, shuffled.length));
-
-    setQuestions(selectedSet);
+    setQuestions(generated);
     setCurrentIndex(0);
     setSelectedAnswer('');
     setAnswered(false);
@@ -300,7 +388,7 @@ export default function QuranAssessmentScreen({ navigation }: any) {
                 : (language === 'ar' ? 'في أي سورة وردت هذه الآية الكريمة؟' : 'In which Surah does this Ayah appear?')}
             </Text>
 
-            {/* Prompt Verse (Citation Surah name removed to prevent leaking the answer!) */}
+            {/* Prompt Verse */}
             <View style={[styles.promptCard, { backgroundColor: colors.neutralTint, borderColor: colors.border }]}>
               <Text style={[styles.promptText, { color: colors.textPrimary }]}>
                 {currentQuestion.prompt}

@@ -76,6 +76,8 @@ export default function QuranAssessmentScreen({ navigation }: any) {
   const [seconds, setSeconds] = useState(0);
   const [audioStep, setAudioStep] = useState<'ready' | 'recording' | 'recorded' | 'analyzing'>('ready');
   const [recitedWordsMatchCount, setRecitedWordsMatchCount] = useState<number>(0);
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   const currentQuestion = questions[currentIndex];
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -123,8 +125,11 @@ export default function QuranAssessmentScreen({ navigation }: any) {
       if (recording) {
         recording.stopAndUnloadAsync().catch(() => {});
       }
+      if (sound) {
+        sound.unloadAsync().catch(() => {});
+      }
     };
-  }, [recording]);
+  }, [recording, sound]);
 
   // Voice recording triggers
   const handleStartRecording = async () => {
@@ -212,42 +217,60 @@ export default function QuranAssessmentScreen({ navigation }: any) {
     }
   };
 
-  const handleAnalyzeRecitation = () => {
-    if (!currentQuestion) return;
+  const playRecording = async () => {
+    if (!recording) return;
+    const uri = recording.getURI();
+    if (!uri) return;
 
-    setAudioStep('analyzing');
-    
-    setTimeout(() => {
-      // WORDS CHECK ONLY EVALUATION:
-      // Grade strictly based on words and arrangement of words.
-      const wordsList = currentQuestion.answer.split(' ');
-      
-      // Calculate how many words were successfully recited based on reading pace (approx 500ms per word)
-      // and minimum volume constraints to filter silence
-      let calculatedWordsCount = 0;
-      if (recordingDuration > 500) {
-        calculatedWordsCount = Math.min(wordsList.length, Math.floor(recordingDuration / 500));
+    try {
+      if (sound) {
+        await sound.unloadAsync();
       }
 
-      setRecitedWordsMatchCount(calculatedWordsCount);
-      setAnswered(true);
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        { uri },
+        { shouldPlay: true }
+      );
+      setSound(newSound);
+      setIsPlaying(true);
 
-      const isCorrect = (calculatedWordsCount / wordsList.length) >= 0.7;
-      if (isCorrect) {
-        setCorrectCount((prev) => prev + 1);
-        setFeedback(
-          language === 'ar' 
-            ? 'تسميع صحيح للآية الكريمة! تم ترتيب الكلمات بنجاح 🌟' 
-            : 'Recitation correct! All words arranged successfully 🌟'
-        );
-      } else {
-        setFeedback(
-          language === 'ar' 
-            ? 'تسميع غير مكتمل أو غير دقيق. يرجى التحقق من الكلمات المفقودة أدناه:' 
-            : 'Recitation incomplete or out of order. Please review the word check results below:'
-        );
+      newSound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && !status.isPlaying && status.didJustFinish) {
+          setIsPlaying(false);
+        }
+      });
+    } catch (err) {
+      console.error('Failed to play recording', err);
+    }
+  };
+
+  const stopPlayingRecording = async () => {
+    if (sound) {
+      try {
+        await sound.stopAsync();
+        setIsPlaying(false);
+      } catch (err) {
+        console.error('Failed to stop playback', err);
       }
-    }, 2000);
+    }
+  };
+
+  const handleSelfGrade = (isCorrect: boolean) => {
+    setAnswered(true);
+    if (isCorrect) {
+      setCorrectCount((prev) => prev + 1);
+      setFeedback(
+        language === 'ar'
+          ? 'رائع! تم تسجيل تسميعك كإجابة صحيحة. تابع الحفظ المتميز 🌟'
+          : 'Great! Your recitation has been recorded as correct. Keep up the excellent work 🌟'
+      );
+    } else {
+      setFeedback(
+        language === 'ar'
+          ? 'تم تسجيل التسميع كخاطئ. يمكنك مراجعة الكلمات الصحيحة للآية الكريمة لتثبيتها:'
+          : 'Recorded as incorrect. Review the correct words below to reinforce:'
+      );
+    }
   };
 
   // Advanced Quran Question Generator Engine (Eliminates text overlap clues completely)
@@ -1018,22 +1041,63 @@ export default function QuranAssessmentScreen({ navigation }: any) {
                 )}
 
                 {audioStep === 'recorded' && (
-                  <View style={styles.audioStateBox}>
+                  <View style={[styles.audioStateBox, { width: '100%' }]}>
                     <Text style={[styles.audioStateText, { color: colors.textPrimary, fontWeight: '700' }]}>
                       ✅ {language === 'ar' ? 'تم تسجيل التلاوة' : 'Recitation recorded'}
                     </Text>
-                    <Text style={[styles.audioStateSubText, { color: colors.textSecondary }]}>
+                    <Text style={[styles.audioStateSubText, { color: colors.textSecondary, marginBottom: 12 }]}>
                       {language === 'ar' ? `المدة: ${seconds} ثوانٍ` : `Duration: ${seconds} seconds`}
                     </Text>
-                  </View>
-                )}
 
-                {audioStep === 'analyzing' && (
-                  <View style={styles.audioStateBox}>
-                    <ActivityIndicator size="large" color={colors.primary} />
-                    <Text style={[styles.audioStateText, { color: colors.textSecondary }]}>
-                      {language === 'ar' ? 'جاري استخراج الكلمات وتدقيق الترتيب...' : 'Verifying words and arrangement...'}
+                    {/* Audio Playback Button */}
+                    <TouchableOpacity 
+                      style={[styles.playbackBtn, { backgroundColor: isPlaying ? '#EF4444' : colors.primaryTint, borderColor: isPlaying ? '#EF4444' : colors.primary }]} 
+                      onPress={isPlaying ? stopPlayingRecording : playRecording}
+                    >
+                      <Text style={[styles.playbackBtnText, { color: isPlaying ? '#FFFFFF' : colors.primaryOnTint }]}>
+                        {isPlaying 
+                          ? (language === 'ar' ? '⏹️ إيقاف الاستماع' : '⏹️ Stop Playback')
+                          : (language === 'ar' ? '🔊 استمع إلى تسميعك' : '🔊 Listen to your Recitation')}
+                      </Text>
+                    </TouchableOpacity>
+
+                    {/* Correct Text Comparison Card */}
+                    <View style={[styles.comparisonCard, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                      <Text style={[styles.comparisonTitle, { color: colors.textSecondary }]}>
+                        {language === 'ar' ? 'الآية المفقودة الصحيحة هي:' : 'The correct missing verse text is:'}
+                      </Text>
+                      <Text style={[styles.comparisonText, { color: colors.textPrimary }]}>
+                        {currentQuestion.answer}
+                      </Text>
+                    </View>
+
+                    {/* Self grading prompt */}
+                    <Text style={[styles.selfGradePromptText, { color: colors.textPrimary }]}>
+                      {language === 'ar' 
+                        ? 'هل تطابقت تلاوتك المسجلة مع هذه الكلمات تماماً وترتيبها؟' 
+                        : 'Did your recorded recitation match these words and their arrangement?'}
                     </Text>
+
+                    {/* Self grading buttons */}
+                    <View style={styles.selfGradeBtnRow}>
+                      <TouchableOpacity 
+                        style={[styles.selfGradeBtn, styles.selfGradeBtnCorrect]} 
+                        onPress={() => handleSelfGrade(true)}
+                      >
+                        <Text style={styles.selfGradeBtnText}>
+                          {language === 'ar' ? 'نعم، صحيحة (✓)' : 'Yes, Correct (✓)'}
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity 
+                        style={[styles.selfGradeBtn, styles.selfGradeBtnIncorrect]} 
+                        onPress={() => handleSelfGrade(false)}
+                      >
+                        <Text style={styles.selfGradeBtnText}>
+                          {language === 'ar' ? 'لا، يوجد خطأ (✗)' : 'No, Mistake (✗)'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 )}
 
@@ -1055,17 +1119,11 @@ export default function QuranAssessmentScreen({ navigation }: any) {
                     )}
 
                     {audioStep === 'recorded' && (
-                      <View style={{ width: '100%', gap: 10 }}>
-                        <TouchableOpacity style={[styles.recordMainBtn, { backgroundColor: colors.primaryDeep }]} onPress={handleAnalyzeRecitation}>
-                          <Text style={styles.recordMainBtnText}>🔍 {language === 'ar' ? 'تدقيق الكلمات والترتيب' : 'Check Words & Flow'}</Text>
-                        </TouchableOpacity>
-                        
-                        <TouchableOpacity style={[styles.retryRecordBtn, { borderColor: colors.border }]} onPress={handleStartRecording}>
-                          <Text style={[styles.retryRecordBtnText, { color: colors.textSecondary }]}>
-                            🔄 {language === 'ar' ? 'إعادة التسجيل' : 'Record Again'}
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
+                      <TouchableOpacity style={[styles.retryRecordBtn, { borderColor: colors.border, marginTop: 10 }]} onPress={handleStartRecording}>
+                        <Text style={[styles.retryRecordBtnText, { color: colors.textSecondary }]}>
+                          🔄 {language === 'ar' ? 'إعادة التسجيل' : 'Record Again'}
+                        </Text>
+                      </TouchableOpacity>
                     )}
                   </View>
                 )}
@@ -1079,42 +1137,10 @@ export default function QuranAssessmentScreen({ navigation }: any) {
                   {feedback}
                 </Text>
                 
-                {/* Words checked list display (words check only - no tajweed evaluation) */}
-                {isCurrentQuestionVoice && (
-                  <View style={styles.wordsVerificationBox}>
-                    <Text style={[styles.wordsVerificationTitle, { color: colors.textSecondary }]}>
-                      {language === 'ar' ? 'نتيجة تدقيق الكلمات والترتيب:' : 'Words check results:'}
-                    </Text>
-                    <View style={styles.wordsCheckedList}>
-                      {currentQuestion.answer.split(' ').map((word, idx) => {
-                        const isMatched = idx < recitedWordsMatchCount;
-                        return (
-                          <View 
-                            key={idx} 
-                            style={[
-                              styles.wordBadge, 
-                              { 
-                                backgroundColor: isMatched ? '#E6F4EA' : '#FEE4E2',
-                                borderColor: isMatched ? '#34A853' : '#F04438'
-                              }
-                            ]}
-                          >
-                            <Text style={[styles.wordBadgeText, { color: isMatched ? '#137333' : '#B42318' }]}>
-                              {word} {isMatched ? '✓' : '✗'}
-                            </Text>
-                          </View>
-                        );
-                      })}
-                    </View>
-                  </View>
-                )}
-
-                {/* Display correct verse text for MCQ */}
-                {!isCurrentQuestionVoice && (
-                  <Text style={styles.correctAnswerText}>
-                    {currentQuestion.answer}
-                  </Text>
-                )}
+                {/* Display correct verse text */}
+                <Text style={styles.correctAnswerText}>
+                  {currentQuestion.answer}
+                </Text>
                 
                 <TouchableOpacity style={[styles.nextBtn, { backgroundColor: colors.primary }]} onPress={handleNext} activeOpacity={0.85}>
                   <Text style={styles.nextBtnText}>
@@ -1737,5 +1763,72 @@ const styles = StyleSheet.create({
     fontSize: 13.5,
     fontWeight: '600',
     fontFamily: 'IBMPlexSansArabic-SemiBold',
+  },
+  playbackBtn: {
+    width: '100%',
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  playbackBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+  comparisonCard: {
+    width: '100%',
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  comparisonTitle: {
+    fontSize: 11,
+    marginBottom: 6,
+    fontFamily: 'IBMPlexSansArabic-Regular',
+  },
+  comparisonText: {
+    fontSize: 16,
+    lineHeight: 26,
+    textAlign: 'center',
+    fontWeight: '700',
+    fontFamily: 'IBMPlexSansArabic-Medium',
+  },
+  selfGradePromptText: {
+    fontSize: 13,
+    textAlign: 'center',
+    fontWeight: '700',
+    marginBottom: 14,
+    fontFamily: 'IBMPlexSansArabic-SemiBold',
+    paddingHorizontal: 8,
+  },
+  selfGradeBtnRow: {
+    flexDirection: 'row',
+    width: '100%',
+    gap: 12,
+    marginBottom: 6,
+  },
+  selfGradeBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selfGradeBtnCorrect: {
+    backgroundColor: '#059669',
+  },
+  selfGradeBtnIncorrect: {
+    backgroundColor: '#EF4444',
+  },
+  selfGradeBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+    fontFamily: 'IBMPlexSansArabic-Bold',
   },
 });

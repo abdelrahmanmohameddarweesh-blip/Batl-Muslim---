@@ -89,8 +89,9 @@ export default function QuranAssessmentScreen({ navigation }: any) {
   }, [questions]);
 
   const isCurrentQuestionVoice = useMemo(() => {
-    return currentIndex >= mcqQuestionsLimit;
-  }, [currentIndex, mcqQuestionsLimit]);
+    if (!currentQuestion) return false;
+    return currentIndex >= mcqQuestionsLimit && currentQuestion.type === 'missing_ayah';
+  }, [currentIndex, mcqQuestionsLimit, currentQuestion]);
 
   // Pulse animation loop during recording
   useEffect(() => {
@@ -215,6 +216,17 @@ export default function QuranAssessmentScreen({ navigation }: any) {
 
     try {
       await recording.stopAndUnloadAsync();
+      
+      // Deactivate iOS recording category to release mic resources and prevent 'NONE' conflicts
+      try {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+        });
+      } catch (modeErr) {
+        console.warn('Deactivating iOS recording category failed', modeErr);
+      }
+
       setAudioStep('analyzing');
 
       setTimeout(() => {
@@ -286,8 +298,18 @@ export default function QuranAssessmentScreen({ navigation }: any) {
 
     try {
       if (sound) {
-        await sound.unloadAsync();
+        try {
+          await sound.unloadAsync();
+        } catch (e) {}
       }
+
+      // Ensure playback-only mode on iOS
+      try {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+        });
+      } catch (modeErr) {}
 
       const { sound: newSound } = await Audio.Sound.createAsync(
         { uri },
@@ -297,22 +319,29 @@ export default function QuranAssessmentScreen({ navigation }: any) {
       setIsPlaying(true);
 
       newSound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && !status.isPlaying && status.didJustFinish) {
-          setIsPlaying(false);
+        if (status.isLoaded) {
+          if (status.didJustFinish) {
+            setIsPlaying(false);
+            newSound.unloadAsync().catch(() => {});
+            setSound(null);
+          }
         }
       });
     } catch (err) {
       console.error('Failed to play recording', err);
+      setIsPlaying(false);
     }
   };
 
   const stopPlayingRecording = async () => {
     if (sound) {
       try {
-        await sound.stopAsync();
-        setIsPlaying(false);
+        await sound.unloadAsync();
       } catch (err) {
         console.error('Failed to stop playback', err);
+      } finally {
+        setSound(null);
+        setIsPlaying(false);
       }
     }
   };

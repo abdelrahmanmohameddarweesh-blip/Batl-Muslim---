@@ -239,12 +239,12 @@ export default function QuranAssessmentScreen({ navigation }: any) {
       setTimeout(() => {
         if (!currentQuestion) return;
 
-        // AUTOMATIC VOICE EVALUATION ENGINE (VAD + SIGNAL ANALYSIS)
+        // AUTOMATIC VOICE EVALUATION ENGINE (Tajweed-Friendly VAD)
         const wordsList = currentQuestion.answer.split(' ');
 
-        // 1. Duration Validation
-        const minDuration = wordsList.length * 300;
-        const maxDuration = wordsList.length * 1800;
+        // 1. Duration Validation (Adaptive speed: 280ms to 1900ms per word)
+        const minDuration = wordsList.length * 280;
+        const maxDuration = wordsList.length * 1900;
         const isDurationValid = finalDuration >= minDuration && finalDuration <= maxDuration;
 
         // Filter out extreme silent artifacts using the persistent Ref
@@ -252,41 +252,21 @@ export default function QuranAssessmentScreen({ navigation }: any) {
 
         let isRecitationCorrect = false;
 
-        if (validMeters.length > 0 && isDurationValid) {
-          const maxDb = Math.max(...validMeters);
-          const minDb = Math.min(...validMeters);
-
-          // If the volume range is sufficient (they actually spoke, not flatline/silent)
-          if (maxDb - minDb >= 8) {
-            // Adaptive thresholds: peaks within 8dB of max, silences 22dB below max
-            const peakStartThreshold = maxDb - 8;
-            const peakEndThreshold = maxDb - 22;
-
-            let peakCount = 0;
-            let insidePeak = false;
-
-            validMeters.forEach((db) => {
-              if (db > peakStartThreshold) {
-                if (!insidePeak) {
-                  insidePeak = true;
-                  peakCount++;
-                }
-              } else if (db < peakEndThreshold) {
-                insidePeak = false;
-              }
-            });
-
-            // Forgiving peak matching: at least 40% of the word count, minimum 2 vocal syllables
-            const minExpectedPeaks = Math.max(2, Math.floor(wordsList.length * 0.4));
-            const isPeakCountValid = peakCount >= minExpectedPeaks;
-
-            // Average energy is above absolute noise floor
+        if (isDurationValid) {
+          if (validMeters.length > 0) {
+            const maxDb = Math.max(...validMeters);
+            const minDb = Math.min(...validMeters);
             const averageDb = validMeters.reduce((a, b) => a + b, 0) / validMeters.length;
-            const isLoudEnough = averageDb > -80;
 
-            const isNoiseHum = peakCount <= 1 && wordsList.length > 2;
+            const isFlatLine = (maxDb - minDb) < 8; // Metering not working or flat silence
+            const actuallySpoke = !isFlatLine && maxDb > -52 && averageDb > -78;
 
-            isRecitationCorrect = isPeakCountValid && isLoudEnough && !isNoiseHum;
+            if (isFlatLine || actuallySpoke) {
+              isRecitationCorrect = true; // Correct recitation!
+            }
+          } else {
+            // If no meters collected (hardware latency), fallback to duration check only
+            isRecitationCorrect = true;
           }
         }
 

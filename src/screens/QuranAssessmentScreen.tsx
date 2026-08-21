@@ -663,39 +663,79 @@ export default function QuranAssessmentScreen({ navigation }: any) {
     const surahObj = surahsList.find(s => s.name === selectedSurah);
     const surahNumber = surahObj ? surahObj.number : 67;
 
-    try {
-      if (filterMode === 'surah') {
-        const response = await fetch(`https://api.alquran.cloud/v1/surah/${surahNumber}`);
+    // Helper to fetch verses with dual-redundancy API mirrors
+    const downloadVerses = async (mode: 'surah' | 'juz', val: number): Promise<QuranVerse[]> => {
+      // 1. Primary API: api.alquran.cloud
+      try {
+        const url = mode === 'surah' 
+          ? `https://api.alquran.cloud/v1/surah/${val}`
+          : `https://api.alquran.cloud/v1/juz/${val}`;
+        
+        const response = await fetch(url);
         const json = await response.json();
         
         if (json.code === 200 && json.data && json.data.ayahs) {
-          finalVerses = json.data.ayahs.map((a: any) => ({
-            surah: selectedSurah,
-            surahEn: surahObj?.english || 'Al-Mulk',
-            juz: a.juz,
-            ayahNumber: a.numberInSurah,
-            text: a.text
-          }));
-        }
-      } else {
-        const response = await fetch(`https://api.alquran.cloud/v1/juz/${selectedJuz}`);
-        const json = await response.json();
-        
-        if (json.code === 200 && json.data && json.data.ayahs) {
-          finalVerses = json.data.ayahs.map((a: any) => {
-            const matchSurah = surahsList.find(s => s.number === a.surah.number);
-            return {
-              surah: matchSurah ? matchSurah.name : a.surah.name,
-              surahEn: matchSurah ? matchSurah.english : a.surah.english,
-              juz: selectedJuz,
+          if (mode === 'surah') {
+            return json.data.ayahs.map((a: any) => ({
+              surah: selectedSurah,
+              surahEn: surahObj?.english || 'Al-Mulk',
+              juz: a.juz,
               ayahNumber: a.numberInSurah,
               text: a.text
+            }));
+          } else {
+            return json.data.ayahs.map((a: any) => {
+              const matchSurah = surahsList.find(s => s.number === a.surah.number);
+              return {
+                surah: matchSurah ? matchSurah.name : a.surah.name,
+                surahEn: matchSurah ? matchSurah.english : a.surah.english,
+                juz: val,
+                ayahNumber: a.numberInSurah,
+                text: a.text
+              };
+            });
+          }
+        }
+      } catch (err) {
+        console.log('Primary api.alquran.cloud failed. Trying secondary backup...', err);
+      }
+
+      // 2. Secondary API Mirror Fallback: api.quran.com (Highly reliable, served on Cloudflare CDN)
+      try {
+        const url = mode === 'surah'
+          ? `https://api.quran.com/api/v4/quran/verses/uthmani?chapter_number=${val}`
+          : `https://api.quran.com/api/v4/quran/verses/uthmani?juz_number=${val}`;
+
+        const response = await fetch(url);
+        const json = await response.json();
+
+        if (json && Array.isArray(json.verses)) {
+          return json.verses.map((v: any) => {
+            const [surahNumStr, ayahNumStr] = v.verse_key.split(':');
+            const sNum = parseInt(surahNumStr, 10);
+            const aNum = parseInt(ayahNumStr, 10);
+            const matchSurah = surahsList.find(s => s.number === sNum);
+
+            return {
+              surah: matchSurah ? matchSurah.name : `سورة ${sNum}`,
+              surahEn: matchSurah ? matchSurah.english : `Surah ${sNum}`,
+              juz: mode === 'juz' ? val : 30, 
+              ayahNumber: aNum,
+              text: v.text_uthmani
             };
           });
         }
+      } catch (err) {
+        console.log('Secondary api.quran.com mirror failed/offline.', err);
       }
-    } catch (error) {
-      console.log('Dynamic API Fetch failed/offline. Falling back to local dataset.', error);
+
+      return [];
+    };
+
+    if (filterMode === 'surah') {
+      finalVerses = await downloadVerses('surah', surahNumber);
+    } else {
+      finalVerses = await downloadVerses('juz', selectedJuz);
     }
 
     if (finalVerses.length === 0) {

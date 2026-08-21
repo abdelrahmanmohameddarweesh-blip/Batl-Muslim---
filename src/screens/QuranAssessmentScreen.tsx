@@ -36,6 +36,31 @@ export default function QuranAssessmentScreen({ navigation }: any) {
   const [selectedLimit, setSelectedLimit] = useState<number>(5);
   const [fetching, setFetching] = useState(false);
 
+  // Dynamically compute selectable question count limits based on selected target size
+  const allowedLimits = useMemo(() => {
+    if (filterMode === 'juz') {
+      return [5, 10, 15, 20];
+    }
+    const surahObj = surahsList.find(s => s.name === selectedSurah);
+    const total = surahObj ? surahObj.totalAyahs : 30;
+
+    // Filter standard counts less than or equal to the total number of ayahs
+    const standard = [5, 10, 15, 20].filter(l => l <= total);
+
+    // If the Surah is extremely small (fewer than 5 ayahs, e.g. Al-Kawthar), return its exact count!
+    if (standard.length === 0) {
+      return [total];
+    }
+    return standard;
+  }, [filterMode, selectedSurah]);
+
+  // Keep selectedLimit state synchronized within the allowed range boundaries
+  useEffect(() => {
+    if (allowedLimits.length > 0 && !allowedLimits.includes(selectedLimit)) {
+      setSelectedLimit(allowedLimits[allowedLimits.length - 1]);
+    }
+  }, [allowedLimits, selectedLimit]);
+
   // Active Assessment States
   const [questions, setQuestions] = useState<DynamicQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -688,7 +713,7 @@ export default function QuranAssessmentScreen({ navigation }: any) {
                 {language === 'ar' ? 'عدد الأسئلة (يزداد الصعوبة بزيادة العدد):' : 'Questions Limit (Difficulty scales with limit):'}
               </Text>
               <View style={styles.limitOptionRow}>
-                {[5, 10, 15, 20].map((limitVal) => {
+                {allowedLimits.map((limitVal) => {
                   const isSelected = selectedLimit === limitVal;
                   let diffLabel = language === 'ar' ? 'مبتدئ' : 'Easy';
                   if (limitVal === 10) diffLabel = language === 'ar' ? 'متوسط' : 'Medium';

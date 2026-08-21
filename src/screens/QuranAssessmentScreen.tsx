@@ -236,35 +236,52 @@ export default function QuranAssessmentScreen({ navigation }: any) {
         const wordsList = currentQuestion.answer.split(' ');
 
         // 1. Duration Validation
-        const minDuration = wordsList.length * 380;
-        const maxDuration = wordsList.length * 1550;
+        const minDuration = wordsList.length * 300;
+        const maxDuration = wordsList.length * 1800;
         const isDurationValid = recordingDuration >= minDuration && recordingDuration <= maxDuration;
 
-        // 2. Count Volume Peaks (Syllables/Words)
-        let peakCount = 0;
-        let insidePeak = false;
-        meteringHistory.forEach((db) => {
-          if (db > -32) { // Syllable vocal energy peak
-            if (!insidePeak) {
-              insidePeak = true;
-              peakCount++;
-            }
-          } else if (db < -48) { // Breath / silence drop
-            insidePeak = false;
+        // Filter out extreme silent artifacts
+        const validMeters = meteringHistory.filter(db => db !== undefined && db > -120);
+
+        let isRecitationCorrect = false;
+
+        if (validMeters.length > 0 && isDurationValid) {
+          const maxDb = Math.max(...validMeters);
+          const minDb = Math.min(...validMeters);
+
+          // If the volume range is sufficient (they actually spoke, not flatline/silent)
+          if (maxDb - minDb >= 8) {
+            // Adaptive thresholds: peaks within 8dB of max, silences 22dB below max
+            const peakStartThreshold = maxDb - 8;
+            const peakEndThreshold = maxDb - 22;
+
+            let peakCount = 0;
+            let insidePeak = false;
+
+            validMeters.forEach((db) => {
+              if (db > peakStartThreshold) {
+                if (!insidePeak) {
+                  insidePeak = true;
+                  peakCount++;
+                }
+              } else if (db < peakEndThreshold) {
+                insidePeak = false;
+              }
+            });
+
+            // Forgiving peak matching: at least 40% of the word count, minimum 2 vocal syllables
+            const minExpectedPeaks = Math.max(2, Math.floor(wordsList.length * 0.4));
+            const isPeakCountValid = peakCount >= minExpectedPeaks;
+
+            // Average energy is above absolute noise floor
+            const averageDb = validMeters.reduce((a, b) => a + b, 0) / validMeters.length;
+            const isLoudEnough = averageDb > -80;
+
+            const isNoiseHum = peakCount <= 1 && wordsList.length > 2;
+
+            isRecitationCorrect = isPeakCountValid && isLoudEnough && !isNoiseHum;
           }
-        });
-
-        const peakDiff = Math.abs(peakCount - wordsList.length);
-        const isPeakCountValid = peakDiff <= Math.max(1, Math.floor(wordsList.length * 0.45));
-
-        // 3. Average Energy Verification (Silence/Hum filter)
-        const averageDb = meteringHistory.reduce((a, b) => a + b, 0) / (meteringHistory.length || 1);
-        const isLoudEnough = averageDb > -75;
-
-        // 4. Continuous Noise/Hum Guard
-        const isNoiseHum = peakCount <= 1 && wordsList.length > 2;
-
-        const isRecitationCorrect = isDurationValid && isPeakCountValid && isLoudEnough && !isNoiseHum;
+        }
 
         setAnswered(true);
         if (isRecitationCorrect) {
@@ -432,6 +449,18 @@ export default function QuranAssessmentScreen({ navigation }: any) {
       const words = targetVerse.text.split(' ');
       if (words.length < 4 && !prevVerse && !nextVerse) {
         continue; // Try again to ensure high-quality prompt context
+      }
+
+      // --- CONSTRAINT: Skip generic Basmalah ("بسم الله الرحمن الرحيم") prompts
+      const stripDiacritics = (txt: string) => {
+        return txt
+          .replace(/[\u064B-\u065F\u0670]/g, "") // Remove all Arabic diacritics / Harakat
+          .trim();
+      };
+      
+      const strippedText = stripDiacritics(targetVerse.text);
+      if (strippedText === "بسم الله الرحمن الرحيم" || strippedText === "بسم الله الرحمن الرحيم ") {
+        continue; // Skip generic Basmalah prompt to prevent ambiguous identify_surah/missing_ayah questions
       }
 
       let type: 'missing_ayah' | 'identify_surah' = 'missing_ayah';

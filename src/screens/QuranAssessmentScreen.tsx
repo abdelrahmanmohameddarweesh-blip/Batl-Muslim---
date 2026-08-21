@@ -252,13 +252,59 @@ export default function QuranAssessmentScreen({ navigation }: any) {
 
   // Advanced Quran Question Generator Engine (Eliminates text overlap clues completely)
   const compileQuestionsFromVerses = (versesSource: QuranVerse[]): DynamicQuestion[] => {
-    const shuffledVerses = [...versesSource].sort(() => Math.random() - 0.5);
-    const generated: DynamicQuestion[] = [];
-    let attempt = 0;
+    // Group verses by Surah
+    const versesBySurah: Record<string, QuranVerse[]> = {};
+    versesSource.forEach(v => {
+      if (!versesBySurah[v.surah]) {
+        versesBySurah[v.surah] = [];
+      }
+      versesBySurah[v.surah].push(v);
+    });
 
-    while (generated.length < selectedLimit && shuffledVerses.length > 0) {
-      const targetVerse = shuffledVerses[attempt % shuffledVerses.length];
+    const surahsListInJuz = Object.keys(versesBySurah);
+    // Shuffle verses inside each Surah group
+    surahsListInJuz.forEach(sName => {
+      versesBySurah[sName].sort(() => Math.random() - 0.5);
+    });
+
+    const generated: DynamicQuestion[] = [];
+    let surahIndex = 0;
+    const offsets: Record<string, number> = {};
+    surahsListInJuz.forEach(sName => {
+      offsets[sName] = 0;
+    });
+
+    let attempt = 0;
+    const maxAttempts = selectedLimit * 15; // Prevent infinite loop if constraints can't be met
+
+    // Loop until we satisfy the requested questions limit
+    while (generated.length < selectedLimit && attempt < maxAttempts && surahsListInJuz.length > 0) {
       attempt++;
+      
+      // Select Surah in a round-robin fashion to ensure full Surah coverage (especially in small Juz's)
+      const currentSurahName = surahsListInJuz[surahIndex % surahsListInJuz.length];
+      surahIndex++;
+
+      const surahVerses = versesBySurah[currentSurahName];
+      if (!surahVerses || surahVerses.length === 0) continue;
+
+      const offset = offsets[currentSurahName];
+      const targetVerse = surahVerses[offset % surahVerses.length];
+      offsets[currentSurahName] = offset + 1;
+
+      // Find neighboring verses in the entire source
+      const prevVerse = versesSource.find(
+        v => v.surah === targetVerse.surah && v.ayahNumber === targetVerse.ayahNumber - 1
+      );
+      const nextVerse = versesSource.find(
+        v => v.surah === targetVerse.surah && v.ayahNumber === targetVerse.ayahNumber + 1
+      );
+
+      // --- CONSTRAINT: Skip short verses with no neighbors ---
+      const words = targetVerse.text.split(' ');
+      if (words.length < 4 && !prevVerse && !nextVerse) {
+        continue; // Try again to ensure high-quality prompt context
+      }
 
       let type: 'missing_ayah' | 'identify_surah' = 'missing_ayah';
       if (filterMode === 'juz') {
@@ -266,21 +312,13 @@ export default function QuranAssessmentScreen({ navigation }: any) {
       }
 
       if (type === 'missing_ayah') {
-        // Find neighboring verses
-        const prevVerse = versesSource.find(
-          v => v.surah === targetVerse.surah && v.ayahNumber === targetVerse.ayahNumber - 1
-        );
-        const nextVerse = versesSource.find(
-          v => v.surah === targetVerse.surah && v.ayahNumber === targetVerse.ayahNumber + 1
-        );
-
         let promptText = '';
         let answer = '';
         let distractors: string[] = [];
         let introContext = '';
         let outroContext = '';
 
-        // Check if neighboring verses are available for full-verse context mode
+        // Choose context type: 0 = prev + next, 1 = prev, 2 = next, 3 = split
         const contextType = attempt % 4;
         let canDoFullVerseQuiz = false;
         if (contextType === 0 && prevVerse && nextVerse) canDoFullVerseQuiz = true;
@@ -292,34 +330,34 @@ export default function QuranAssessmentScreen({ navigation }: any) {
 
           if (contextType === 0 && prevVerse && nextVerse) {
             promptText = `... ۞ ${prevVerse.text} ۞ [ ....... ] ۞ ${nextVerse.text} ۞ ...`;
-            const firstWord = targetVerse.text.split(' ')[0];
-            const lastWord = targetVerse.text.split(' ').slice(-1)[0];
+            const firstWord = targetVerse.text.split(' ').slice(0, 3).join(' '); // 3 words indicator!
+            const lastWord = targetVerse.text.split(' ').slice(-2).join(' '); // 2 words indicator!
             introContext = language === 'ar'
-              ? `تبدأ الآية المفقودة بـ: "${firstWord}"`
-              : `Missing verse starts with: "${firstWord}"`;
+              ? `تبدأ بـ: "${firstWord}..."`
+              : `Starts with: "${firstWord}..."`;
             outroContext = language === 'ar'
-              ? `وتنتهي بـ: "${lastWord}" (تأتي قبل: "${nextVerse.text.split(' ').slice(0, 2).join(' ')}...") ۞`
-              : `And ends with: "${lastWord}" ۞`;
+              ? `وتنتهي بـ: "...${lastWord}"`
+              : `Ends with: "...${lastWord}"`;
           } else if (contextType === 1 && prevVerse) {
             promptText = `... ۞ ${prevVerse.text} ۞ [ ....... ]`;
-            const firstWord = targetVerse.text.split(' ')[0];
-            const lastWord = targetVerse.text.split(' ').slice(-1)[0];
+            const firstWord = targetVerse.text.split(' ').slice(0, 3).join(' ');
+            const lastWord = targetVerse.text.split(' ').slice(-2).join(' ');
             introContext = language === 'ar'
-              ? `تبدأ الآية المفقودة بـ: "${firstWord}"`
-              : `Missing verse starts with: "${firstWord}"`;
+              ? `تبدأ بـ: "${firstWord}..."`
+              : `Starts with: "${firstWord}..."`;
             outroContext = language === 'ar'
-              ? `حتى نهاية الآية (تنتهي بـ: "${lastWord}") ۞`
-              : `Until the end of the verse (ends with: "${lastWord}") ۞`;
+              ? `وتنتهي بـ: "...${lastWord}" ۞`
+              : `Ends with: "...${lastWord}" ۞`;
           } else if (nextVerse) {
             promptText = `[ ....... ] ۞ ${nextVerse.text} ۞ ...`;
-            const firstWord = targetVerse.text.split(' ')[0];
-            const lastWord = targetVerse.text.split(' ').slice(-1)[0];
+            const firstWord = targetVerse.text.split(' ').slice(0, 3).join(' ');
+            const lastWord = targetVerse.text.split(' ').slice(-2).join(' ');
             introContext = language === 'ar'
-              ? `تبدأ الآية المفقودة بـ: "${firstWord}"`
-              : `Missing verse starts with: "${firstWord}"`;
+              ? `تبدأ بـ: "${firstWord}..."`
+              : `Starts with: "${firstWord}..."`;
             outroContext = language === 'ar'
-              ? `وتنتهي بـ: "${lastWord}" (تأتي قبل: "${nextVerse.text.split(' ').slice(0, 2).join(' ')}...") ۞`
-              : `And ends with: "${lastWord}" ۞`;
+              ? `وتنتهي بـ: "...${lastWord}"`
+              : `Ends with: "...${lastWord}"`;
           }
 
           let distractorPool = versesSource.filter(
@@ -341,18 +379,19 @@ export default function QuranAssessmentScreen({ navigation }: any) {
             .slice(0, 3)
             .map(v => v.text);
         } else {
-          const words = targetVerse.text.split(' ');
-          const half = Math.floor(words.length / 2);
+          // SPLIT VERSE MODE:
+          // Ensure prompt has at least 3-4 words context
+          const half = Math.max(3, Math.floor(words.length / 2));
           
-          if (words.length > 2) {
+          if (words.length > 3) {
             const firstHalf = words.slice(0, half).join(' ');
             promptText = `${firstHalf} [ ....... ]`;
             answer = words.slice(half).join(' ');
 
-            const lastWord = words[words.length - 1];
+            const lastWord = words.slice(-2).join(' ');
             introContext = language === 'ar'
-              ? `أكمل الآية مباشرة بعد: "${firstHalf.split(' ').slice(-2).join(' ')}..."`
-              : `Continue the verse after: "...${firstHalf.split(' ').slice(-2).join(' ')}"`;
+              ? `أكمل بعد: "${firstHalf.split(' ').slice(-2).join(' ')}..."`
+              : `Continue after: "...${firstHalf.split(' ').slice(-2).join(' ')}"`;
             outroContext = language === 'ar'
               ? `حتى نهاية الآية (تنتهي بـ: "${lastWord}") ۞`
               : `Until the end of the verse (ends with: "${lastWord}") ۞`;
@@ -371,29 +410,47 @@ export default function QuranAssessmentScreen({ navigation }: any) {
               .slice(0, 3)
               .map(v => {
                 const dWords = v.text.split(' ');
-                const dHalf = Math.floor(dWords.length / 2);
+                const dHalf = Math.max(3, Math.floor(dWords.length / 2));
                 return dWords.slice(dHalf).join(' ');
               });
           } else {
-            const firstWord = words[0] || '';
-            promptText = `${firstWord} [ ....... ]`;
-            answer = words.slice(1).join(' ') || targetVerse.text;
+            // If the verse is too short to split meaningfully, fallback to full verse with neighbors
+            answer = targetVerse.text;
+            if (prevVerse) {
+              promptText = `... ۞ ${prevVerse.text} ۞ [ ....... ]`;
+              const firstWord = targetVerse.text.split(' ').slice(0, 3).join(' ');
+              const lastWord = targetVerse.text.split(' ').slice(-2).join(' ');
+              introContext = language === 'ar' ? `تبدأ بـ: "${firstWord}..."` : `Starts with: "${firstWord}..."`;
+              outroContext = language === 'ar' ? `وتنتهي بـ: "...${lastWord}" ۞` : `Ends with: "...${lastWord}" ۞`;
+            } else if (nextVerse) {
+              promptText = `[ ....... ] ۞ ${nextVerse.text} ۞ ...`;
+              const firstWord = targetVerse.text.split(' ').slice(0, 3).join(' ');
+              const lastWord = targetVerse.text.split(' ').slice(-2).join(' ');
+              introContext = language === 'ar' ? `تبدأ بـ: "${firstWord}..."` : `Starts with: "${firstWord}..."`;
+              outroContext = language === 'ar' ? `وتنتهي بـ: "...${lastWord}"` : `Ends with: "...${lastWord}"`;
+            } else {
+              promptText = `[ ....... ]`;
+              answer = targetVerse.text;
+            }
 
-            const lastWord = words[words.length - 1] || firstWord;
-            introContext = language === 'ar' ? `أكمل الكلمة المفقودة بعد: "${firstWord}"` : `Complete after: "${firstWord}"`;
-            outroContext = language === 'ar' ? `تنتهي بـ: "${lastWord}" ۞` : `Ends with: "${lastWord}" ۞`;
+            let distractorPool = versesSource.filter(
+              v => v.text !== answer && 
+                   v.text !== prevVerse?.text && 
+                   v.text !== nextVerse?.text
+            );
 
-            let distractorPool = versesSource.filter(v => v.text !== targetVerse.text);
             if (filterMode === 'surah') {
               distractorPool = distractorPool.filter(v => v.surah === selectedSurah);
             }
+
+            if (distractorPool.length < 3) {
+              distractorPool = quranVerses.filter(v => v.text !== answer);
+            }
+
             distractors = distractorPool
               .sort(() => Math.random() - 0.5)
               .slice(0, 3)
-              .map(v => {
-                const dWords = v.text.split(' ');
-                return dWords.slice(1).join(' ') || v.text;
-              });
+              .map(v => v.text);
           }
         }
 
@@ -413,6 +470,7 @@ export default function QuranAssessmentScreen({ navigation }: any) {
           outroContext
         });
       } else {
+        // Identify Surah type
         const promptText = targetVerse.text;
         const answer = targetVerse.surah;
 

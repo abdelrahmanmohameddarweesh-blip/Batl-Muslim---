@@ -34,14 +34,20 @@ export default function QuranAssessmentScreen({ navigation }: any) {
     // 1. Initial selection pool matching Mode
     let pool = quranAssessmentQuestions;
     if (filterMode === 'juz') {
+      // Juz Mode contains both missing_ayah and identify_surah questions
       pool = pool.filter((q) => q.juz === selectedJuz);
     } else {
-      pool = pool.filter((q) => q.surah === selectedSurah);
+      // Surah Mode strictly only allows missing_ayah type (Identify Surah would be self-revealing!)
+      pool = pool.filter((q) => q.surah === selectedSurah && q.type === 'missing_ayah');
     }
 
     if (pool.length === 0) {
       // Fallback: load nearby Juz/Surah questions if exact matching isn't seeded yet
-      const fallbackPool = quranAssessmentQuestions.filter(q => filterMode === 'juz' ? q.juz === 30 : q.surah === 'الملك');
+      const fallbackPool = quranAssessmentQuestions.filter(q => 
+        filterMode === 'juz' 
+          ? q.juz === 30 
+          : (q.surah === 'الملك' && q.type === 'missing_ayah')
+      );
       pool = fallbackPool;
       if (filterMode === 'juz') {
         setSelectedJuz(30);

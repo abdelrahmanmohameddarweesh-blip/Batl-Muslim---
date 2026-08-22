@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
 import { readers, type Reader } from '../data/readers';
 import { ayahs, type Ayah } from '../data/ayahs';
-import { generateReferenceProfile, analyzeVocalImitation } from '../data/voiceTemplates';
+import { generateReferenceProfile, analyzeVocalImitation, calculateTextMatchScore } from '../data/voiceTemplates';
 import { surahsList } from '../data/surahs';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -98,6 +98,12 @@ export default function VoiceScreen({ navigation }: any) {
     rhythm: 0,
     overall: 0,
   });
+
+  // Speech Recognition States
+  const [transcribedText, setTranscribedText] = useState('');
+  const [textMatchDetails, setTextMatchDetails] = useState<{ matches: string[], missing: string[] } | null>(null);
+  const [isTranscriptionSuccess, setIsTranscriptionSuccess] = useState(false);
+  const [parentApproved, setParentApproved] = useState<boolean>(false);
 
   // Pulse animation for recording button
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -227,27 +233,103 @@ export default function VoiceScreen({ navigation }: any) {
     }
   };
 
-  const handleAnalyzeRecitation = () => {
+  const handleAnalyzeRecitation = async () => {
     if (!currentAyah || !selectedReader) return;
 
     setStep('analyzing');
-    
-    setTimeout(async () => {
-      // Calculate dynamic vocal matching using the updated Pearson correlation matching engine
-      const refProfile = generateReferenceProfile(currentAyah.id, selectedReader.id, recitationStyle, currentAyah.text);
-      const results = analyzeVocalImitation(meteringHistory, recordingDuration, refProfile);
+    setParentApproved(false);
 
-      setScoreBreakdown(results);
-      
-      const earnedPoints = Math.round((results.overall / 100) * 25);
-      setPendingScoreData({ results, earnedPoints });
+    let transcribed = '';
+    let textScore = 0;
+    let matchDetails: any = null;
+    let apiSuccess = false;
 
-      if (isLoaded) {
-        show();
-      } else {
-        completeScoring(results, earnedPoints);
+    try {
+      const fileUri = recording?.getURI();
+      if (fileUri) {
+        const fileResponse = await fetch(fileUri);
+        const audioBlob = await fileResponse.blob();
+
+        let attempts = 0;
+        const maxAttempts = 3;
+
+        while (attempts < maxAttempts && !apiSuccess) {
+          try {
+            const hfResponse = await fetch(
+              'https://api-inference.huggingface.co/models/tarteel-ai/whisper-base-ar-quran',
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'audio/m4a',
+                },
+                body: audioBlob,
+              }
+            );
+
+            const data = await hfResponse.json();
+
+            if (data?.text) {
+              transcribed = data.text;
+              apiSuccess = true;
+            } else if (data?.error && data.error.includes('loading')) {
+              // Wait 3 seconds for the free model server to boot up
+              await new Promise((resolve) => setTimeout(resolve, 3000));
+              attempts++;
+            } else {
+              // Other errors (rate limits, etc.) - break to local fallback
+              break;
+            }
+          } catch (e) {
+            console.warn('Network or server error during transcription attempt:', e);
+            break;
+          }
+        }
       }
-    }, 2500);
+    } catch (err) {
+      console.warn('Failed to load local recording file for transcription:', err);
+    }
+
+    // Run local acoustic feature comparison
+    const refProfile = generateReferenceProfile(currentAyah.id, selectedReader.id, recitationStyle, currentAyah.text);
+    const results = analyzeVocalImitation(meteringHistory, recordingDuration, refProfile);
+
+    let finalResults = { ...results };
+
+    if (apiSuccess && transcribed) {
+      const textMatch = calculateTextMatchScore(transcribed, currentAyah.text);
+      textScore = textMatch.score;
+      matchDetails = { matches: textMatch.matches, missing: textMatch.missing };
+
+      setTranscribedText(transcribed);
+      setTextMatchDetails(matchDetails);
+      setIsTranscriptionSuccess(true);
+
+      // Blended Score: 55% Pronunciation Word Match, 25% Tone match, 20% Rhythm/Speed match
+      const blendedOverall = Math.round((textScore * 0.55) + (results.tone * 0.25) + (results.rhythm * 0.20));
+      
+      finalResults = {
+        pronunciation: textScore,
+        tone: results.tone,
+        rhythm: results.rhythm,
+        overall: Math.min(100, Math.max(5, blendedOverall)),
+      };
+    } else {
+      // Offline/Failure Fallback
+      setTranscribedText('');
+      setTextMatchDetails(null);
+      setIsTranscriptionSuccess(false);
+    }
+
+    setScoreBreakdown(finalResults);
+    
+    const earnedPoints = Math.round((finalResults.overall / 100) * 25);
+    setPendingScoreData({ results: finalResults, earnedPoints });
+
+    if (isLoaded) {
+      show();
+    } else {
+      completeScoring(finalResults, earnedPoints);
+    }
   };
 
   const handleReset = () => {
@@ -749,6 +831,171 @@ export default function VoiceScreen({ navigation }: any) {
                 {scoreBreakdown.overall}%
               </Text>
               <Text style={styles.overallLbl}>نسبة المحاكاة العامة</Text>
+            </View>
+
+            {/* Visual Speech Recognition results */}
+            {isTranscriptionSuccess && transcribedText ? (
+              <View style={{
+                backgroundColor: isLightMode ? '#F0FDF4' : '#0B2519',
+                borderColor: isLightMode ? '#DCFCE7' : '#143C27',
+                borderWidth: 1,
+                borderRadius: 12,
+                padding: 14,
+                marginBottom: 16,
+              }}>
+                <Text style={{
+                  fontSize: 14,
+                  fontWeight: '700',
+                  color: colors.primary,
+                  marginBottom: 6,
+                  textAlign: 'right'
+                }}>
+                  {language === 'ar' ? '📖 النص الذي نطقته (الذكاء الاصطناعي):' : '📖 Transcribed Audio (AI Speech):'}
+                </Text>
+                
+                <Text style={{
+                  fontSize: 16,
+                  lineHeight: 26,
+                  textAlign: 'center',
+                  color: colors.textPrimary,
+                  fontWeight: '600',
+                }}>
+                  {transcribedText}
+                </Text>
+
+                {/* Highlight matched vs missing words */}
+                {textMatchDetails && (
+                  <View style={{ marginTop: 10, borderTopWidth: 0.5, borderTopColor: colors.border, paddingTop: 8 }}>
+                    <Text style={{ fontSize: 11, color: colors.textSecondary, textAlign: 'right', marginBottom: 4 }}>
+                      {language === 'ar' 
+                        ? `صحة الكلمات: ${scoreBreakdown.pronunciation}%` 
+                        : `Word accuracy: ${scoreBreakdown.pronunciation}%`}
+                    </Text>
+                    
+                    <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', justifyContent: 'center' }}>
+                      {(currentAyah?.text || '').split(/\s+/).map((word, wIdx) => {
+                        const cleanWord = word.replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, '')
+                          .replace(/[أإآ]/g, 'ا')
+                          .replace(/ة/g, 'ه')
+                          .replace(/ى/g, 'ي');
+                        
+                        const isMatched = textMatchDetails.matches.includes(cleanWord);
+                        
+                        return (
+                          <Text 
+                            key={`word-${wIdx}`} 
+                            style={{
+                              fontSize: 12,
+                              fontWeight: '700',
+                              marginHorizontal: 3,
+                              color: isMatched ? '#10B981' : '#EF4444',
+                              textDecorationLine: isMatched ? 'none' : 'line-through',
+                            }}
+                          >
+                            {word}
+                          </Text>
+                        );
+                      })}
+                    </View>
+                  </View>
+                )}
+              </View>
+            ) : (
+              <View style={{
+                backgroundColor: isLightMode ? '#F9FAFB' : '#111827',
+                borderColor: colors.border,
+                borderWidth: 1,
+                borderRadius: 12,
+                padding: 12,
+                marginBottom: 16,
+                alignItems: 'center'
+              }}>
+                <Text style={{ fontSize: 12, color: colors.textSecondary, textAlign: 'center' }}>
+                  {language === 'ar'
+                    ? '📶 تعذر التحقق الصوتي التلقائي (أنت في وضع عدم الاتصال). تم استخدام المحاكاة الصوتية المحلية.'
+                    : '📶 Voice verification fallback to local acoustic model.'}
+                </Text>
+              </View>
+            )}
+
+            {/* Parent Verification Safeguard Card */}
+            <View style={{
+              backgroundColor: parentApproved ? '#ECFDF5' : (isLightMode ? '#FFFBEB' : '#1F1A12'),
+              borderColor: parentApproved ? '#10B981' : '#F59E0B',
+              borderWidth: 1,
+              borderRadius: 12,
+              padding: 14,
+              marginBottom: 16,
+            }}>
+              <Text style={{
+                fontSize: 13,
+                fontWeight: '700',
+                color: parentApproved ? '#047857' : '#D97706',
+                marginBottom: 4,
+                textAlign: 'right'
+              }}>
+                {language === 'ar' ? '🔐 بوابة مراجعة وتأكيد ولي الأمر (للآباء)' : '🔐 Parent Review & Approval Portal'}
+              </Text>
+              
+              <Text style={{
+                fontSize: 11,
+                color: colors.textSecondary,
+                lineHeight: 16,
+                textAlign: 'right',
+                marginBottom: 10
+              }}>
+                {language === 'ar'
+                  ? 'إذا كنت بجانب طفلك وتستمع لتلاوته وتؤكد أنها صحيحة بالكامل، يمكنك منح طفلك الدرجة الكاملة (١٠٠٪).'
+                  : 'If you are sitting with your child and confirm their recitation is correct, you can override and award them full marks.'}
+              </Text>
+
+              {parentApproved ? (
+                <View style={{ flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', paddingVertical: 4 }}>
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: '#10B981' }}>
+                    🌟 {language === 'ar' ? 'تم تأكيد التلاوة ومنح الدرجة الكاملة!' : 'Recitation approved! Full marks granted!'}
+                  </Text>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: '#F59E0B',
+                    borderRadius: 8,
+                    paddingVertical: 8,
+                    paddingHorizontal: 12,
+                    alignItems: 'center',
+                  }}
+                  onPress={async () => {
+                    setParentApproved(true);
+                    setScoreBreakdown(prev => ({
+                      ...prev,
+                      overall: 100,
+                    }));
+                    
+                    // Award full +25 XP
+                    if (user?.uid) {
+                      try {
+                        const profile = await getCurrentUserProfile(user.uid);
+                        const currentScore = profile?.score ?? 0;
+                        await saveUserScore(user.uid, currentScore + 25);
+                      } catch (err) {
+                        console.error('Failed to save parent override score', err);
+                      }
+                    }
+                    
+                    Alert.alert(
+                      language === 'ar' ? 'تم منح الدرجة الكاملة 🎉' : 'Full Score Awarded 🎉',
+                      language === 'ar' 
+                        ? 'تم تحديث النتيجة لـ ١٠٠٪ بنجاح بفضل مراجع التلاوة الأسرية!' 
+                        : 'Recitation marked as 100% correct via Parent Approval!'
+                    );
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 12 }}>
+                    {language === 'ar' ? '🎯 تأكيد قراءة طفلي الصحيحة بنسبة ١٠٠٪' : '🎯 Approve & Award 100% Score'}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* Detailed breakdowns */}

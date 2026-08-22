@@ -372,3 +372,44 @@ export function analyzeVocalImitation(
     overall: Math.min(100, Math.max(5, overall)),
   };
 }
+
+export function normalizeArabicText(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, '') // Remove all Tashkeel & Quranic punctuation/marks
+    .replace(/[أإآ]/g, 'ا') // Normalize Alefs
+    .replace(/ة/g, 'ه') // Normalize Teh Marbuta
+    .replace(/ى/g, 'ي') // Normalize Alef Maksura
+    .replace(/\s+/g, ' ') // Normalize multiple spaces
+    .trim();
+}
+
+export function calculateTextMatchScore(transcribed: string, target: string): { score: number, matches: string[], missing: string[] } {
+  const normTrans = normalizeArabicText(transcribed);
+  const normTarget = normalizeArabicText(target);
+
+  const wordsTrans = normTrans.split(' ').filter(Boolean);
+  const wordsTarget = normTarget.split(' ').filter(Boolean);
+
+  if (wordsTarget.length === 0) {
+    return { score: 0, matches: [], missing: [] };
+  }
+
+  const matches: string[] = [];
+  const missing: string[] = [];
+
+  let targetIdx = 0;
+  wordsTarget.forEach((word) => {
+    // Find matching word starting from last found position to preserve reading sequence
+    const foundIdx = wordsTrans.indexOf(word, targetIdx);
+    if (foundIdx !== -1) {
+      matches.push(word);
+      targetIdx = foundIdx + 1;
+    } else {
+      missing.push(word);
+    }
+  });
+
+  const score = Math.round((matches.length / wordsTarget.length) * 100);
+  return { score, matches, missing };
+}

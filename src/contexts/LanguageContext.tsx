@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Localization from 'expo-localization';
 import { translations, type TranslationKey } from '../config/translations';
 
 type LanguageType = 'ar' | 'en';
@@ -21,6 +22,16 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
         const saved = await AsyncStorage.getItem('user-app-language');
         if (saved === 'en' || saved === 'ar') {
           setLanguageState(saved);
+        } else {
+          // Detect device language on first open
+          const locales = Localization.getLocales();
+          const deviceLang = locales[0]?.languageCode;
+          if (deviceLang === 'en' || deviceLang === 'ar') {
+            setLanguageState(deviceLang);
+            await AsyncStorage.setItem('user-app-language', deviceLang);
+          } else {
+            setLanguageState('ar'); // Default to Arabic
+          }
         }
       } catch (err) {
         console.error(err);

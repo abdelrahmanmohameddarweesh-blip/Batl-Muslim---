@@ -7,13 +7,16 @@ type AuthUser = {
   displayName: string;
   phone?: string;
   country?: string;
+  age?: number;
+  photoUri?: string;
 };
 
 type AuthContextValue = {
   user: AuthUser | null;
   loading: boolean;
-  login: (displayName: string, phone: string, country: string) => Promise<void>;
+  login: (displayName: string, phone: string, country: string, age?: number, photoUri?: string) => Promise<void>;
   logout: () => Promise<void>;
+  updateUserFields: (fields: Partial<AuthUser>) => void;
 };
 
 const AuthContext = createContext<AuthContextValue>({
@@ -21,16 +24,17 @@ const AuthContext = createContext<AuthContextValue>({
   loading: false,
   login: async () => {},
   logout: async () => {},
+  updateUserFields: () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const login = async (displayName: string, phone: string, country: string) => {
+  const login = async (displayName: string, phone: string, country: string, age?: number, photoUri?: string) => {
     setLoading(true);
     try {
-      const authUser = await signInAnonymous(displayName, phone, country);
+      const authUser = await signInAnonymous(displayName, phone, country, age, photoUri);
       setUser(authUser);
     } catch (error) {
       const fallbackUser = {
@@ -38,6 +42,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         displayName: displayName || 'ضيف',
         phone: phone || undefined,
         country: country || undefined,
+        age: age || undefined,
+        photoUri: photoUri || undefined,
         score: 0,
       };
       setUser(fallbackUser);
@@ -47,13 +53,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateUserFields = (fields: Partial<AuthUser>) => {
+    setUser((prev) => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        ...fields,
+      };
+    });
+  };
+
   const logout = async () => {
     await signOutUser();
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, updateUserFields }}>
       {children}
     </AuthContext.Provider>
   );

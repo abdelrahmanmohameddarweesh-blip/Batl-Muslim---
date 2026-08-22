@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, FlatList, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, FlatList, Dimensions, Image } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, { Path, Rect, Circle, G, Line } from 'react-native-svg';
 import { useAuth } from '../contexts/AuthContext';
@@ -28,7 +28,7 @@ const ACTIVITY_FEED = [
 
 export default function HomeScreen({ navigation }: any) {
   const { user } = useAuth();
-  const { language } = useLanguage();
+  const { language, formatNumber } = useLanguage();
   const { colors } = useTheme();
 
   const [profile, setProfile] = useState<any>(null);
@@ -195,9 +195,13 @@ export default function HomeScreen({ navigation }: any) {
         <View style={[styles.unifiedCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={styles.unifiedHeaderRow}>
             {/* Avatar with golden glowing ring */}
-            <View style={[styles.avatarCircleFrame, { borderColor: '#F5B841' }]}>
+            <View style={[styles.avatarCircleFrame, { borderColor: '#F5B841', overflow: 'hidden' }]}>
               <View style={[styles.avatarCircle, { backgroundColor: colors.primaryTint }]}>
-                <Text style={styles.avatarEmoji}>🧔</Text>
+                {user?.photoUri ? (
+                  <Image source={{ uri: user.photoUri }} style={{ width: 44, height: 44, borderRadius: 22 }} />
+                ) : (
+                  <Text style={styles.avatarEmoji}>🧔</Text>
+                )}
               </View>
             </View>
             
@@ -208,7 +212,7 @@ export default function HomeScreen({ navigation }: any) {
               <View style={styles.streakBadge}>
                 <Text style={styles.streakFlameIcon}>🔥</Text>
                 <Text style={styles.streakText}>
-                  {streakDays} {language === 'ar' ? 'يوم متتالي' : 'Day Streak'}
+                  {formatNumber(streakDays)} {language === 'ar' ? 'يوم متتالي' : 'Day Streak'}
                 </Text>
               </View>
             </View>
@@ -223,10 +227,10 @@ export default function HomeScreen({ navigation }: any) {
           <View style={styles.levelGaugeContainer}>
             <View style={styles.levelProgressLabelRow}>
               <Text style={[styles.levelProgressLabel, { color: colors.textSecondary }]}>
-                {language === 'ar' ? `المستوى ${currentLevel}` : `Level ${currentLevel}`}
+                {language === 'ar' ? `المستوى ${formatNumber(currentLevel)}` : `Level ${currentLevel}`}
               </Text>
               <Text style={[styles.levelProgressValue, { color: colors.textPrimary }]}>
-                {currentXP} / {targetXP} XP
+                {formatNumber(currentXP)} / {formatNumber(targetXP)} XP
               </Text>
             </View>
             <View style={[styles.progressBarBg, { backgroundColor: colors.border }]}>
@@ -238,22 +242,22 @@ export default function HomeScreen({ navigation }: any) {
           <View style={[styles.statsGridRow, { borderTopColor: colors.border }]}>
             <View style={[styles.statBox, styles.statBoxRightBorder, { borderRightColor: colors.border }]}>
               <Text style={styles.statEmoji}>🛡️</Text>
-              <Text style={[styles.statValue, { color: colors.textPrimary }]}>{challengesPlayed}</Text>
+              <Text style={[styles.statValue, { color: colors.textPrimary }]}>{formatNumber(challengesPlayed)}</Text>
               <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{language === 'ar' ? 'التحديات' : 'Played'}</Text>
             </View>
             <View style={[styles.statBox, styles.statBoxRightBorder, { borderRightColor: colors.border }]}>
               <Text style={styles.statEmoji}>🏆</Text>
-              <Text style={[styles.statValue, { color: colors.textPrimary }]}>{challengesWon}</Text>
+              <Text style={[styles.statValue, { color: colors.textPrimary }]}>{formatNumber(challengesWon)}</Text>
               <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{language === 'ar' ? 'الفوز' : 'Wins'}</Text>
             </View>
             <View style={[styles.statBox, styles.statBoxRightBorder, { borderRightColor: colors.border }]}>
               <Text style={styles.statEmoji}>📍</Text>
-              <Text style={[styles.statValue, { color: colors.textPrimary }]}>#{localRank}</Text>
+              <Text style={[styles.statValue, { color: colors.textPrimary }]}>#{formatNumber(localRank)}</Text>
               <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{language === 'ar' ? 'المحلي' : 'Local Rank'}</Text>
             </View>
             <View style={styles.statBox}>
               <Text style={styles.statEmoji}>🌐</Text>
-              <Text style={[styles.statValue, { color: colors.textPrimary }]}>#{globalRank}</Text>
+              <Text style={[styles.statValue, { color: colors.textPrimary }]}>#{formatNumber(globalRank)}</Text>
               <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{language === 'ar' ? 'العالمي' : 'Global Rank'}</Text>
             </View>
           </View>
@@ -429,31 +433,6 @@ export default function HomeScreen({ navigation }: any) {
           />
         </View>
 
-        {/* CATEGORY QUICK-SELECT PILLS */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillsScrollContainer}>
-          {['الكل', 'القرآن', 'السنة', 'الفقه', 'السيرة', 'العقيدة', 'التاريخ'].map((cat) => {
-            const isSelected = activeCategory === cat;
-            return (
-              <TouchableOpacity
-                key={cat}
-                style={[
-                  styles.pillBtn,
-                  { backgroundColor: colors.surface, borderColor: colors.border },
-                  isSelected && { backgroundColor: colors.primaryDeep, borderColor: colors.primaryDeep }
-                ]}
-                onPress={() => {
-                  setActiveCategory(cat);
-                  navigation.navigate('Trivia', { category: cat });
-                }}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.pillBtnText, { color: colors.textSecondary }, isSelected && { color: '#FFFFFF', fontWeight: '700' }]}>
-                  {cat}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
 
         {/* AYAH OF TODAY CARD (DYNAMIC LOCALIZATION) */}
         <View style={[styles.ayahCard, { backgroundColor: colors.accentTint, borderColor: colors.accentTintBorder }]}>

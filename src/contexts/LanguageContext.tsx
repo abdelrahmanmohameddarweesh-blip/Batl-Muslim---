@@ -9,6 +9,7 @@ type LanguageContextType = {
   language: LanguageType;
   t: (key: TranslationKey) => string;
   setLanguage: (lang: LanguageType) => Promise<void>;
+  formatNumber: (num: string | number) => string;
 };
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
@@ -49,13 +50,20 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const formatNumber = (num: string | number): string => {
+    if (language === 'ar') {
+      return String(num).replace(/[0-9]/g, (d) => '٠١٢٣٤٥٦٧٨٩'[parseInt(d)]);
+    }
+    return String(num);
+  };
+
   const t = (key: TranslationKey): string => {
     const dict = translations[language] || translations.ar;
     return dict[key] || translations.ar[key] || String(key);
   };
 
   return (
-    <LanguageContext.Provider value={{ language, t, setLanguage }}>
+    <LanguageContext.Provider value={{ language, t, setLanguage, formatNumber }}>
       {children}
     </LanguageContext.Provider>
   );

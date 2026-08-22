@@ -23,7 +23,7 @@ interface DynamicQuestion {
 
 export default function QuranAssessmentScreen({ navigation }: any) {
   const { colors } = useTheme();
-  const { language } = useLanguage();
+  const { language, formatNumber } = useLanguage();
 
   // Screen State: 'lobby' | 'introduction' | 'assessment' | 'results'
   const [screenState, setScreenState] = useState<'lobby' | 'introduction' | 'assessment' | 'results'>('lobby');
@@ -941,7 +941,7 @@ export default function QuranAssessmentScreen({ navigation }: any) {
                 </View>
                 <Text style={[styles.quizProgressText, { color: colors.textSecondary }]}>
                   {language === 'ar' 
-                    ? `سؤال ${currentIndex + 1} من ${questions.length}`
+                    ? `سؤال ${formatNumber(currentIndex + 1)} من ${formatNumber(questions.length)}`
                     : `Question ${currentIndex + 1} of ${questions.length}`}
                 </Text>
               </View>

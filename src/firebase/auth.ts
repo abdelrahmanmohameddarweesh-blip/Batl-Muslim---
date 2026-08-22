@@ -8,6 +8,8 @@ export type AppUser = {
   country?: string;
   countryCode?: string;
   phone?: string;
+  age?: number;
+  photoUri?: string;
   championshipScore?: number;
   championshipTime?: number;
 };
@@ -49,7 +51,7 @@ async function readCurrentUser(): Promise<AppUser | null> {
   }
 }
 
-export async function signInAnonymous(displayName: string, phone: string, country: string): Promise<AppUser> {
+export async function signInAnonymous(displayName: string, phone: string, country: string, age?: number, photoUri?: string): Promise<AppUser> {
   const name = normalizeDisplayName(displayName);
   const existingUser = await readCurrentUser();
   const players = await readPlayers();
@@ -62,6 +64,8 @@ export async function signInAnonymous(displayName: string, phone: string, countr
     lastPlayedAt: players[uid]?.lastPlayedAt ?? existingUser?.lastPlayedAt,
     phone: phone.trim() || undefined,
     country: country.trim() || undefined,
+    age: age || undefined,
+    photoUri: photoUri || undefined,
   };
 
   players[uid] = user;
@@ -148,5 +152,39 @@ export async function saveUserChampionshipResult(uid: string, score: number, sec
   players[uid] = updatedUser;
   await writePlayers(players);
   await AsyncStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updatedUser));
+}
+
+export async function updateUserPhoto(uid: string, photoUri: string) {
+  const players = await readPlayers();
+  const existing = players[uid];
+  if (!existing) return;
+  const updatedUser: AppUser = {
+    ...existing,
+    photoUri,
+  };
+  players[uid] = updatedUser;
+  await writePlayers(players);
+  
+  const currentUser = await readCurrentUser();
+  if (currentUser && currentUser.uid === uid) {
+    await AsyncStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updatedUser));
+  }
+}
+
+export async function updateUserAge(uid: string, age: number) {
+  const players = await readPlayers();
+  const existing = players[uid];
+  if (!existing) return;
+  const updatedUser: AppUser = {
+    ...existing,
+    age,
+  };
+  players[uid] = updatedUser;
+  await writePlayers(players);
+  
+  const currentUser = await readCurrentUser();
+  if (currentUser && currentUser.uid === uid) {
+    await AsyncStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updatedUser));
+  }
 }
 

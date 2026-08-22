@@ -28,7 +28,7 @@ type LimitType = (typeof questionLimits)[number];
 
 export default function TriviaScreen({ navigation, route }: any) {
   const { user } = useAuth();
-  const { language } = useLanguage();
+  const { language, formatNumber } = useLanguage();
   
   // Game states: 'config' | 'quiz' | 'completed'
   const [gameState, setGameState] = useState<'config' | 'quiz' | 'completed'>('config');
@@ -135,11 +135,11 @@ export default function TriviaScreen({ navigation, route }: any) {
         return r1 - r2;
       });
 
-      const selectedSet = shuffled.slice(0, 5);
+      const selectedSet = shuffled.slice(0, 10);
 
       setSelectedTier('Hero');
       setSelectedCategory('الكل');
-      setQuestionLimit(5);
+      setQuestionLimit(10);
       setQuestions(selectedSet);
       setCurrentIndex(0);
       setScore(0);
@@ -185,16 +185,22 @@ export default function TriviaScreen({ navigation, route }: any) {
     };
   }, [gameState, answered, route?.params?.mode]);
 
-  // Hardcore countdown Timer Effect
+  // Countdown Timer Effect (For Hardcore and Championship modes)
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
-    if (gameState === 'quiz' && route?.params?.mode === 'hardcore' && !answered) {
-      setCountdownTimeLeft(5);
+    const mode = route?.params?.mode;
+    if (gameState === 'quiz' && (mode === 'hardcore' || mode === 'championship') && !answered) {
+      const maxSeconds = mode === 'hardcore' ? 5 : 12;
+      setCountdownTimeLeft(maxSeconds);
       interval = setInterval(() => {
         setCountdownTimeLeft((prev) => {
           if (prev <= 1) {
             clearInterval(interval!);
-            handleTimeout();
+            if (mode === 'hardcore') {
+              handleTimeout();
+            } else {
+              handleChampionshipTimeout();
+            }
             return 0;
           }
           return prev - 1;
@@ -218,6 +224,15 @@ export default function TriviaScreen({ navigation, route }: any) {
     setTimeout(() => {
       completeQuiz(score);
     }, 2000);
+  };
+
+  const handleChampionshipTimeout = () => {
+    setFeedback(language === 'ar' ? 'انتهى الوقت! تم احتساب الإجابة خاطئة.' : 'Time out! Answer marked as incorrect.');
+    if (currentQuestion) {
+      setExplanation(currentQuestion.explanation || '');
+    }
+    setAnswered(true);
+    setStreak(0);
   };
 
   const startChallenge = () => {
@@ -426,7 +441,11 @@ export default function TriviaScreen({ navigation, route }: any) {
                 <View style={styles.categoryBadge}>
                   <Text style={styles.categoryBadgeText}>📖 {currentQuestion.category}</Text>
                 </View>
-                <Text style={styles.progressText}>سؤال {currentIndex + 1} من {questions.length}</Text>
+                <Text style={styles.progressText}>
+                  {language === 'ar'
+                    ? `سؤال ${formatNumber(currentIndex + 1)} من ${formatNumber(questions.length)}`
+                    : `Question ${currentIndex + 1} of ${questions.length}`}
+                </Text>
               </View>
               
               <View style={styles.progressBarBg}>
@@ -436,14 +455,15 @@ export default function TriviaScreen({ navigation, route }: any) {
               {/* Visual Active Timers */}
               {route?.params?.mode === 'championship' && (
                 <View style={styles.activeTimerRow}>
-                  <Text style={styles.activeTimerText}>⏱️ {secondsElapsed.toFixed(1)}s</Text>
-                  <Text style={styles.activeTimerLabel}>{language === 'ar' ? 'عداد الوقت الجاري...' : 'Speedrun timer...'}</Text>
+                  <Text style={styles.activeTimerText}>⏱️ {formatNumber(secondsElapsed.toFixed(1))} {language === 'ar' ? 'ث' : 's'}</Text>
+                  <Text style={[styles.activeTimerText, { color: '#EF4444', marginLeft: 16 }]}>⚡ {formatNumber(countdownTimeLeft)} {language === 'ar' ? 'ث' : 's'}</Text>
+                  <Text style={styles.activeTimerLabel}>{language === 'ar' ? 'الوقت المنقضي والمتبقي' : 'Elapsed & remaining countdown...'}</Text>
                 </View>
               )}
 
               {route?.params?.mode === 'hardcore' && (
                 <View style={styles.activeTimerRow}>
-                  <Text style={[styles.activeTimerText, { color: '#EF4444' }]}>⚡ {countdownTimeLeft}s</Text>
+                  <Text style={[styles.activeTimerText, { color: '#EF4444' }]}>⚡ {formatNumber(countdownTimeLeft)} {language === 'ar' ? 'ث' : 's'}</Text>
                   <Text style={styles.activeTimerLabel}>{language === 'ar' ? 'سارع بالإجابة!' : 'Hurry up!'}</Text>
                 </View>
               )}

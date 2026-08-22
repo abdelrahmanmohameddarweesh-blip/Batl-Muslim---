@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, Alert, Image } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, { Path, Circle, Rect, Defs, Pattern } from 'react-native-svg';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { getCurrentUserProfile, updateUserCountry, saveUserScore } from '../firebase/auth';
+import { getCurrentUserProfile, updateUserCountry, saveUserScore, updateUserPhoto } from '../firebase/auth';
 import { badgesCatalog, checkUnlockedBadges } from '../data/badges';
 import AdBanner from '../components/AdBanner';
 
@@ -36,9 +37,43 @@ const deedsCatalog = [
 ];
 
 export default function ProfileScreen({ navigation }: any) {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUserFields } = useAuth();
   const { t, language, setLanguage } = useLanguage();
   const { colors, toggleTheme, isLightMode } = useTheme();
+
+  const handlePickAvatar = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(
+        language === 'ar' ? 'صلاحية الأستوديو' : 'Gallery Permission',
+        language === 'ar'
+          ? 'الرجاء تمكين الوصول للأستوديو لاختيار صورة.'
+          : 'Please enable gallery access in settings to upload a photo.'
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets?.[0]?.uri) {
+      const selectedUri = result.assets[0].uri;
+      try {
+        if (user?.uid) {
+          await updateUserPhoto(user.uid, selectedUri);
+          updateUserFields({ photoUri: selectedUri });
+          // Also update local profile state
+          setProfile((prev: any) => prev ? { ...prev, photoUri: selectedUri } : { photoUri: selectedUri });
+        }
+      } catch (err) {
+        console.error('Failed to update photo', err);
+      }
+    }
+  };
 
   // Navigation segment: 'profile' | 'accountability'
   const [activeSection, setActiveSection] = useState<'profile' | 'accountability'>('profile');
@@ -274,11 +309,23 @@ export default function ProfileScreen({ navigation }: any) {
           <View style={styles.contentWrapper}>
             {/* Profile Card Header */}
             <View style={[styles.profileHeaderCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <View style={[styles.avatarContainer, { backgroundColor: colors.primaryTint, borderColor: colors.primary }]}>
-                <Text style={[styles.avatarText, { color: colors.primaryDeep }]}>
-                  {user?.displayName ? user.displayName[0].toUpperCase() : '👤'}
-                </Text>
-              </View>
+              <TouchableOpacity 
+                style={[styles.avatarContainer, { backgroundColor: colors.primaryTint, borderColor: colors.primary, overflow: 'hidden' }]}
+                onPress={handlePickAvatar}
+                activeOpacity={0.85}
+              >
+                {user?.photoUri ? (
+                  <Image source={{ uri: user.photoUri }} style={{ width: 80, height: 80, borderRadius: 40 }} />
+                ) : (
+                  <Text style={[styles.avatarText, { color: colors.primaryDeep }]}>
+                    {user?.displayName ? user.displayName[0].toUpperCase() : '👤'}
+                  </Text>
+                )}
+                {/* Tiny edit overlay */}
+                <View style={{ position: 'absolute', bottom: 0, width: '100%', backgroundColor: 'rgba(0,0,0,0.4)', paddingVertical: 2, alignItems: 'center' }}>
+                  <Text style={{ color: '#FFFFFF', fontSize: 9, fontWeight: '700' }}>{language === 'ar' ? 'تعديل' : 'Edit'}</Text>
+                </View>
+              </TouchableOpacity>
               <Text style={[styles.profileName, { color: colors.textPrimary }]}>
                 {user?.displayName || (language === 'ar' ? 'ضيف' : 'Guest')}
               </Text>

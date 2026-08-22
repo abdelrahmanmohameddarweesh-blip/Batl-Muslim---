@@ -235,18 +235,17 @@ export default function VoiceScreen({ navigation }: any) {
   const handleAnalyzeRecitation = async () => {
     if (!currentAyah || !selectedReader) return;
 
-    // Guard: Prevent empty/silent recordings
-    const avgAmplitude = meteringHistory.length > 0 
-      ? meteringHistory.reduce((sum, db) => sum + (db <= -60 ? 0 : (db + 60) / 60), 0) / meteringHistory.length 
-      : 0;
+    // Guard: Prevent empty/silent recordings using peak amplitude decibels
+    const maxDb = meteringHistory.length > 0 ? Math.max(...meteringHistory) : -160;
 
-    if (recordingDuration < 1000 || meteringHistory.length === 0 || avgAmplitude < 0.05) {
+    if (recordingDuration < 1200 || meteringHistory.length === 0 || maxDb < -25) {
       Alert.alert(
         language === 'ar' ? 'لم يتم اكتشاف صوت 🎙️' : 'No Voice Detected 🎙️',
         language === 'ar'
           ? 'التسجيل فارغ أو هادئ جداً. يرجى التأكد من التحدث بوضوح بالقرب من الميكروفون.'
           : 'The recording is empty or too quiet. Please speak clearly near the microphone.'
       );
+      setStep('recorded');
       return;
     }
 

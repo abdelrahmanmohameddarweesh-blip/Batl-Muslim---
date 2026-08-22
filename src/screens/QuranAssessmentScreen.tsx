@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Share, ActivityIndicator, Animated } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import { Audio } from 'expo-av';
 import { surahsList } from '../data/surahs';
 import { quranVerses, type QuranVerse } from '../data/quranVerses';
 import { useTheme } from '../contexts/ThemeContext';
@@ -64,28 +63,15 @@ export default function QuranAssessmentScreen({ navigation }: any) {
   // Active Assessment States
   const [questions, setQuestions] = useState<DynamicQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const currentQuestion = questions[currentIndex];
   const [selectedAnswer, setSelectedAnswer] = useState('');
   const [answered, setAnswered] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
   const [feedback, setFeedback] = useState('');
 
-  // Audio / Voice Recitation States
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
-  const [recordingDuration, setRecordingDuration] = useState(0);
-  const [liveVolume, setLiveVolume] = useState(0);
-  const [seconds, setSeconds] = useState(0);
-  const [audioStep, setAudioStep] = useState<'ready' | 'recording' | 'recorded' | 'analyzing'>('ready');
-  const [recitedWordsMatchCount, setRecitedWordsMatchCount] = useState<number>(0);
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [sheikhSound, setSheikhSound] = useState<Audio.Sound | null>(null);
-  const [isSheikhPlaying, setIsSheikhPlaying] = useState(false);
-  const [meteringHistory, setMeteringHistory] = useState<number[]>([]);
-
-  const currentQuestion = questions[currentIndex];
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const meteringHistoryRef = useRef<number[]>([]);
-  const recordingDurationRef = useRef<number>(0);
+  // Word Builder (Duolingo-style scramble) States
+  const [wordPool, setWordPool] = useState<{ id: string; text: string; }[]>([]);
+  const [builtWords, setBuiltWords] = useState<{ id: string; text: string; }[]>([]);
 
   // Split MCQ count versus Voice count (Strictly divided parts)
   const mcqQuestionsLimit = useMemo(() => {
@@ -97,315 +83,79 @@ export default function QuranAssessmentScreen({ navigation }: any) {
     return currentIndex >= mcqQuestionsLimit && currentQuestion.type === 'missing_ayah';
   }, [currentIndex, mcqQuestionsLimit, currentQuestion]);
 
-  // Pulse animation loop during recording
+  // Initialize Scramble Word Pool when question changes
   useEffect(() => {
-    let animLoop: Animated.CompositeAnimation;
-    if (audioStep === 'recording') {
-      animLoop = Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.15,
-            duration: 600,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1.0,
-            duration: 600,
-            useNativeDriver: true,
-          }),
-        ])
-      );
-      animLoop.start();
-    } else {
-      pulseAnim.setValue(1);
-    }
-
-    return () => {
-      if (animLoop) animLoop.stop();
-    };
-  }, [audioStep]);
-
-  // Clean up audio recording and sound players on unmount
-  useEffect(() => {
-    return () => {
-      if (recording) {
-        recording.stopAndUnloadAsync().catch(() => {});
-      }
-      if (sound) {
-        sound.unloadAsync().catch(() => {});
-      }
-      if (sheikhSound) {
-        sheikhSound.unloadAsync().catch(() => {});
-      }
-    };
-  }, [recording, sound, sheikhSound]);
-
-  // Voice recording triggers
-  const handleStartRecording = async () => {
-    try {
-      const permission = await Audio.requestPermissionsAsync();
-      if (permission.status !== 'granted') {
-        Alert.alert(
-          language === 'ar' ? 'صلاحية الميكروفون' : 'Microphone Permission',
-          language === 'ar'
-            ? 'الرجاء تمكين الوصول إلى الميكروفون في إعدادات جهازك للمتابعة.'
-            : 'Please enable microphone access in your device settings to record your recitation.'
-        );
-        return;
-      }
-
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-
-      // Reset audio states
-      setRecordingDuration(0);
-      setLiveVolume(0);
-      setSeconds(0);
-      setMeteringHistory([]);
-      meteringHistoryRef.current = [];
-      recordingDurationRef.current = 0;
-
-      const recordingInstance = new Audio.Recording();
-      await recordingInstance.prepareToRecordAsync({
-        android: {
-          extension: '.m4a',
-          outputFormat: Audio.AndroidOutputFormat.MPEG_4,
-          audioEncoder: Audio.AndroidAudioEncoder.AAC,
-          sampleRate: 44100,
-          numberOfChannels: 1,
-          bitRate: 128000,
-        },
-        ios: {
-          extension: '.m4a',
-          outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
-          audioQuality: Audio.IOSAudioQuality.HIGH,
-          sampleRate: 44100,
-          numberOfChannels: 1,
-          bitRate: 128000,
-          linearPCMBitDepth: 16,
-          linearPCMIsBigEndian: false,
-          linearPCMIsFloat: false,
-        },
-        web: {},
-        isMeteringEnabled: true,
-      });
-
-      recordingInstance.setProgressUpdateInterval(120);
+    if (currentQuestion && isCurrentQuestionVoice) {
+      const correctWords = currentQuestion.answer.trim().split(/\s+/);
       
-      recordingInstance.setOnRecordingStatusUpdate((status) => {
-        if (status.durationMillis) {
-          setSeconds(Math.floor(status.durationMillis / 1000));
-          setRecordingDuration(status.durationMillis);
-          recordingDurationRef.current = status.durationMillis;
-        }
-
-        if (status.metering !== undefined) {
-          const normVol = status.metering <= -60 ? 0 : (status.metering + 60) / 60;
-          setLiveVolume(normVol);
-          const metVal: number = status.metering;
-          setMeteringHistory((prev) => [...prev, metVal]);
-          meteringHistoryRef.current.push(metVal);
+      // Extract Mutashabihat endings or distractors from MCQ options
+      const distractors: string[] = [];
+      currentQuestion.options.forEach(opt => {
+        if (opt !== currentQuestion.answer) {
+          const optWords = opt.trim().split(/\s+/);
+          const lastWord = optWords[optWords.length - 1];
+          if (lastWord && !correctWords.includes(lastWord) && !distractors.includes(lastWord)) {
+            distractors.push(lastWord);
+          }
         }
       });
 
-      await recordingInstance.startAsync();
-      setRecording(recordingInstance);
-      setAudioStep('recording');
-    } catch (err) {
-      console.error(err);
-      Alert.alert(
-        language === 'ar' ? 'خطأ في التسجيل' : 'Recording Error',
-        language === 'ar' ? 'فشل في تهيئة ميكروفون الهاتف للتسجيل.' : 'Failed to initialize microphone.'
-      );
-    }
-  };
-
-  const getGlobalAyahNumber = (sNum: number, aNum: number): number => {
-    let globalIndex = 0;
-    for (let i = 1; i < sNum; i++) {
-      const surah = surahsList.find(s => s.number === i);
-      globalIndex += surah ? surah.totalAyahs : 0;
-    }
-    return globalIndex + aNum;
-  };
-
-  const handleStopRecording = async () => {
-    if (!recording) return;
-
-    try {
-      await recording.stopAndUnloadAsync();
-      
-      // Deactivate iOS recording category to release mic resources and prevent 'NONE' conflicts
-      try {
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: false,
-          playsInSilentModeIOS: true,
-        });
-      } catch (modeErr) {
-        console.warn('Deactivating iOS recording category failed', modeErr);
+      // Ensure we have at least 2 distractors
+      while (distractors.length < 2) {
+        distractors.push('عَلِيمٌ');
+        distractors.push('حَكِيمٌ');
       }
 
-      setAudioStep('analyzing');
+      // Merge and generate unique PoolWord items
+      const mixed = [...correctWords, ...distractors.slice(0, 2)].map((text, idx) => ({
+        id: `${text}_${idx}_${Math.random()}`,
+        text
+      }));
 
-      setTimeout(() => {
-        setAudioStep('recorded');
-      }, 1000);
-
-    } catch (err) {
-      console.error(err);
-      setAudioStep('ready');
+      // Shuffle the pool
+      setWordPool(mixed.sort(() => Math.random() - 0.5));
+      setBuiltWords([]);
     }
+  }, [currentIndex, currentQuestion, isCurrentQuestionVoice]);
+
+  const handleTapPoolWord = (word: { id: string; text: string; }) => {
+    if (answered) return;
+    setWordPool(prev => prev.filter(w => w.id !== word.id));
+    setBuiltWords(prev => [...prev, word]);
   };
 
-  const handleGradeRecitation = (isCorrect: boolean) => {
-    // Stop playback if playing
-    if (sound) {
-      sound.unloadAsync().catch(() => {});
-      setSound(null);
-      setIsPlaying(false);
-    }
-    if (sheikhSound) {
-      sheikhSound.unloadAsync().catch(() => {});
-      setSheikhSound(null);
-      setIsSheikhPlaying(false);
-    }
+  const handleTapBuiltWord = (word: { id: string; text: string; }) => {
+    if (answered) return;
+    setBuiltWords(prev => prev.filter(w => w.id !== word.id));
+    setWordPool(prev => [...prev, word]);
+  };
 
+  const handleSubmitBuilder = () => {
+    const constructed = builtWords.map(w => w.text).join(' ').trim();
+    const correct = currentQuestion.answer.trim();
+    
+    const normalizeText = (txt: string) => {
+      return txt
+        .replace(/\s+/g, ' ')
+        .trim();
+    };
+
+    const isCorrect = normalizeText(constructed) === normalizeText(correct);
+    
     setAnswered(true);
     if (isCorrect) {
-      setCorrectCount((prev) => prev + 1);
+      setCorrectCount(prev => prev + 1);
       setFeedback(
         language === 'ar'
-          ? 'رائع! تم تسجيل تسميعك كإجابة صحيحة. تابع الحفظ المتميز 🌟'
-          : 'Great! Your recitation has been recorded as correct. Keep up the excellent work 🌟'
+          ? 'رائع! ترتيب الكلمات للآية الكريمة صحيح تماماً 🌟'
+          : 'Excellent! The word order for the verse is perfectly correct 🌟'
       );
     } else {
       setFeedback(
         language === 'ar'
-          ? 'تم تسجيل التسميع كخاطئ. يمكنك مراجعة الكلمات الصحيحة للآية الكريمة لتثبيتها:'
-          : 'Recorded as incorrect. Review the correct words below to reinforce:'
+          ? 'الترتيب غير صحيح. يرجى مراجعة الترتيب الصحيح للآية أدناه:'
+          : 'Incorrect word order. Please review the correct order below:'
       );
-    }
-  };
-
-  const playSheikhAudio = async () => {
-    if (!currentQuestion) return;
-
-    const surahObj = surahsList.find(s => s.name === currentQuestion.surah);
-    const surahNum = surahObj ? surahObj.number : 1;
-    const globalAyahNum = getGlobalAyahNumber(surahNum, currentQuestion.ayahNumber);
-    const uri = `https://cdn.islamic.network/quran/audio/128/ar.alafasy/${globalAyahNum}.mp3`;
-
-    try {
-      if (sheikhSound) {
-        try {
-          await sheikhSound.unloadAsync();
-        } catch (e) {}
-      }
-
-      if (sound) {
-        try {
-          await sound.unloadAsync();
-          setIsPlaying(false);
-        } catch (e) {}
-      }
-
-      // Ensure playback-only mode on iOS
-      try {
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: false,
-          playsInSilentModeIOS: true,
-        });
-      } catch (modeErr) {}
-
-      const { sound: newSound } = await Audio.Sound.createAsync(
-        { uri },
-        { shouldPlay: true }
-      );
-      setSheikhSound(newSound);
-      setIsSheikhPlaying(true);
-
-      newSound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded) {
-          if (status.didJustFinish) {
-            setIsSheikhPlaying(false);
-            newSound.unloadAsync().catch(() => {});
-            setSheikhSound(null);
-          }
-        }
-      });
-    } catch (err) {
-      console.error('Failed to play Sheikh audio', err);
-      setIsSheikhPlaying(false);
-    }
-  };
-
-  const stopPlayingSheikh = async () => {
-    if (sheikhSound) {
-      try {
-        await sheikhSound.unloadAsync();
-      } catch (err) {
-        console.error('Failed to stop Sheikh playback', err);
-      } finally {
-        setSheikhSound(null);
-        setIsSheikhPlaying(false);
-      }
-    }
-  };
-
-  const playRecording = async () => {
-    if (!recording) return;
-    const uri = recording.getURI();
-    if (!uri) return;
-
-    try {
-      if (sound) {
-        try {
-          await sound.unloadAsync();
-        } catch (e) {}
-      }
-
-      // Ensure playback-only mode on iOS
-      try {
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: false,
-          playsInSilentModeIOS: true,
-        });
-      } catch (modeErr) {}
-
-      const { sound: newSound } = await Audio.Sound.createAsync(
-        { uri },
-        { shouldPlay: true }
-      );
-      setSound(newSound);
-      setIsPlaying(true);
-
-      newSound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded) {
-          if (status.didJustFinish) {
-            setIsPlaying(false);
-            newSound.unloadAsync().catch(() => {});
-            setSound(null);
-          }
-        }
-      });
-    } catch (err) {
-      console.error('Failed to play recording', err);
-      setIsPlaying(false);
-    }
-  };
-
-  const stopPlayingRecording = async () => {
-    if (sound) {
-      try {
-        await sound.unloadAsync();
-      } catch (err) {
-        console.error('Failed to stop playback', err);
-      } finally {
-        setSound(null);
-        setIsPlaying(false);
-      }
     }
   };
 
@@ -863,9 +613,7 @@ export default function QuranAssessmentScreen({ navigation }: any) {
     setCorrectCount(0);
     setFeedback('');
     
-    // Reset Recording States
-    setAudioStep('ready');
-    setRecitedWordsMatchCount(0);
+
 
     // Show Test Introduction Screen
     setScreenState('introduction');
@@ -892,28 +640,12 @@ export default function QuranAssessmentScreen({ navigation }: any) {
   };
 
   const handleNext = () => {
-    // Stop and unload any playing sound when moving to the next question or screen
-    if (sound) {
-      sound.unloadAsync().catch(() => {});
-      setSound(null);
-      setIsPlaying(false);
-    }
-    if (sheikhSound) {
-      sheikhSound.unloadAsync().catch(() => {});
-      setSheikhSound(null);
-      setIsSheikhPlaying(false);
-    }
-
     const nextIndex = currentIndex + 1;
     if (nextIndex < questions.length) {
       setCurrentIndex(nextIndex);
       setSelectedAnswer('');
       setAnswered(false);
       setFeedback('');
-
-      // Reset Audio / Voice assessment parameters
-      setAudioStep('ready');
-      setRecitedWordsMatchCount(0);
     } else {
       setScreenState('results');
     }
@@ -1266,133 +998,78 @@ export default function QuranAssessmentScreen({ navigation }: any) {
                 })}
               </View>
             ) : (
-              <View style={[styles.voiceRecorderContainer, { borderColor: colors.border }]}>
+              <View style={[styles.voiceRecorderContainer, { borderColor: colors.border, padding: 16 }]}>
                 
-                {/* Voice Status description */}
-                {audioStep === 'ready' && (
-                  <View style={styles.audioStateBox}>
-                    <Text style={[styles.audioStateText, { color: colors.textSecondary }]}>
-                      {language === 'ar' ? 'اضغط على الميكروفون وابدأ التلاوة.' : 'Tap record and recite the missing text.'}
+                {/* 1. Built Verse Display Area */}
+                <Text style={[styles.audioStateSubText, { color: colors.textSecondary, marginBottom: 8, fontWeight: '700' }]}>
+                  {language === 'ar' ? 'الآية التي قمت بتركيبها:' : 'Your constructed verse:'}
+                </Text>
+                
+                <View style={[styles.promptCard, { backgroundColor: colors.neutralTint, borderColor: colors.border, minHeight: 65, justifyContent: 'center', alignItems: 'center', marginBottom: 16 }]}>
+                  {builtWords.length === 0 ? (
+                    <Text style={{ color: colors.textSecondary, fontStyle: 'italic', fontSize: 13 }}>
+                      {language === 'ar' ? '[ اضغط على الكلمات بالترتيب لتركيب الآية ]' : '[ Tap words in order to build the verse ]'}
                     </Text>
-                  </View>
-                )}
-
-                {audioStep === 'recording' && (
-                  <View style={styles.audioStateBox}>
-                    <Text style={[styles.recordingTimerText, { color: '#EF4444' }]}>
-                      🔴 {language === 'ar' ? 'تلو الآية...' : 'Reciting...'} {seconds}s
-                    </Text>
-                    {/* Live volume wave simulation */}
-                    <View style={styles.volumeWaveWrapper}>
-                      <View style={[styles.volumeWaveBar, { height: Math.max(4, liveVolume * 45), backgroundColor: colors.primary }]} />
-                      <View style={[styles.volumeWaveBar, { height: Math.max(4, liveVolume * 70), backgroundColor: colors.primary }]} />
-                      <View style={[styles.volumeWaveBar, { height: Math.max(4, liveVolume * 45), backgroundColor: colors.primary }]} />
-                    </View>
-                  </View>
-                )}
-
-                {audioStep === 'analyzing' && (
-                  <View style={styles.audioStateBox}>
-                    <ActivityIndicator size="large" color={colors.primary} style={{ marginBottom: 8 }} />
-                    <Text style={[styles.audioStateText, { color: colors.textSecondary }]}>
-                      {language === 'ar' ? 'جاري تجهيز التسجيل للمقارنة...' : 'Preparing recording for comparison...'}
-                    </Text>
-                  </View>
-                )}
-
-                {audioStep === 'recorded' && !answered && (
-                  <View style={[styles.audioStateBox, { width: '100%' }]}>
-                    <Text style={[styles.audioStateText, { color: colors.textPrimary, fontWeight: '700', marginBottom: 12, textAlign: 'center' }]}>
-                      {language === 'ar' ? 'قارن تلاوتك بتلاوة الشيخ العفاسي 🎧' : 'Compare your recitation with Sheikh Alafasy 🎧'}
-                    </Text>
-
-                    {/* Audio playback row */}
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginBottom: 16 }}>
-                      {/* Play My Voice */}
-                      <TouchableOpacity 
-                        style={[
-                          styles.playbackBtn, 
-                          { backgroundColor: isPlaying ? '#EF4444' : colors.primaryTint, borderColor: isPlaying ? '#EF4444' : colors.primary, flex: 0.48 }
-                        ]} 
-                        onPress={isPlaying ? stopPlayingRecording : playRecording}
-                      >
-                        <Text style={[styles.playbackBtnText, { color: isPlaying ? '#FFFFFF' : colors.primaryOnTint, fontSize: 13, textAlign: 'center' }]}>
-                          {isPlaying 
-                            ? (language === 'ar' ? '⏹️ إيقاف تسميعي' : '⏹️ Stop Mine')
-                            : (language === 'ar' ? '🔊 اسمع تسميعي' : '🔊 Play My Voice')}
-                        </Text>
-                      </TouchableOpacity>
-
-                      {/* Play Sheikh */}
-                      <TouchableOpacity 
-                        style={[
-                          styles.playbackBtn, 
-                          { backgroundColor: isSheikhPlaying ? '#EF4444' : colors.primaryTint, borderColor: isSheikhPlaying ? '#EF4444' : colors.primary, flex: 0.48 }
-                        ]} 
-                        onPress={isSheikhPlaying ? stopPlayingSheikh : playSheikhAudio}
-                      >
-                        <Text style={[styles.playbackBtnText, { color: isSheikhPlaying ? '#FFFFFF' : colors.primaryOnTint, fontSize: 13, textAlign: 'center' }]}>
-                          {isSheikhPlaying 
-                            ? (language === 'ar' ? '⏹️ إيقاف الشيخ' : '⏹️ Stop Sheikh')
-                            : (language === 'ar' ? '🔊 تلاوة الشيخ' : '🔊 Play Qari')}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-
-                    {/* Self-Grade Actions */}
-                    <Text style={[styles.audioStateSubText, { color: colors.textSecondary, marginBottom: 12, textAlign: 'center', fontWeight: '600' }]}>
-                      {language === 'ar' ? 'هل كان تسميعك صحيحاً ومطابقاً؟' : 'Was your recitation correct and matching?'}
-                    </Text>
-
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%' }}>
-                      <TouchableOpacity 
-                        style={[styles.startBtn, { backgroundColor: '#10B981', flex: 0.48, marginVertical: 0, height: 44, justifyContent: 'center' }]} 
-                        onPress={() => handleGradeRecitation(true)}
-                        activeOpacity={0.8}
-                      >
-                        <Text style={[styles.startBtnText, { fontSize: 14 }]}>
-                          {language === 'ar' ? '✓ نعم، صحيح' : '✓ Yes, Correct'}
-                        </Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity 
-                        style={[styles.startBtn, { backgroundColor: '#EF4444', flex: 0.48, marginVertical: 0, height: 44, justifyContent: 'center' }]} 
-                        onPress={() => handleGradeRecitation(false)}
-                        activeOpacity={0.8}
-                      >
-                        <Text style={[styles.startBtnText, { fontSize: 14 }]}>
-                          {language === 'ar' ? '✗ لا، يوجد خطأ' : '✗ No, Mistake'}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                )}
-
-                {audioStep === 'recorded' && answered && (
-                  <View style={[styles.audioStateBox, { width: '100%' }]}>
-                    <Text style={[styles.audioStateText, { color: colors.textPrimary, fontWeight: '700' }]}>
-                      ✅ {language === 'ar' ? 'تم تسجيل التسميع والتقييم بنجاح' : 'Recitation and self-grade recorded'}
-                    </Text>
-                  </View>
-                )}
-
-                {/* Recorder Control Buttons */}
-                {!answered && (
-                  <View style={styles.recorderBtnRow}>
-                    {audioStep === 'ready' && (
-                      <TouchableOpacity style={[styles.recordMainBtn, { backgroundColor: colors.primary }]} onPress={handleStartRecording}>
-                        <Text style={styles.recordMainBtnText}>🎙️ {language === 'ar' ? 'بدء التسجيل والتسميع' : 'Start Recording'}</Text>
-                      </TouchableOpacity>
-                    )}
-
-                    {audioStep === 'recording' && (
-                      <Animated.View style={{ transform: [{ scale: pulseAnim }], width: '100%' }}>
-                        <TouchableOpacity style={[styles.recordMainBtn, { backgroundColor: '#EF4444' }]} onPress={handleStopRecording}>
-                          <Text style={styles.recordMainBtnText}>🛑 {language === 'ar' ? 'إنهاء التسجيل والتحقق' : 'Stop & Evaluate'}</Text>
+                  ) : (
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 6 }}>
+                      {builtWords.map((word) => (
+                        <TouchableOpacity
+                          key={word.id}
+                          style={{
+                            backgroundColor: colors.primary,
+                            paddingHorizontal: 10,
+                            paddingVertical: 5,
+                            borderRadius: 6,
+                          }}
+                          onPress={() => handleTapBuiltWord(word)}
+                          disabled={answered}
+                        >
+                          <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600' }}>{word.text}</Text>
                         </TouchableOpacity>
-                      </Animated.View>
-                    )}
-                  </View>
+                      ))}
+                    </View>
+                  )}
+                </View>
+
+                {/* 2. Word Pool Area */}
+                {!answered && (
+                  <>
+                    <Text style={[styles.audioStateSubText, { color: colors.textSecondary, marginBottom: 8, fontWeight: '700' }]}>
+                      {language === 'ar' ? 'اختر الكلمات بالترتيب الصحيح:' : 'Select words in the correct order:'}
+                    </Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, paddingBottom: 16 }}>
+                      {wordPool.map((word) => (
+                        <TouchableOpacity
+                          key={word.id}
+                          style={{
+                            backgroundColor: colors.surface,
+                            borderColor: colors.border,
+                            borderWidth: 1,
+                            paddingHorizontal: 12,
+                            paddingVertical: 6,
+                            borderRadius: 20,
+                          }}
+                          onPress={() => handleTapPoolWord(word)}
+                        >
+                          <Text style={{ color: colors.textPrimary, fontSize: 13 }}>{word.text}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </>
+                )}
+
+                {/* 3. Actions Row */}
+                {!answered && (
+                  <TouchableOpacity 
+                    style={[styles.submitBtn, { backgroundColor: colors.primary, marginTop: 12, opacity: builtWords.length === 0 ? 0.6 : 1 }]} 
+                    onPress={handleSubmitBuilder}
+                    disabled={builtWords.length === 0}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.submitBtnText}>
+                      {language === 'ar' ? 'تحقق من الترتيب' : 'Verify Word Order'}
+                    </Text>
+                  </TouchableOpacity>
                 )}
               </View>
             )}
@@ -1478,11 +1155,6 @@ export default function QuranAssessmentScreen({ navigation }: any) {
             <TouchableOpacity 
               style={[styles.nextBtn, { backgroundColor: colors.primary }]} 
               onPress={() => {
-                if (sound) {
-                  sound.unloadAsync().catch(() => {});
-                  setSound(null);
-                  setIsPlaying(false);
-                }
                 setScreenState('lobby');
               }} 
               activeOpacity={0.85}
@@ -1495,11 +1167,6 @@ export default function QuranAssessmentScreen({ navigation }: any) {
             <TouchableOpacity 
               style={[styles.backToHomeBtn, { borderColor: colors.border }]} 
               onPress={() => {
-                if (sound) {
-                  sound.unloadAsync().catch(() => {});
-                  setSound(null);
-                  setIsPlaying(false);
-                }
                 navigation.navigate('Home');
               }} 
               activeOpacity={0.85}

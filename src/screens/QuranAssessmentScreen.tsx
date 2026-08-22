@@ -1011,7 +1011,7 @@ export default function QuranAssessmentScreen({ navigation }: any) {
                       {language === 'ar' ? '[ اضغط على الكلمات بالترتيب لتركيب الآية ]' : '[ Tap words in order to build the verse ]'}
                     </Text>
                   ) : (
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 6 }}>
+                    <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', justifyContent: 'center', gap: 6 }}>
                       {builtWords.map((word) => (
                         <TouchableOpacity
                           key={word.id}
@@ -1037,7 +1037,7 @@ export default function QuranAssessmentScreen({ navigation }: any) {
                     <Text style={[styles.audioStateSubText, { color: colors.textSecondary, marginBottom: 8, fontWeight: '700' }]}>
                       {language === 'ar' ? 'اختر الكلمات بالترتيب الصحيح:' : 'Select words in the correct order:'}
                     </Text>
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, paddingBottom: 16 }}>
+                    <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', justifyContent: 'center', gap: 8, paddingBottom: 16 }}>
                       {wordPool.map((word) => (
                         <TouchableOpacity
                           key={word.id}

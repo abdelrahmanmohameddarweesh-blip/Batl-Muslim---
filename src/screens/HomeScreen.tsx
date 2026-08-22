@@ -357,6 +357,7 @@ export default function HomeScreen({ navigation }: any) {
             data={challengesData}
             keyExtractor={(item) => item.id}
             horizontal
+            inverted={language === 'ar'}
             pagingEnabled={false}
             showsHorizontalScrollIndicator={false}
             snapToInterval={CARD_WIDTH + CARD_GAP}

@@ -100,14 +100,24 @@ export default function QuranAssessmentScreen({ navigation }: any) {
         }
       });
 
-      // Ensure we have at least 2 distractors
-      while (distractors.length < 2) {
-        distractors.push('عَلِيمٌ');
-        distractors.push('حَكِيمٌ');
+      // Dynamic distractor count: scale between 3 and 5 based on verse length
+      const distractorCount = Math.max(3, Math.min(5, Math.floor(correctWords.length * 0.6)));
+
+      // Ensure we have enough distractors in the list
+      const fallbackDistractors = [
+        'عَلِيمٌ', 'حَكِيمٌ', 'خَبِيرٌ', 'بَصِيرٌ', 'رَحِيمٌ', 'عَظِيمٌ', 'أَلِيمٌ', 'قَدِيرٌ', 'غَفُورٌ', 'شَدِيدٌ'
+      ];
+      let fallbackIdx = 0;
+      while (distractors.length < distractorCount) {
+        const nextFallback = fallbackDistractors[fallbackIdx % fallbackDistractors.length];
+        if (!correctWords.includes(nextFallback) && !distractors.includes(nextFallback)) {
+          distractors.push(nextFallback);
+        }
+        fallbackIdx++;
       }
 
       // Merge and generate unique PoolWord items
-      const mixed = [...correctWords, ...distractors.slice(0, 2)].map((text, idx) => ({
+      const mixed = [...correctWords, ...distractors.slice(0, distractorCount)].map((text, idx) => ({
         id: `${text}_${idx}_${Math.random()}`,
         text
       }));

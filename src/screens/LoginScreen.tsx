@@ -16,7 +16,6 @@ export default function LoginScreen({ navigation }: any) {
   const [phone, setPhone] = useState('');
   const [country, setCountry] = useState('');
   const [age, setAge] = useState('');
-  const [photoUri, setPhotoUri] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [focusedField, setFocusedField] = useState<'name' | 'phone' | 'country' | 'age' | null>(null);
@@ -27,23 +26,6 @@ export default function LoginScreen({ navigation }: any) {
     }
   }, [user, navigation]);
 
-  const handlePickAvatar = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('صلاحية الأستوديو', 'الرجاء تمكين الوصول للأستوديو لاختيار صورة حسابك.');
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    if (!result.canceled && result.assets?.[0]?.uri) {
-      setPhotoUri(result.assets[0].uri);
-    }
-  };
-
   const handleContinue = async () => {
     if (!name.trim()) {
       setError('الرجاء كتابة اسمك للبدء في رحلة التحدي!');
@@ -53,7 +35,7 @@ export default function LoginScreen({ navigation }: any) {
     setSaving(true);
     try {
       const parsedAge = age.trim() ? parseInt(age.trim(), 10) : undefined;
-      await login(name.trim(), phone.trim(), country.trim(), parsedAge, photoUri || undefined);
+      await login(name.trim(), phone.trim(), country.trim(), parsedAge);
     } finally {
       setSaving(false);
     }
@@ -95,33 +77,7 @@ export default function LoginScreen({ navigation }: any) {
           </View>
 
           <View style={styles.middleSection}>
-            {/* Avatar Upload Container */}
-            <View style={{ alignItems: 'center', marginBottom: 20 }}>
-              <TouchableOpacity 
-                style={{
-                  width: 90,
-                  height: 90,
-                  borderRadius: 45,
-                  backgroundColor: '#ECFDF5',
-                  borderColor: '#10B981',
-                  borderWidth: 2,
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  overflow: 'hidden',
-                }}
-                onPress={handlePickAvatar}
-                activeOpacity={0.8}
-              >
-                {photoUri ? (
-                  <Image source={{ uri: photoUri }} style={{ width: 90, height: 90, borderRadius: 45 }} />
-                ) : (
-                  <View style={{ alignItems: 'center' }}>
-                    <Text style={{ fontSize: 24 }}>📸</Text>
-                    <Text style={{ fontSize: 10, color: '#047857', fontWeight: '700', marginTop: 2 }}>صورة الحساب</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            </View>
+
 
             {/* Input Label - Name */}
             <Text style={[styles.inputLabel, { color: colors.textBody }]}>اسمك في الميدان</Text>
@@ -260,18 +216,7 @@ export default function LoginScreen({ navigation }: any) {
               يُساعدنا العمر في عرض وتخصيص أسئلة مناسبة لسنّك.
             </Text>
 
-            {/* Features Chips Row */}
-            <View style={styles.chipsRow}>
-              <View style={[styles.chip, { backgroundColor: '#ECFDF5', borderColor: '#A4F4CF' }]}>
-                <Text style={[styles.chipText, { color: '#00604F' }]}>٩ تحديات</Text>
-              </View>
-              <View style={[styles.chip, { backgroundColor: '#FFF7ED', borderColor: '#FFD6A7' }]}>
-                <Text style={[styles.chipText, { color: '#973C00' }]}>مبارزات ١×١</Text>
-              </View>
-              <View style={[styles.chip, { backgroundColor: '#EFF6FF', borderColor: '#BEDBFF' }]}>
-                <Text style={[styles.chipText, { color: '#1447E6' }]}>لوحة صدارة</Text>
-              </View>
-            </View>
+
           </View>
 
           <View style={styles.bottomSection}>

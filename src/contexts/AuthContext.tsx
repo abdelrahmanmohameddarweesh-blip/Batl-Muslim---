@@ -5,12 +5,14 @@ import { signInAnonymous, signOutUser } from '../firebase/auth';
 type AuthUser = {
   uid: string;
   displayName: string;
+  phone?: string;
+  country?: string;
 };
 
 type AuthContextValue = {
   user: AuthUser | null;
   loading: boolean;
-  login: (displayName: string) => Promise<void>;
+  login: (displayName: string, phone: string, country: string) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -25,15 +27,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const login = async (displayName: string) => {
+  const login = async (displayName: string, phone: string, country: string) => {
     setLoading(true);
     try {
-      const authUser = await signInAnonymous(displayName);
+      const authUser = await signInAnonymous(displayName, phone, country);
       setUser(authUser);
     } catch (error) {
       const fallbackUser = {
         uid: `guest-${Date.now()}`,
         displayName: displayName || 'ضيف',
+        phone: phone || undefined,
+        country: country || undefined,
         score: 0,
       };
       setUser(fallbackUser);

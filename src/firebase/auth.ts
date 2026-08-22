@@ -7,6 +7,7 @@ export type AppUser = {
   lastPlayedAt?: string;
   country?: string;
   countryCode?: string;
+  phone?: string;
   championshipScore?: number;
   championshipTime?: number;
 };
@@ -48,7 +49,7 @@ async function readCurrentUser(): Promise<AppUser | null> {
   }
 }
 
-export async function signInAnonymous(displayName: string): Promise<AppUser> {
+export async function signInAnonymous(displayName: string, phone: string, country: string): Promise<AppUser> {
   const name = normalizeDisplayName(displayName);
   const existingUser = await readCurrentUser();
   const players = await readPlayers();
@@ -59,6 +60,8 @@ export async function signInAnonymous(displayName: string): Promise<AppUser> {
     displayName: name,
     score: players[uid]?.score ?? existingUser?.score ?? 0,
     lastPlayedAt: players[uid]?.lastPlayedAt ?? existingUser?.lastPlayedAt,
+    phone: phone.trim() || undefined,
+    country: country.trim() || undefined,
   };
 
   players[uid] = user;

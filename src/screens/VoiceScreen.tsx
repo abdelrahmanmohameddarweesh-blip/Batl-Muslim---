@@ -103,7 +103,6 @@ export default function VoiceScreen({ navigation }: any) {
   const [transcribedText, setTranscribedText] = useState('');
   const [textMatchDetails, setTextMatchDetails] = useState<{ matches: string[], missing: string[] } | null>(null);
   const [isTranscriptionSuccess, setIsTranscriptionSuccess] = useState(false);
-  const [parentApproved, setParentApproved] = useState<boolean>(false);
 
   // Pulse animation for recording button
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -236,8 +235,22 @@ export default function VoiceScreen({ navigation }: any) {
   const handleAnalyzeRecitation = async () => {
     if (!currentAyah || !selectedReader) return;
 
+    // Guard: Prevent empty/silent recordings
+    const avgAmplitude = meteringHistory.length > 0 
+      ? meteringHistory.reduce((sum, db) => sum + (db <= -60 ? 0 : (db + 60) / 60), 0) / meteringHistory.length 
+      : 0;
+
+    if (recordingDuration < 1000 || meteringHistory.length === 0 || avgAmplitude < 0.05) {
+      Alert.alert(
+        language === 'ar' ? 'لم يتم اكتشاف صوت 🎙️' : 'No Voice Detected 🎙️',
+        language === 'ar'
+          ? 'التسجيل فارغ أو هادئ جداً. يرجى التأكد من التحدث بوضوح بالقرب من الميكروفون.'
+          : 'The recording is empty or too quiet. Please speak clearly near the microphone.'
+      );
+      return;
+    }
+
     setStep('analyzing');
-    setParentApproved(false);
 
     let transcribed = '';
     let textScore = 0;
@@ -918,85 +931,7 @@ export default function VoiceScreen({ navigation }: any) {
               </View>
             )}
 
-            {/* Parent Verification Safeguard Card */}
-            <View style={{
-              backgroundColor: parentApproved ? '#ECFDF5' : (isLightMode ? '#FFFBEB' : '#1F1A12'),
-              borderColor: parentApproved ? '#10B981' : '#F59E0B',
-              borderWidth: 1,
-              borderRadius: 12,
-              padding: 14,
-              marginBottom: 16,
-            }}>
-              <Text style={{
-                fontSize: 13,
-                fontWeight: '700',
-                color: parentApproved ? '#047857' : '#D97706',
-                marginBottom: 4,
-                textAlign: 'right'
-              }}>
-                {language === 'ar' ? '🔐 بوابة مراجعة وتأكيد ولي الأمر (للآباء)' : '🔐 Parent Review & Approval Portal'}
-              </Text>
-              
-              <Text style={{
-                fontSize: 11,
-                color: colors.textSecondary,
-                lineHeight: 16,
-                textAlign: 'right',
-                marginBottom: 10
-              }}>
-                {language === 'ar'
-                  ? 'إذا كنت بجانب طفلك وتستمع لتلاوته وتؤكد أنها صحيحة بالكامل، يمكنك منح طفلك الدرجة الكاملة (١٠٠٪).'
-                  : 'If you are sitting with your child and confirm their recitation is correct, you can override and award them full marks.'}
-              </Text>
 
-              {parentApproved ? (
-                <View style={{ flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', paddingVertical: 4 }}>
-                  <Text style={{ fontSize: 15, fontWeight: '700', color: '#10B981' }}>
-                    🌟 {language === 'ar' ? 'تم تأكيد التلاوة ومنح الدرجة الكاملة!' : 'Recitation approved! Full marks granted!'}
-                  </Text>
-                </View>
-              ) : (
-                <TouchableOpacity
-                  style={{
-                    backgroundColor: '#F59E0B',
-                    borderRadius: 8,
-                    paddingVertical: 8,
-                    paddingHorizontal: 12,
-                    alignItems: 'center',
-                  }}
-                  onPress={async () => {
-                    setParentApproved(true);
-                    setScoreBreakdown(prev => ({
-                      ...prev,
-                      overall: 100,
-                    }));
-                    
-                    // Award full +25 XP
-                    if (user?.uid) {
-                      try {
-                        const profile = await getCurrentUserProfile(user.uid);
-                        const currentScore = profile?.score ?? 0;
-                        await saveUserScore(user.uid, currentScore + 25);
-                      } catch (err) {
-                        console.error('Failed to save parent override score', err);
-                      }
-                    }
-                    
-                    Alert.alert(
-                      language === 'ar' ? 'تم منح الدرجة الكاملة 🎉' : 'Full Score Awarded 🎉',
-                      language === 'ar' 
-                        ? 'تم تحديث النتيجة لـ ١٠٠٪ بنجاح بفضل مراجع التلاوة الأسرية!' 
-                        : 'Recitation marked as 100% correct via Parent Approval!'
-                    );
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 12 }}>
-                    {language === 'ar' ? '🎯 تأكيد قراءة طفلي الصحيحة بنسبة ١٠٠٪' : '🎯 Approve & Award 100% Score'}
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
 
             {/* Detailed breakdowns */}
             <View style={styles.breakdownList}>

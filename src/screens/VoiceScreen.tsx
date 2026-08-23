@@ -96,6 +96,7 @@ export default function VoiceScreen({ navigation }: any) {
     pronunciation: 0,
     tone: 0,
     rhythm: 0,
+    tajweed: 0,
     overall: 0,
   });
 
@@ -305,7 +306,7 @@ export default function VoiceScreen({ navigation }: any) {
     const refProfile = generateReferenceProfile(currentAyah.id, selectedReader.id, recitationStyle, currentAyah.text);
     const results = analyzeVocalImitation(meteringHistory, recordingDuration, refProfile);
 
-    let finalResults = { ...results };
+    let finalResults = { ...results } as any;
 
     if (apiSuccess && transcribed) {
       const textMatch = calculateTextMatchScore(transcribed, currentAyah.text);
@@ -321,6 +322,7 @@ export default function VoiceScreen({ navigation }: any) {
           pronunciation: 0,
           tone: 0,
           rhythm: 0,
+          tajweed: 0,
           overall: 0,
         };
       } else {
@@ -331,6 +333,7 @@ export default function VoiceScreen({ navigation }: any) {
           pronunciation: textScore,
           tone: results.tone,
           rhythm: results.rhythm,
+          tajweed: results.tajweed,
           overall: Math.min(100, Math.max(5, blendedOverall)),
         };
       }
@@ -344,6 +347,7 @@ export default function VoiceScreen({ navigation }: any) {
         pronunciation: 0,
         tone: 0,
         rhythm: 0,
+        tajweed: 0,
         overall: 0,
       };
     }
@@ -978,15 +982,19 @@ export default function VoiceScreen({ navigation }: any) {
             <View style={styles.breakdownList}>
               <View style={styles.breakdownRow}>
                 <Text style={styles.breakdownPercent}>{scoreBreakdown.pronunciation}%</Text>
-                <Text style={styles.breakdownLabel}>مخارج الحروف والتجويد (سكتات ومقاطع)</Text>
-              </View>
-              <View style={styles.breakdownRow}>
-                <Text style={styles.breakdownPercent}>{scoreBreakdown.rhythm}%</Text>
-                <Text style={styles.breakdownLabel}>إيقاع الترتيل والسرعة الزمنية</Text>
+                <Text style={styles.breakdownLabel}>مخارج الحروف ونطق الكلمات (Syllables)</Text>
               </View>
               <View style={styles.breakdownRow}>
                 <Text style={styles.breakdownPercent}>{scoreBreakdown.tone}%</Text>
-                <Text style={styles.breakdownLabel}>طبقة الصوت والتحكم بالنغمة (طاقة المقاطع)</Text>
+                <Text style={styles.breakdownLabel}>طبقة الصوت وتغيرات النغمة (Melody Contour)</Text>
+              </View>
+              <View style={styles.breakdownRow}>
+                <Text style={styles.breakdownPercent}>{scoreBreakdown.rhythm}%</Text>
+                <Text style={styles.breakdownLabel}>تنظيم النفس وإيقاع الترتيل (Pacing)</Text>
+              </View>
+              <View style={styles.breakdownRow}>
+                <Text style={styles.breakdownPercent}>{scoreBreakdown.tajweed || 0}%</Text>
+                <Text style={styles.breakdownLabel}>أحكام التجويد والمدود (Tajweed & Madd)</Text>
               </View>
             </View>
 

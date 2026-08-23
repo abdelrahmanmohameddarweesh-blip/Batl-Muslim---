@@ -237,7 +237,7 @@ export function analyzeVocalImitation(
 ) {
   // 1. Guard against empty/silent recordings
   if (userMetering.length === 0 || durationMs < 500) {
-    return { pronunciation: 5, tone: 5, rhythm: 5, overall: 5 };
+    return { pronunciation: 0, rhythm: 0, tone: 0, overall: 0 };
   }
 
   // Convert decibels to a 0.0 - 1.0 amplitude range
@@ -249,75 +249,111 @@ export function analyzeVocalImitation(
   const totalAmplitude = amplitudes.reduce((sum, a) => sum + a, 0);
   const averageAmplitude = totalAmplitude / amplitudes.length;
   
-  // Guard: If average amplitude is extremely quiet (silence/background hum), return minimal score
+  // Guard: If average amplitude is extremely quiet (silence/background hum), return 0
   if (averageAmplitude < 0.08) {
-    return { pronunciation: 8, tone: 8, rhythm: 8, overall: 8 };
+    return { pronunciation: 0, rhythm: 0, tone: 0, overall: 0 };
   }
 
-  // 2. Calculate Rhythm Score (الإيقاع)
-  // Compares how close user's duration is to the expected Qari duration, factoring in the Qari's strictness
+  // ==========================================
+  // EVALUATION PILLAR 1: PACING & RHYTHM (إيقاع الترتيل وتنظيم النفس)
+  // ==========================================
+  // Instead of overall duration check, compare pacing dynamically across 4 segments (quadrants)
+  const segmentSize = Math.floor(amplitudes.length / 4);
+  const targetSegmentSize = Math.floor(reference.targetEnvelope.length / 4);
+  
+  let segmentPacingPenalty = 0;
+  for (let i = 0; i < 4; i++) {
+    const userSeg = amplitudes.slice(i * segmentSize, (i + 1) * segmentSize);
+    const targetSeg = reference.targetEnvelope.slice(i * targetSegmentSize, (i + 1) * targetSegmentSize);
+    
+    const userSegEnergy = userSeg.reduce((s, val) => s + val, 0) / (userSeg.length || 1);
+    const targetSegEnergy = targetSeg.reduce((s, val) => s + val, 0) / (targetSeg.length || 1);
+    
+    // Check if user spent too much energy/time in this segment compared to target
+    segmentPacingPenalty += Math.abs(userSegEnergy - targetSegEnergy) * 20;
+  }
+
   const durationDiff = Math.abs(durationMs - reference.expectedDurationMs);
   const durationRatio = durationDiff / reference.expectedDurationMs;
-  let rhythmScore = Math.max(0, 100 - Math.round(durationRatio * 160 * reference.style.rhythmStrictness));
-  rhythmScore = Math.max(10, Math.min(100, rhythmScore));
+  let rhythmScore = Math.max(10, 100 - Math.round(durationRatio * 150 * reference.style.rhythmStrictness + segmentPacingPenalty));
+  rhythmScore = Math.min(100, rhythmScore);
 
-  // 3. Resample user envelope to match reference target envelope length (20 elements)
+  // Resample user envelope to match reference target envelope length (20 elements)
   const resampledUser = resampleArray(amplitudes, reference.targetEnvelope.length);
 
-  // 4. Tone/Style Match Score (طبقة الصوت والنغمة)
-  // Computes the Pearson correlation coefficient between user envelope shape and target Qari envelope shape
+  // ==========================================
+  // EVALUATION PILLAR 2: TONE & MELODY DIRECTION (طبقة الصوت وتغيرات النغمة)
+  // ==========================================
+  // Compare pitch changes using envelope slope trends (rise/fall direction)
+  let trendMatches = 0;
+  for (let i = 0; i < resampledUser.length - 1; i++) {
+    const userSlope = resampledUser[i + 1] - resampledUser[i];
+    const targetSlope = reference.targetEnvelope[i + 1] - reference.targetEnvelope[i];
+    
+    // Check if the voice moved in the same direction (e.g. rising tone, falling tone)
+    if ((userSlope > 0 && targetSlope > 0) || (userSlope < 0 && targetSlope < 0)) {
+      trendMatches++;
+    } else if (Math.abs(userSlope) < 0.05 && Math.abs(targetSlope) < 0.05) {
+      trendMatches++; // both stable/silent
+    }
+  }
+  const trendScore = Math.round((trendMatches / (resampledUser.length - 1)) * 100);
+
+  // Pearson correlation coefficient for dynamic shape similarity
   const correlation = calculatePearsonCorrelation(resampledUser, reference.targetEnvelope);
-  
-  let shapeScore = 10;
+  let correlationScore = 10;
   if (correlation > 0.45) {
-    // Normal similarity
-    shapeScore = Math.max(45, Math.min(100, Math.round(correlation * 100)));
+    correlationScore = Math.max(45, Math.min(100, Math.round(correlation * 100)));
   } else if (correlation > 0.15) {
-    // Weak similarity - scale down
-    shapeScore = Math.max(15, Math.round(correlation * 100 * 0.8));
+    correlationScore = Math.max(15, Math.round(correlation * 100 * 0.8));
   } else {
-    // Extremely poor or negative correlation - random sounds
-    shapeScore = Math.max(5, Math.min(15, Math.round((correlation + 1) * 10)));
+    correlationScore = Math.max(5, Math.min(15, Math.round((correlation + 1) * 10)));
   }
 
-  // 5. Evaluate Long Vowel (Madd) Emphasis (أحكام المد ومخارج الضغط)
-  // We compare user volume at vowelMaddIndices vs other parts.
-  let maddScore = 100;
-  if (reference.vowelMaddIndices.length > 0) {
-    let penalty = 0;
+  // Tone match is a blend of overall shape correlation and slope trend direction
+  const finalToneScore = Math.round((correlationScore * 0.6) + (trendScore * 0.4));
 
+  // ==========================================
+  // EVALUATION PILLAR 3: TAJWEED & VOCAL CONTROL (أحكام التجويد والتحكم الصوتي)
+  // ==========================================
+  // Evaluate Vowel Extensions (Madd) & Nasalization (Ghunnah) + Vocal Stability (no jittery shakes)
+  let tajweedPenalty = 0;
+  
+  // Vowel Madd Check
+  if (reference.vowelMaddIndices.length > 0) {
     reference.vowelMaddIndices.forEach(idx => {
-      // Find volume at this index
-      const val = resampledUser[idx];
+      const userVal = resampledUser[idx];
       const targetVal = reference.targetEnvelope[idx];
 
-      // If the Qari has a tall peak (> 0.7) but the user is quiet (< 0.48) at this syllable
-      if (targetVal > 0.65 && val < 0.48) {
-        penalty += 25 * reference.style.maddEmphasisWeight;
+      // User was quiet when Qari expected a long sustained vowel extension (Madd)
+      if (targetVal > 0.65 && userVal < 0.45) {
+        tajweedPenalty += 18 * reference.style.maddEmphasisWeight;
       }
-      // User is loud where Qari is quiet/steady
-      else if (targetVal < 0.35 && val > 0.65) {
-        penalty += 18 * reference.style.maddEmphasisWeight;
-      }
-    });
-
-    // General envelope difference check on non-Madd parts
-    let nonMaddDiff = 0;
-    reference.targetEnvelope.forEach((targetVal, idx) => {
-      if (!reference.vowelMaddIndices.includes(idx)) {
-        nonMaddDiff += Math.abs(resampledUser[idx] - targetVal);
+      // User was loud/emphasized when Qari expected a steady stop/breath (Saktah)
+      else if (targetVal < 0.25 && userVal > 0.60) {
+        tajweedPenalty += 14 * reference.style.maddEmphasisWeight;
       }
     });
-    const avgNonMaddDiff = nonMaddDiff / (reference.targetEnvelope.length - reference.vowelMaddIndices.length);
-    if (avgNonMaddDiff > 0.32) {
-      penalty += (avgNonMaddDiff * 40);
-    }
-
-    maddScore = Math.max(10, 100 - Math.round(penalty));
   }
 
-  // 6. Pronunciation/Syllable Peak Matching (مخارج الحروف وسكتات التلاوة)
-  // Detect where emphasis peaks occur in both profiles
+  // Micro-vibrato & Stability (Jitter emulation)
+  // Sudden sharp spikes in the user's voice indicates trembling/shaking (poor breath control)
+  let voiceTrembleCount = 0;
+  for (let i = 1; i < amplitudes.length - 1; i++) {
+    const microFluctuation = Math.abs(amplitudes[i] - (amplitudes[i - 1] + amplitudes[i + 1]) / 2);
+    if (microFluctuation > 0.35) {
+      voiceTrembleCount++;
+    }
+  }
+  const stabilityPenalty = Math.min(30, voiceTrembleCount * 4);
+  tajweedPenalty += stabilityPenalty;
+
+  const tajweedScore = Math.max(10, Math.min(100, 100 - Math.round(tajweedPenalty)));
+
+  // ==========================================
+  // EVALUATION PILLAR 4: PRONUNCIATION PEAKS (مخارج الحروف وسكتات التلاوة)
+  // ==========================================
+  // Compare how well user matched the Qari's syllable count and peak locations
   const detectPeaks = (arr: number[]) => {
     const peaks: number[] = [];
     for (let i = 1; i < arr.length - 1; i++) {
@@ -331,7 +367,7 @@ export function analyzeVocalImitation(
   const userPeaks = detectPeaks(resampledUser);
   const targetPeaks = detectPeaks(reference.targetEnvelope);
 
-  let pronunciationScore = 50; // lower default baseline
+  let pronunciationScore = 50;
   if (targetPeaks.length === 0) {
     pronunciationScore = userPeaks.length === 0 ? 95 : 40;
   } else if (userPeaks.length === 0) {
@@ -347,28 +383,34 @@ export function analyzeVocalImitation(
       distanceSum += minD;
     });
     const avgDistance = distanceSum / targetPeaks.length;
-    // Base score from spatial peak matching
-    let rawPronunciation = Math.round(100 - avgDistance * 360);
+    let rawPronunciation = Math.round(100 - avgDistance * 320);
     
-    // Deduct points for mismatch in peak density (talking too fast/slow or speaking gibberish)
+    // Penalty for matching wrong number of syllables/vowels
     const densityDiff = Math.abs(userPeaks.length - targetPeaks.length);
-    const densityPenalty = densityDiff * 14;
-    
+    const densityPenalty = densityDiff * 12;
     pronunciationScore = Math.max(10, Math.min(100, rawPronunciation - densityPenalty));
   }
 
-  // 7. Calculate final combined Tone score:
-  // Combines the Pearson envelope correlation with the vowel/Madd accent matching
-  const finalToneScore = Math.round((shapeScore * 0.65) + (maddScore * 0.35));
-
-  // 8. Calculate Weighted Overall Match
-  // Weight distribution: 40% Tone/Dynamics Match, 35% Syllable peaks/Pronunciation, 25% Pacing/Rhythm
-  const overall = Math.round((finalToneScore * 0.40) + (pronunciationScore * 0.35) + (rhythmScore * 0.25));
+  // ==========================================
+  // BLENDED OVERALL SCORE
+  // ==========================================
+  // Weight distribution: 
+  // 35% Word Pronunciation / Peaks
+  // 30% Tone & Melody matches
+  // 20% Tajweed & Vocal Stability
+  // 15% Pacing & Breath Rhythm
+  const overall = Math.round(
+    (pronunciationScore * 0.35) + 
+    (finalToneScore * 0.30) + 
+    (tajweedScore * 0.20) + 
+    (rhythmScore * 0.15)
+  );
 
   return {
     pronunciation: pronunciationScore,
     rhythm: rhythmScore,
     tone: finalToneScore,
+    tajweed: tajweedScore,
     overall: Math.min(100, Math.max(5, overall)),
   };
 }

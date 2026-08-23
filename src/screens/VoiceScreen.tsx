@@ -316,20 +316,36 @@ export default function VoiceScreen({ navigation }: any) {
       setTextMatchDetails(matchDetails);
       setIsTranscriptionSuccess(true);
 
-      // Blended Score: 55% Pronunciation Word Match, 25% Tone match, 20% Rhythm/Speed match
-      const blendedOverall = Math.round((textScore * 0.55) + (results.tone * 0.25) + (results.rhythm * 0.20));
-      
-      finalResults = {
-        pronunciation: textScore,
-        tone: results.tone,
-        rhythm: results.rhythm,
-        overall: Math.min(100, Math.max(5, blendedOverall)),
-      };
+      if (textScore < 45) {
+        finalResults = {
+          pronunciation: 0,
+          tone: 0,
+          rhythm: 0,
+          overall: 0,
+        };
+      } else {
+        // Blended Score: 55% Pronunciation Word Match, 25% Tone match, 20% Rhythm/Speed match
+        const blendedOverall = Math.round((textScore * 0.55) + (results.tone * 0.25) + (results.rhythm * 0.20));
+        
+        finalResults = {
+          pronunciation: textScore,
+          tone: results.tone,
+          rhythm: results.rhythm,
+          overall: Math.min(100, Math.max(5, blendedOverall)),
+        };
+      }
     } else {
-      // Offline/Failure Fallback
+      // Offline fallback: set overall to 0 to prevent point farming with random sounds offline
       setTranscribedText('');
       setTextMatchDetails(null);
       setIsTranscriptionSuccess(false);
+
+      finalResults = {
+        pronunciation: 0,
+        tone: 0,
+        rhythm: 0,
+        overall: 0,
+      };
     }
 
     setScoreBreakdown(finalResults);
@@ -830,6 +846,32 @@ export default function VoiceScreen({ navigation }: any) {
             </Text>
 
             {/* Overall score box */}
+            {scoreBreakdown.overall === 0 && (
+              <View style={{
+                backgroundColor: '#FEF2F2',
+                borderColor: '#EF4444',
+                borderWidth: 1.5,
+                borderRadius: 12,
+                padding: 16,
+                marginBottom: 16,
+                alignItems: 'center'
+              }}>
+                <Text style={{ fontSize: 24, marginBottom: 8 }}>❌</Text>
+                <Text style={{ fontSize: 15, fontWeight: '800', color: '#991B1B', textAlign: 'center', marginBottom: 4, fontFamily: 'IBMPlexSansArabic-Bold' }}>
+                  {language === 'ar' ? 'عذراً، لم تتطابق التلاوة!' : 'Recitation Mismatch!'}
+                </Text>
+                <Text style={{ fontSize: 12, color: '#B91C1C', textAlign: 'center', lineHeight: 18, fontFamily: 'IBMPlexSansArabic-Regular' }}>
+                  {isTranscriptionSuccess
+                    ? (language === 'ar'
+                      ? 'الكلمات التي نطقها طفلك لا تطابق الآية الكريمة المحددة. يرجى تلاوة الآية المكتوبة بوضوح وتجنب أي كلام جانبي.'
+                      : 'The words read do not match the target Quran verse. Please recite the written verse clearly.')
+                    : (language === 'ar'
+                      ? 'يجب الاتصال بالإنترنت للتحقق من الكلمات ونطق الآيات وكسب نقاط التحدي.'
+                      : 'Internet connection is required to verify recitation words and earn points.')}
+                </Text>
+              </View>
+            )}
+
             <View style={[
               styles.overallScoreBox,
               scoreBreakdown.overall < 40 && styles.scoreBoxLow,
@@ -960,7 +1002,7 @@ export default function VoiceScreen({ navigation }: any) {
             )}
 
             <View style={styles.actionRow}>
-              {!hasShared && (
+              {!hasShared && scoreBreakdown.overall > 0 && (
                 <TouchableOpacity 
                   style={[styles.primaryButton, { backgroundColor: colors.accent, marginBottom: 10 }]} 
                   onPress={handleShareToFeed} 
@@ -972,7 +1014,7 @@ export default function VoiceScreen({ navigation }: any) {
                 </TouchableOpacity>
               )}
 
-              {!hasSaved && (
+              {!hasSaved && scoreBreakdown.overall > 0 && (
                 <TouchableOpacity 
                   style={[styles.primaryButton, { backgroundColor: '#1E3A2F', borderColor: colors.primary, borderWidth: 1, marginBottom: 10 }]} 
                   onPress={handleSaveToProfile} 

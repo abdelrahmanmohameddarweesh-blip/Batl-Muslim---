@@ -317,7 +317,7 @@ export default function VoiceScreen({ navigation }: any) {
       setTextMatchDetails(matchDetails);
       setIsTranscriptionSuccess(true);
 
-      if (textScore < 45) {
+      if (textScore < 15) {
         finalResults = {
           pronunciation: 0,
           tone: 0,
@@ -333,28 +333,31 @@ export default function VoiceScreen({ navigation }: any) {
           pronunciation: textScore,
           tone: results.tone,
           rhythm: results.rhythm,
-          tajweed: results.tajweed,
+          tajweed: (results as any).tajweed || 0,
           overall: Math.min(100, Math.max(5, blendedOverall)),
         };
       }
     } else {
-      // Offline fallback: set overall to 0 to prevent point farming with random sounds offline
+      // Offline fallback: Show acoustic grades (Tone, Rhythm, Tajweed) but award 0 XP to prevent cheating
       setTranscribedText('');
       setTextMatchDetails(null);
       setIsTranscriptionSuccess(false);
 
+      const offlineOverall = Math.round((results.tone * 0.40) + (results.rhythm * 0.35) + (((results as any).tajweed || 0) * 0.25));
       finalResults = {
         pronunciation: 0,
-        tone: 0,
-        rhythm: 0,
-        tajweed: 0,
-        overall: 0,
+        tone: results.tone,
+        rhythm: results.rhythm,
+        tajweed: (results as any).tajweed || 0,
+        overall: Math.min(100, Math.max(5, offlineOverall)),
       };
     }
 
     setScoreBreakdown(finalResults);
     
-    const earnedPoints = Math.round((finalResults.overall / 100) * 25);
+    const earnedPoints = (!apiSuccess || finalResults.overall === 0)
+      ? 0 
+      : Math.round((finalResults.overall / 100) * 25);
     setPendingScoreData({ results: finalResults, earnedPoints });
 
     if (isLoaded) {

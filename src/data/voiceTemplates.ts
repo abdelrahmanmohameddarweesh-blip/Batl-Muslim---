@@ -229,6 +229,21 @@ function calculatePearsonCorrelation(x: number[], y: number[]): number {
   return numerator / Math.sqrt(denX * denY);
 }
 
+function stripSilence(arr: number[], threshold = 0.12): number[] {
+  let startIdx = 0;
+  while (startIdx < arr.length && arr[startIdx] < threshold) {
+    startIdx++;
+  }
+  
+  let endIdx = arr.length - 1;
+  while (endIdx > startIdx && arr[endIdx] < threshold) {
+    endIdx--;
+  }
+  
+  if (startIdx >= endIdx) return [];
+  return arr.slice(startIdx, endIdx + 1);
+}
+
 // Helper to analyze user metering array and compute comparison scores
 export function analyzeVocalImitation(
   userMetering: number[], // List of decibels (-160 to 0)
@@ -254,32 +269,44 @@ export function analyzeVocalImitation(
     return { pronunciation: 0, rhythm: 0, tone: 0, overall: 0 };
   }
 
+  // Align signals by stripping initial and trailing silence (latency immunity)
+  const activeUser = stripSilence(amplitudes);
+  const activeTarget = stripSilence(reference.targetEnvelope);
+
+  if (activeUser.length === 0 || activeTarget.length === 0) {
+    return { pronunciation: 0, rhythm: 0, tone: 0, overall: 0 };
+  }
+
+  // Calculate active speaking durations
+  const userActiveDuration = (activeUser.length / amplitudes.length) * durationMs;
+  const targetActiveDuration = reference.expectedDurationMs;
+
   // ==========================================
   // EVALUATION PILLAR 1: PACING & RHYTHM (إيقاع الترتيل وتنظيم النفس)
   // ==========================================
-  // Instead of overall duration check, compare pacing dynamically across 4 segments (quadrants)
-  const segmentSize = Math.floor(amplitudes.length / 4);
-  const targetSegmentSize = Math.floor(reference.targetEnvelope.length / 4);
+  // Compare pacing dynamically across 4 quadrants of the aligned active envelopes
+  const segmentSize = Math.floor(activeUser.length / 4);
+  const targetSegmentSize = Math.floor(activeTarget.length / 4);
   
   let segmentPacingPenalty = 0;
   for (let i = 0; i < 4; i++) {
-    const userSeg = amplitudes.slice(i * segmentSize, (i + 1) * segmentSize);
-    const targetSeg = reference.targetEnvelope.slice(i * targetSegmentSize, (i + 1) * targetSegmentSize);
+    const userSeg = activeUser.slice(i * segmentSize, (i + 1) * segmentSize);
+    const targetSeg = activeTarget.slice(i * targetSegmentSize, (i + 1) * targetSegmentSize);
     
     const userSegEnergy = userSeg.reduce((s, val) => s + val, 0) / (userSeg.length || 1);
     const targetSegEnergy = targetSeg.reduce((s, val) => s + val, 0) / (targetSeg.length || 1);
     
-    // Check if user spent too much energy/time in this segment compared to target
-    segmentPacingPenalty += Math.abs(userSegEnergy - targetSegEnergy) * 20;
+    segmentPacingPenalty += Math.abs(userSegEnergy - targetSegEnergy) * 15;
   }
 
-  const durationDiff = Math.abs(durationMs - reference.expectedDurationMs);
-  const durationRatio = durationDiff / reference.expectedDurationMs;
-  let rhythmScore = Math.max(10, 100 - Math.round(durationRatio * 150 * reference.style.rhythmStrictness + segmentPacingPenalty));
+  const durationDiff = Math.abs(userActiveDuration - targetActiveDuration);
+  const durationRatio = durationDiff / targetActiveDuration;
+  let rhythmScore = Math.max(10, 100 - Math.round(durationRatio * 130 * reference.style.rhythmStrictness + segmentPacingPenalty));
   rhythmScore = Math.min(100, rhythmScore);
 
-  // Resample user envelope to match reference target envelope length (20 elements)
-  const resampledUser = resampleArray(amplitudes, reference.targetEnvelope.length);
+  // Resample aligned user and target envelopes to standard 20 elements
+  const resampledUser = resampleArray(activeUser, 20);
+  const resampledTarget = resampleArray(activeTarget, 20);
 
   // ==========================================
   // EVALUATION PILLAR 2: TONE & MELODY DIRECTION (طبقة الصوت وتغيرات النغمة)
@@ -288,7 +315,7 @@ export function analyzeVocalImitation(
   let trendMatches = 0;
   for (let i = 0; i < resampledUser.length - 1; i++) {
     const userSlope = resampledUser[i + 1] - resampledUser[i];
-    const targetSlope = reference.targetEnvelope[i + 1] - reference.targetEnvelope[i];
+    const targetSlope = resampledTarget[i + 1] - resampledTarget[i];
     
     // Check if the voice moved in the same direction (e.g. rising tone, falling tone)
     if ((userSlope > 0 && targetSlope > 0) || (userSlope < 0 && targetSlope < 0)) {
@@ -300,7 +327,7 @@ export function analyzeVocalImitation(
   const trendScore = Math.round((trendMatches / (resampledUser.length - 1)) * 100);
 
   // Pearson correlation coefficient for dynamic shape similarity
-  const correlation = calculatePearsonCorrelation(resampledUser, reference.targetEnvelope);
+  const correlation = calculatePearsonCorrelation(resampledUser, resampledTarget);
   let correlationScore = 10;
   if (correlation > 0.45) {
     correlationScore = Math.max(45, Math.min(100, Math.round(correlation * 100)));
@@ -323,7 +350,7 @@ export function analyzeVocalImitation(
   if (reference.vowelMaddIndices.length > 0) {
     reference.vowelMaddIndices.forEach(idx => {
       const userVal = resampledUser[idx];
-      const targetVal = reference.targetEnvelope[idx];
+      const targetVal = resampledTarget[idx];
 
       // User was quiet when Qari expected a long sustained vowel extension (Madd)
       if (targetVal > 0.65 && userVal < 0.45) {
@@ -365,7 +392,7 @@ export function analyzeVocalImitation(
   };
 
   const userPeaks = detectPeaks(resampledUser);
-  const targetPeaks = detectPeaks(reference.targetEnvelope);
+  const targetPeaks = detectPeaks(resampledTarget);
 
   let pronunciationScore = 50;
   if (targetPeaks.length === 0) {

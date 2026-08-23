@@ -426,12 +426,48 @@ export function normalizeArabicText(text: string): string {
     .trim();
 }
 
+function getLevenshteinDistance(a: string, b: string): number {
+  const matrix: number[][] = [];
+  for (let i = 0; i <= b.length; i++) {
+    matrix[i] = [i];
+  }
+  for (let j = 0; j <= a.length; j++) {
+    matrix[0][j] = j;
+  }
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1, // substitution
+          matrix[i][j - 1] + 1,     // insertion
+          matrix[i - 1][j] + 1      // deletion
+        );
+      }
+    }
+  }
+  return matrix[b.length][a.length];
+}
+
+function isWordSimilar(w1: string, w2: string): boolean {
+  if (w1 === w2) return true;
+  // If one is a substring of the other and they are long enough
+  if (w1.length > 3 && (w2.includes(w1) || w1.includes(w2))) return true;
+  
+  const distance = getLevenshteinDistance(w1, w2);
+  const maxLength = Math.max(w1.length, w2.length);
+  // Allow 1 character difference for short words, and 2 for longer words
+  const threshold = maxLength > 5 ? 2 : 1;
+  return distance <= threshold;
+}
+
 export function calculateTextMatchScore(transcribed: string, target: string): { score: number, matches: string[], missing: string[] } {
   const normTrans = normalizeArabicText(transcribed);
   const normTarget = normalizeArabicText(target);
 
-  const wordsTrans = normTrans.split(' ').filter(Boolean);
-  const wordsTarget = normTarget.split(' ').filter(Boolean);
+  const wordsTrans = normTrans.split(/\s+/).filter(Boolean);
+  const wordsTarget = normTarget.split(/\s+/).filter(Boolean);
 
   if (wordsTarget.length === 0) {
     return { score: 0, matches: [], missing: [] };
@@ -440,15 +476,13 @@ export function calculateTextMatchScore(transcribed: string, target: string): { 
   const matches: string[] = [];
   const missing: string[] = [];
 
-  let targetIdx = 0;
-  wordsTarget.forEach((word) => {
-    // Find matching word starting from last found position to preserve reading sequence
-    const foundIdx = wordsTrans.indexOf(word, targetIdx);
-    if (foundIdx !== -1) {
-      matches.push(word);
-      targetIdx = foundIdx + 1;
+  wordsTarget.forEach((tWord) => {
+    // Fuzzy check against transcribed words to allow minor transcription variations
+    const isMatched = wordsTrans.some(w => isWordSimilar(w, tWord));
+    if (isMatched) {
+      matches.push(tWord);
     } else {
-      missing.push(word);
+      missing.push(tWord);
     }
   });
 

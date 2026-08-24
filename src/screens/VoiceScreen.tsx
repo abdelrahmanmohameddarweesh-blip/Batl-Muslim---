@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Animated, ScrollView, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Animated, ScrollView, Alert, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
 import { readers, type Reader } from '../data/readers';
@@ -302,9 +302,47 @@ export default function VoiceScreen({ navigation }: any) {
       console.warn('Failed to load local recording file for transcription:', err);
     }
 
-    // Run local acoustic feature comparison
+    // Run local acoustic feature comparison via local Python DSP server
+    let dspResults = null;
+    let dspSuccess = false;
+
+    try {
+      const fileUri = recording?.getURI();
+      if (fileUri) {
+        const formData = new FormData();
+        formData.append('audio', {
+          uri: fileUri,
+          name: 'recitation.m4a',
+          type: 'audio/m4a',
+        } as any);
+        formData.append('reader', selectedReader.id);
+        formData.append('ayah', currentAyah.id);
+        formData.append('style', recitationStyle);
+
+        const serverIp = Platform.OS === 'android' ? '10.0.2.2' : 'localhost';
+        const dspResponse = await fetch(`http://${serverIp}:5000/analyze`, {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+        
+        const dspData = await dspResponse.json();
+        if (dspData && !dspData.error) {
+          dspResults = dspData;
+          dspSuccess = true;
+        } else {
+          console.warn('DSP Server error response:', dspData?.error);
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to communicate with local DSP Server, falling back to local model:', e);
+    }
+
     const refProfile = generateReferenceProfile(currentAyah.id, selectedReader.id, recitationStyle, currentAyah.text);
-    const results = analyzeVocalImitation(meteringHistory, recordingDuration, refProfile);
+    const fallbackResults = analyzeVocalImitation(meteringHistory, recordingDuration, refProfile);
+    const results = dspSuccess && dspResults ? dspResults : fallbackResults;
 
     let finalResults = { ...results } as any;
 

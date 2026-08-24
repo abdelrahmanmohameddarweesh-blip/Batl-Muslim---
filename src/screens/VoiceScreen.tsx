@@ -320,7 +320,7 @@ export default function VoiceScreen({ navigation }: any) {
         formData.append('style', recitationStyle);
 
         const serverIp = Platform.OS === 'android' ? '10.0.2.2' : 'localhost';
-        const dspResponse = await fetch(`http://${serverIp}:5000/analyze`, {
+        const dspResponse = await fetch(`http://${serverIp}:5001/analyze`, {
           method: 'POST',
           body: formData,
           headers: {

@@ -310,7 +310,7 @@ export function analyzeVocalImitation(
 
   const durationDiff = Math.abs(userActiveDuration - targetActiveDuration);
   const durationRatio = durationDiff / targetActiveDuration;
-  let rhythmScore = Math.max(40, 100 - Math.round(durationRatio * 75 * reference.style.rhythmStrictness + segmentPacingPenalty));
+  let rhythmScore = Math.max(75, 100 - Math.round(durationRatio * 25 * reference.style.rhythmStrictness + segmentPacingPenalty));
   rhythmScore = Math.min(100, rhythmScore);
 
   // Resample aligned user and target envelopes to standard 20 elements
@@ -333,11 +333,11 @@ export function analyzeVocalImitation(
       trendMatches++; // both stable/silent
     }
   }
-  const trendScore = Math.max(30, Math.round((trendMatches / (resampledUser.length - 1)) * 100));
+  const trendScore = Math.max(70, Math.round((trendMatches / (resampledUser.length - 1)) * 100));
 
   // Pearson correlation coefficient for dynamic shape similarity
   const correlation = calculatePearsonCorrelation(resampledUser, resampledTarget);
-  const correlationScore = Math.max(40, Math.round((correlation + 1) * 50));
+  const correlationScore = Math.max(75, Math.round((correlation + 1) * 50));
 
   // Tone match is a blend of overall shape correlation and slope trend direction
   const finalToneScore = Math.round((correlationScore * 0.5) + (trendScore * 0.5));
@@ -377,7 +377,7 @@ export function analyzeVocalImitation(
   const stabilityPenalty = Math.min(25, voiceTrembleCount * 3);
   tajweedPenalty += stabilityPenalty;
 
-  const tajweedScore = Math.max(40, Math.min(100, 100 - Math.round(tajweedPenalty * 0.6)));
+  const tajweedScore = Math.max(80, Math.min(100, 100 - Math.round(tajweedPenalty * 0.4)));
 
   // ==========================================
   // EVALUATION PILLAR 4: PRONUNCIATION PEAKS (مخارج الحروف وسكتات التلاوة)
@@ -417,7 +417,7 @@ export function analyzeVocalImitation(
     // Penalty for matching wrong number of syllables/vowels
     const densityDiff = Math.abs(userPeaks.length - targetPeaks.length);
     const densityPenalty = densityDiff * 6;
-    pronunciationScore = Math.max(40, Math.min(100, rawPronunciation - densityPenalty));
+    pronunciationScore = Math.max(75, Math.min(100, rawPronunciation - densityPenalty));
   }
 
   // Weight distribution: 

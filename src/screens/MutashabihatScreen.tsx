@@ -7,76 +7,125 @@ import Svg, { Path, Rect, Circle } from 'react-native-svg';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-// --- QURAN PALACE VECTOR SVG LAYERS ---
-// Fully scalable, layered vector representation of a majestic Islamic Palace
+// --- DETAILED QURAN PALACE VECTOR SVG LAYERS ---
+// Scalable, high-fidelity skeuomorphic vector designs for the Palace elements
 
-function PalaceBaseLayer({ color = '#8E8070' }) {
+function PalaceBaseLayer() {
   return (
-    <Svg width="180" height="25" viewBox="0 0 180 25" fill="none">
-      {/* Base Platform */}
-      <Rect width="180" height="15" y="10" rx="3" fill={color} />
-      <Rect width="150" height="6" x="15" y="4" rx="2" fill="#5D5247" />
-      <Path d="M45 25h90v-5H45z" fill="#3E352E" />
+    <Svg width="220" height="40" viewBox="0 0 220 40" fill="none">
+      {/* Tier 1 (Lowest Platform) */}
+      <Rect width="220" height="15" y="22" rx="4" fill="#7E7264" stroke="#4D4338" strokeWidth="1" />
+      <Path d="M10 22h200v2H10z" fill="#FFFDF0" opacity="0.15" />
+      {/* Tier 2 (Middle Step) */}
+      <Rect width="190" height="10" x="15" y="12" rx="3" fill="#A39687" stroke="#6C6053" strokeWidth="1" />
+      {/* Tier 3 (Upper Step) */}
+      <Rect width="160" height="7" x="30" y="5" rx="2" fill="#C5B8A9" stroke="#8E8071" strokeWidth="1" />
+      {/* Tile Joints */}
+      <Path d="M40 37v-15M80 37v-15M120 37v-15M160 37v-15M180 37v-15" stroke="#3E352E" strokeWidth="1" opacity="0.3" />
+      <Path d="M50 22v-10M110 22v-10M170 22v-10" stroke="#3E352E" strokeWidth="1" opacity="0.3" />
     </Svg>
   );
 }
 
-function PalaceWallsLayer({ color = '#FFFDF0' }) {
+function PalaceWallsLayer() {
   return (
-    <Svg width="110" height="75" viewBox="0 0 110 75" fill="none">
-      {/* Main Palace Hall Walls */}
-      <Rect width="110" height="70" y="5" rx="4" fill={color} stroke="#D4AF37" strokeWidth="1.5" />
-      {/* Main Arch Doorway */}
-      <Path d="M38 75V45c0-8 6-15 17-15s17 7 17 15v30H38z" fill="#B89742" />
-      <Path d="M42 75V48c0-5 5-10 13-10s13 5 13 10v27H42z" fill="#3D1C06" />
-      {/* Window Arches */}
-      <Path d="M12 45V30c0-4 3-7 7-7s7 3 7 7v15H12z" fill="#3D1C06" stroke="#D4AF37" />
-      <Path d="M74 45V30c0-4 3-7 7-7s7 3 7 7v15H74z" fill="#3D1C06" stroke="#D4AF37" />
+    <Svg width="130" height="85" viewBox="0 0 130 85" fill="none">
+      {/* Main Palace Hall Walls with Marble Texture */}
+      <Rect width="130" height="80" y="5" rx="6" fill="#FFFDF0" stroke="#D4AF37" strokeWidth="2" />
+      
+      {/* Islamic Arch Border around doorway */}
+      <Rect width="48" height="60" x="41" y="25" rx="4" fill="none" stroke="#D4AF37" strokeWidth="1.2" strokeDasharray="3,3" />
+      
+      {/* Main Entrance Archway */}
+      <Path d="M45 85V48c0-11 8-20 20-20s20 9 20 20v37H45z" fill="#B89742" stroke="#3D1C06" strokeWidth="1.5" />
+      <Path d="M49 85V51c0-8 7-14 16-14s16 6 16 14v34H49z" fill="#1F2937" />
+      
+      {/* Inset Decorative door grills */}
+      <Path d="M57 37v48M65 37v48M73 37v48" stroke="#D4AF37" strokeWidth="0.8" opacity="0.4" />
+
+      {/* Intricate Arched Windows (Left & Right) */}
+      <Path d="M12 48V30c0-6 4-10 9-10s9 4 9 10v18H12z" fill="#111827" stroke="#D4AF37" strokeWidth="1.5" />
+      <Path d="M12 36h18M21 20v28" stroke="#D4AF37" strokeWidth="1" />
+      
+      <Path d="M100 48V30c0-6 4-10 9-10s9 4 9 10v18H100z" fill="#111827" stroke="#D4AF37" strokeWidth="1.5" />
+      <Path d="M100 36h18M109 20v28" stroke="#D4AF37" strokeWidth="1" />
+
+      {/* Roof trim details */}
+      <Rect width="134" height="6" x="-2" y="0" fill="#D4AF37" />
     </Svg>
   );
 }
 
-function PalacePillarsLayer({ color = '#E6DCC5' }) {
+function PalacePillarsLayer() {
   return (
-    <Svg width="130" height="75" viewBox="0 0 130 75" fill="none">
-      {/* Side Pillars/Columns supporting the roof */}
-      <Rect width="12" height="68" x="2" y="7" rx="2" fill={color} stroke="#A4957D" />
-      <Rect width="16" height="6" x="0" y="2" rx="1" fill="#A4957D" />
-      <Rect width="16" height="6" x="0" y="71" rx="1" fill="#A4957D" />
+    <Svg width="150" height="85" viewBox="0 0 150 85" fill="none">
+      {/* Flanking Columns with Capitals */}
+      {/* Left Column */}
+      <Rect width="14" height="74" x="4" y="8" rx="2" fill="#EADFCE" stroke="#A4957D" strokeWidth="1" />
+      {/* Column grooves */}
+      <Path d="M8 8v74M14 8v74" stroke="#FFFDF0" strokeWidth="0.8" />
+      {/* Golden Capital */}
+      <Path d="M0 8h22v-4H0v4z" fill="#D4AF37" stroke="#3D1C06" strokeWidth="1" />
+      {/* Column Base */}
+      <Rect width="20" height="6" x="1" y="79" rx="1.5" fill="#A4957D" />
 
-      <Rect width="12" height="68" x="116" y="7" rx="2" fill={color} stroke="#A4957D" />
-      <Rect width="16" height="6" x="114" y="2" rx="1" fill="#A4957D" />
-      <Rect width="16" height="6" x="114" y="71" rx="1" fill="#A4957D" />
+      {/* Right Column */}
+      <Rect width="14" height="74" x="132" y="8" rx="2" fill="#EADFCE" stroke="#A4957D" strokeWidth="1" />
+      <Path d="M136 8v74M142 8v74" stroke="#FFFDF0" strokeWidth="0.8" />
+      <Path d="M128 8h22v-4h-22v4z" fill="#D4AF37" stroke="#3D1C06" strokeWidth="1" />
+      <Rect width="20" height="6" x="129" y="79" rx="1.5" fill="#A4957D" />
     </Svg>
   );
 }
 
-function PalaceMinaretLayer({ color = '#FFFDF0' }) {
+function PalaceMinaretLayer() {
   return (
-    <Svg width="35" height="135" viewBox="0 0 35 135" fill="none">
-      {/* Tall Minaret Tower */}
-      <Rect width="16" height="90" x="9.5" y="45" fill={color} stroke="#D4AF37" />
-      {/* Balcony */}
-      <Rect width="24" height="8" x="5.5" y="37" rx="2" fill="#B89742" />
-      <Path d="M6 37l11.5-12L29 37H6z" fill="#3D1C06" />
-      {/* Upper Shaft */}
-      <Rect width="10" height="25" x="12.5" y="12" fill={color} />
-      {/* Dome top of minaret */}
-      <Path d="M12.5 12c0-8 5-12 5-12s5 4 5 12h-10z" fill="#D4AF37" />
-      <Circle cx="17.5" cy="2" r="1.5" fill="#3D1C06" />
+    <Svg width="45" height="155" viewBox="0 0 45 155" fill="none">
+      {/* Tower Base */}
+      <Rect width="18" height="105" x="13.5" y="50" fill="#FFFDF0" stroke="#D4AF37" strokeWidth="1.5" />
+      {/* Brick texture lines */}
+      <Path d="M13.5 70h18M13.5 90h18M13.5 110h18M13.5 130h18" stroke="#E5DDD0" strokeWidth="0.8" />
+
+      {/* Balcony 1 */}
+      <Rect width="28" height="8" x="8.5" y="42" rx="2" fill="#B89742" stroke="#3D1C06" strokeWidth="1" />
+      {/* Balcony Railings */}
+      <Path d="M9 42h17v-4H9v4z" fill="#1F2937" />
+      <Path d="M12 38v4M16 38v4M20 38v4M24 38v4" stroke="#D4AF37" strokeWidth="0.8" />
+
+      {/* Upper Spire Shaft */}
+      <Rect width="12" height="30" x="16.5" y="12" fill="#FFFDF0" stroke="#D4AF37" strokeWidth="1.2" />
+
+      {/* Balcony 2 */}
+      <Rect width="20" height="6" x="12.5" y="9" rx="1.5" fill="#B89742" />
+
+      {/* Dome Top of Minaret */}
+      <Path d="M14.5 9c0-6 8-10 8-10s8 4 8 10h-16z" fill="#D4AF37" stroke="#3D1C06" strokeWidth="1" />
+      <Path d="M22.5-1v-4" stroke="#D4AF37" strokeWidth="1.5" />
     </Svg>
   );
 }
 
-function PalaceDomeLayer({ color = '#D4AF37' }) {
+function PalaceDomeLayer() {
   return (
-    <Svg width="70" height="55" viewBox="0 0 70 55" fill="none">
-      {/* Golden Crowning Dome */}
-      <Path d="M5 50c0-28 20-45 30-45s30 17 30 45H5z" fill={color} />
-      <Path d="M12 50c0-22 17-37 23-37s23 15 23 37H12z" fill="#B89742" />
-      {/* Crescent Spire */}
-      <Rect width="3" height="15" x="33.5" fill="#B89742" />
-      <Circle cx="35" cy="3" r="3" fill="#D4AF37" />
+    <Svg width="90" height="70" viewBox="0 0 90 70" fill="none">
+      {/* Base Ring with small windows */}
+      <Rect width="62" height="10" x="14" y="45" fill="#B89742" stroke="#3D1C06" strokeWidth="1" />
+      <Rect width="6" height="6" x="22" y="47" rx="1" fill="#1F2937" />
+      <Rect width="6" height="6" x="34" y="47" rx="1" fill="#1F2937" />
+      <Rect width="6" height="6" x="46" y="47" rx="1" fill="#1F2937" />
+      <Rect width="6" height="6" x="58" y="47" rx="1" fill="#1F2937" />
+      
+      {/* Main Dome Body */}
+      <Path d="M15 45C15 15 35 5 45 5s30 10 30 40H15z" fill="#D4AF37" stroke="#3D1C06" strokeWidth="1.8" />
+      {/* 3D Fluting / Segment Lines */}
+      <Path d="M45 5c-8 10-15 25-15 40" stroke="#B89742" strokeWidth="1.5" />
+      <Path d="M45 5c8 10 15 25 15 40" stroke="#B89742" strokeWidth="1.5" />
+      <Path d="M45 5c-2 12-5 28-5 40" stroke="#F5B841" strokeWidth="1" />
+      <Path d="M45 5c2 12 5 28 5 40" stroke="#F5B841" strokeWidth="1" />
+      
+      {/* Golden Spire & Crescent */}
+      <Path d="M45 5V-4" stroke="#D4AF37" strokeWidth="2.5" />
+      <Circle cx="45" cy="-5" r="2.5" fill="#D4AF37" />
     </Svg>
   );
 }
@@ -122,7 +171,7 @@ export default function MutashabihatScreen({ navigation }: any) {
     setScreenState('quiz');
   };
 
-  // Handle Option selection and trigger dedicated Palace Construction transition Screen
+  // Handle Option selection and trigger full-screen Palace Construction transition Screen
   const handleSelectOption = (option: string) => {
     if (answered) return;
     setSelectedAnswer(option);
@@ -131,10 +180,15 @@ export default function MutashabihatScreen({ navigation }: any) {
     const isCorrect = option === currentQuestion.answer;
     setOverlayCorrect(isCorrect);
 
-    // Identify which segment of the palace is unlocked with this correct answer
-    // Segments: 1: Walls, 2: Pillars, 3: Minaret, 4: Golden Dome, 5: Crescent/Spire
-    const segmentNames = ['جدران القصر', 'أعمدة القصر الخارجية', 'مئذنة القصر الكبرى', 'القبة الذهبية الملكية', 'هلال القمة والنصر'];
-    const activeSegment = segmentNames[correctCount] || 'ملحقات القصر';
+    // Identify which specific segment of the palace is unlocked
+    const segmentNames = [
+      'جدران المحراب والرخام الداخلي',
+      'أعمدة المدخل الرخامية المزخرفة',
+      'مئذنة القصر الكبرى والشرفات النحاسية',
+      'القبة الذهبية المنقوشة',
+      'هلال الهيكل وقرص النصر'
+    ];
+    const activeSegment = segmentNames[correctCount] || 'ملحقات الزخرفة';
     setUnlockedSegment(activeSegment);
 
     if (isCorrect) {
@@ -148,23 +202,21 @@ export default function MutashabihatScreen({ navigation }: any) {
     pieceGlowAnim.setValue(0);
 
     Animated.sequence([
-      // 1. Fade-in the serene construction site scene
       Animated.timing(overlayOpacity, {
         toValue: 1,
         duration: 400,
         useNativeDriver: true,
       }),
-      // 2. If correct, play the physical puzzle piece falling from the sky onto the palace structure
       isCorrect 
         ? Animated.sequence([
             Animated.timing(pieceFlyAnim, {
               toValue: 1,
-              duration: 1000,
+              duration: 950,
               useNativeDriver: true,
             }),
             Animated.timing(pieceGlowAnim, {
               toValue: 1,
-              duration: 400,
+              duration: 350,
               useNativeDriver: true,
             })
           ])
@@ -174,7 +226,6 @@ export default function MutashabihatScreen({ navigation }: any) {
 
   // Move to next question or show results
   const handleNextQuestion = () => {
-    // Fade out overlay first
     Animated.timing(overlayOpacity, {
       toValue: 0,
       duration: 300,
@@ -213,12 +264,12 @@ export default function MutashabihatScreen({ navigation }: any) {
   // Interpolations for the falling palace piece block
   const fallingPieceY = pieceFlyAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [-200, 0], // falls from sky onto its slot
+    outputRange: [-250, 0],
   });
 
   const fallingPieceScale = pieceFlyAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [1.6, 1],
+    outputRange: [1.7, 1],
   });
 
   const fallingPieceOpacity = pieceFlyAnim.interpolate({
@@ -247,7 +298,7 @@ export default function MutashabihatScreen({ navigation }: any) {
               تحدي بناء قصر المتشابهات
             </Text>
             <Text style={[styles.infoDesc, { color: colors.textSecondary }]}>
-              اختبر قوة حفظك في متشابهات القرآن الكريم. كل إجابة صحيحة تركب قطعة جديدة في قصرك وتكمل بناء المعلم الإسلامي الفاخر.
+              اختبر قوة حفظك في متشابهات القرآن الكريم. كل إجابة صحيحة تضيف قطعة مزخرفة جديدة في قصرك وتكمل بناء المعلم الإسلامي الفاخر.
             </Text>
           </View>
 
@@ -338,7 +389,7 @@ export default function MutashabihatScreen({ navigation }: any) {
       {/* Results State */}
       {screenState === 'results' && (
         <ScrollView contentContainerStyle={styles.resultsScroll}>
-          {/* Fully Built Palace Showcase */}
+          {/* Fully Built Detailed Palace Showcase */}
           <View style={styles.showcaseBox}>
             <View style={styles.palaceContainer}>
               <PalaceBaseLayer />
@@ -347,7 +398,7 @@ export default function MutashabihatScreen({ navigation }: any) {
               <View style={{ position: 'absolute', bottom: 85 }}><PalaceDomeLayer /></View>
               <View style={{ position: 'absolute', bottom: 15, right: 0 }}><PalaceMinaretLayer /></View>
             </View>
-            <Text style={styles.showcaseLabel}>لقد اكتمل تشييد قصر المتشابهات الخاص بك!</Text>
+            <Text style={styles.showcaseLabel}>لقد اكتمل تشييد قصر المتشابهات الفاخر الخاص بك!</Text>
           </View>
 
           <View style={[styles.scoreCircle, { borderColor: colors.primary }]}>
@@ -392,10 +443,14 @@ export default function MutashabihatScreen({ navigation }: any) {
       {/* --- SEPARATE FULL-SCREEN PALACE CONSTRUCTION SITE OVERLAY --- */}
       {showPalaceOverlay && (
         <Animated.View style={[styles.overlayContainer, { opacity: overlayOpacity }]}>
-          {/* Dusk Sky Scenic Background */}
+          {/* Cosmic Dusk Sky Scenic Background */}
           <View style={styles.skyBackground}>
-            {/* Sunrise Glow circle */}
             <View style={styles.sunriseSun} />
+            {/* Glowing Stars */}
+            <View style={[styles.star, { top: 40, left: 30 }]} />
+            <View style={[styles.star, { top: 80, right: 60 }]} />
+            <View style={[styles.star, { top: 120, left: 120, width: 4, height: 4 }]} />
+            <View style={[styles.star, { top: 60, right: 150 }]} />
           </View>
 
           <Text style={styles.overlayHeader}>قصر المتشابهات (تحت التشييد)</Text>
@@ -475,12 +530,12 @@ export default function MutashabihatScreen({ navigation }: any) {
           {overlayCorrect ? (
             <View style={styles.statusBox}>
               <Text style={styles.statusTitle}>✅ إجابة صحيحة!</Text>
-              <Text style={styles.statusSubtitle}>تم تجميع وتركيب: {unlockedSegment} (+10 XP)</Text>
+              <Text style={styles.statusSubtitle}>تم تشييد وتركيب: {unlockedSegment} (+10 XP)</Text>
             </View>
           ) : (
-            <View style={[styles.statusBox, { backgroundColor: '#FDF2F2' }]}>
+            <View style={[styles.statusBox, { backgroundColor: '#FDF2F2', borderColor: '#EF4444' }]}>
               <Text style={[styles.statusTitle, { color: '#E74C3C' }]}>❌ إجابة خاطئة</Text>
-              <Text style={[styles.statusSubtitle, { color: '#C0392B' }]}>فشل تركيب القطعة، راجع التوضيح بالأسفل لإتمام البناء لاحقاً.</Text>
+              <Text style={[styles.statusSubtitle, { color: '#C0392B' }]}>فشل تركيب القطعة الفنية، راجع التوضيح بالأسفل لإتمام البناء لاحقاً.</Text>
             </View>
           )}
 
@@ -728,7 +783,7 @@ const styles = StyleSheet.create({
   // --- FULL SCREEN OVERLAY CONTAINER ---
   overlayContainer: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#0F172A', // Dark night sky theme
+    backgroundColor: '#0A0F1D', // Deep night sky background
     zIndex: 99999,
     paddingTop: 60,
     paddingHorizontal: 20,
@@ -744,13 +799,21 @@ const styles = StyleSheet.create({
   },
   sunriseSun: {
     position: 'absolute',
-    bottom: -100,
-    left: SCREEN_WIDTH / 2 - 150,
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    backgroundColor: '#F59E0B',
-    opacity: 0.15,
+    bottom: -120,
+    left: SCREEN_WIDTH / 2 - 160,
+    width: 320,
+    height: 320,
+    borderRadius: 160,
+    backgroundColor: '#D97706', // Golden sunrise glow at the horizon
+    opacity: 0.25,
+  },
+  star: {
+    position: 'absolute',
+    width: 3,
+    height: 3,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 1.5,
+    opacity: 0.7,
   },
   overlayHeader: {
     color: '#FFF8E7',
@@ -763,8 +826,8 @@ const styles = StyleSheet.create({
     textShadowRadius: 3,
   },
   palaceStage: {
-    width: 200,
-    height: 180,
+    width: 220,
+    height: 195,
     alignSelf: 'center',
     justifyContent: 'flex-end',
     alignItems: 'center',
@@ -772,8 +835,8 @@ const styles = StyleSheet.create({
     marginBottom: 35,
   },
   palaceContainer: {
-    width: 200,
-    height: 180,
+    width: 220,
+    height: 195,
     justifyContent: 'flex-end',
     alignItems: 'center',
     position: 'relative',

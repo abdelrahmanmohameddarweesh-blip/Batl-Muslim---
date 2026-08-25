@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Dimensions, PanResponder } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { mutashabihatQuestions, type MutashabahQuestion } from '../data/mutashabihat';
@@ -8,7 +8,6 @@ import Svg, { Path, Rect, Circle, Defs, LinearGradient, Stop } from 'react-nativ
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // --- BULLETPROOF LOCAL GRADIENT DEFS ---
-// Injected into each SVG layer to resolve iOS referencing bugs across absolute trees
 const GradientDefs = () => (
   <Defs>
     <LinearGradient id="marbleGrad" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -152,15 +151,60 @@ export default function MutashabihatScreen({ navigation }: any) {
   const [answered, setAnswered] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
 
+  // Palace construction progress states
   const [showPalaceOverlay, setShowPalaceOverlay] = useState(false);
   const [overlayCorrect, setOverlayCorrect] = useState(false);
   const [unlockedSegment, setUnlockedSegment] = useState('');
+  const [isSnapped, setIsSnapped] = useState(false);
 
+  // Gesture/Dragging animation values
+  const pan = useRef(new Animated.ValueXY()).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
-  const pieceFlyAnim = useRef(new Animated.Value(0)).current;
   const pieceGlowAnim = useRef(new Animated.Value(0)).current;
+  const snapPopScale = useRef(new Animated.Value(1)).current;
 
   const currentQuestion = questions[currentIndex];
+
+  // Drag and Drop Gesture Setup
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => !isSnapped,
+      onMoveShouldSetPanResponder: () => !isSnapped,
+      onPanResponderGrant: () => {
+        // Drag starts
+      },
+      onPanResponderMove: Animated.event(
+        [null, { dx: pan.x, dy: pan.y }],
+        { useNativeDriver: false }
+      ),
+      onPanResponderRelease: (e, gestureState) => {
+        // Check if dragged upwards (dy < -90) near the palace center (abs(dx) < 80)
+        if (gestureState.dy < -90 && Math.abs(gestureState.dx) < 85) {
+          // Success: Snap the piece!
+          Animated.parallel([
+            Animated.spring(pan.x, { toValue: 0, useNativeDriver: false }),
+            Animated.spring(pan.y, { toValue: 0, useNativeDriver: false })
+          ]).start(() => {
+            setIsSnapped(true);
+            // Play a satisfying pop / scale-up animation of the snapped piece
+            snapPopScale.setValue(1);
+            Animated.sequence([
+              Animated.timing(snapPopScale, { toValue: 1.3, duration: 150, useNativeDriver: true }),
+              Animated.timing(snapPopScale, { toValue: 1.0, duration: 150, useNativeDriver: true }),
+              Animated.timing(pieceGlowAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
+              Animated.timing(pieceGlowAnim, { toValue: 0, duration: 300, useNativeDriver: true })
+            ]).start();
+          });
+        } else {
+          // Spring back to the tray
+          Animated.spring(pan, {
+            toValue: { x: 0, y: 0 },
+            useNativeDriver: false,
+          }).start();
+        }
+      }
+    })
+  ).current;
 
   const handleStartQuiz = () => {
     const filtered = mutashabihatQuestions.filter(q => q.difficulty === selectedDifficulty);
@@ -182,6 +226,8 @@ export default function MutashabihatScreen({ navigation }: any) {
 
     const isCorrect = option === currentQuestion.answer;
     setOverlayCorrect(isCorrect);
+    setIsSnapped(false); // Reset snap state for new question
+    pan.setValue({ x: 0, y: 0 }); // Reset drag offsets
 
     const segmentNames = [
       'جدران المحراب الرخامية المطعمة بالذهب',
@@ -199,30 +245,13 @@ export default function MutashabihatScreen({ navigation }: any) {
 
     setShowPalaceOverlay(true);
     overlayOpacity.setValue(0);
-    pieceFlyAnim.setValue(0);
     pieceGlowAnim.setValue(0);
 
-    Animated.sequence([
-      Animated.timing(overlayOpacity, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }),
-      isCorrect 
-        ? Animated.sequence([
-            Animated.timing(pieceFlyAnim, {
-              toValue: 1,
-              duration: 950,
-              useNativeDriver: true,
-            }),
-            Animated.timing(pieceGlowAnim, {
-              toValue: 1,
-              duration: 350,
-              useNativeDriver: true,
-            })
-          ])
-        : Animated.delay(200)
-    ]).start();
+    Animated.timing(overlayOpacity, {
+      toValue: 1,
+      duration: 400,
+      useNativeDriver: true,
+    }).start();
   };
 
   const handleNextQuestion = () => {
@@ -260,23 +289,19 @@ export default function MutashabihatScreen({ navigation }: any) {
     return correctCount * 10;
   }, [correctCount]);
 
-  const fallingPieceY = pieceFlyAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [-250, 0],
-  });
-
-  const fallingPieceScale = pieceFlyAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1.7, 1],
-  });
-
-  const fallingPieceOpacity = pieceFlyAnim.interpolate({
-    inputRange: [0, 0.2, 1],
-    outputRange: [0, 1, 1],
-  });
+  // Helper to render the active piece currently under construction
+  const renderActivePiece = (opacityValue: number) => {
+    const targetIdx = overlayCorrect ? correctCount - 1 : correctCount;
+    if (targetIdx === 0) return <View style={{ opacity: opacityValue }}><HeavenWallsLayer /></View>;
+    if (targetIdx === 1) return <View style={{ opacity: opacityValue }}><HeavenPillarsLayer /></View>;
+    if (targetIdx === 2) return <View style={{ opacity: opacityValue }}><HeavenTurretsLayer /></View>;
+    if (targetIdx === 3) return <View style={{ opacity: opacityValue }}><HeavenDomeLayer /></View>;
+    return null;
+  };
 
   return (
     <View style={styles.container}>
+
       <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.surface }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => screenState === 'lobby' ? navigation.goBack() : handleReset()}>
           <Text style={[styles.backBtnText, { color: colors.primary }]}>🔙</Text>
@@ -294,7 +319,7 @@ export default function MutashabihatScreen({ navigation }: any) {
               تحدي بناء قصر المتشابهات
             </Text>
             <Text style={[styles.infoDesc, { color: colors.textSecondary }]}>
-              اختبر قوة حفظك في متشابهات القرآن الكريم. كل إجابة صحيحة تضيف قطعة جديدة إلى قصرك العائم في جنان الخلد وتثبّت لبنات حفظك.
+              اختبر قوة حفظك في متشابهات القرآن الكريم. كل إجابة صحيحة تمنحك قطعة لتركيبها يدوياً لتكمل بناء المعلم الإسلامي الفاخر.
             </Text>
           </View>
 
@@ -445,14 +470,15 @@ export default function MutashabihatScreen({ navigation }: any) {
           <View style={styles.palaceStage}>
             <HeavenCloudsBase />
 
+            {/* 1. Walls Piece (Unlocked at 1 Correct Answer) */}
             {correctCount >= (overlayCorrect ? 1 : 2) && (
               <Animated.View 
                 style={[
                   styles.palacePiece, 
                   { bottom: 15 },
                   (overlayCorrect && correctCount === 1) && {
-                    transform: [{ translateY: fallingPieceY }, { scale: fallingPieceScale }],
-                    opacity: fallingPieceOpacity
+                    transform: [{ scale: snapPopScale }],
+                    opacity: isSnapped ? 1 : 0.25 // Silhouette before drag snap
                   }
                 ]}
               >
@@ -460,14 +486,15 @@ export default function MutashabihatScreen({ navigation }: any) {
               </Animated.View>
             )}
 
+            {/* 2. Columns Piece (Unlocked at 2 Correct Answers) */}
             {correctCount >= (overlayCorrect ? 2 : 3) && (
               <Animated.View 
                 style={[
                   styles.palacePiece, 
                   { bottom: 15 },
                   (overlayCorrect && correctCount === 2) && {
-                    transform: [{ translateY: fallingPieceY }, { scale: fallingPieceScale }],
-                    opacity: fallingPieceOpacity
+                    transform: [{ scale: snapPopScale }],
+                    opacity: isSnapped ? 1 : 0.25
                   }
                 ]}
               >
@@ -475,14 +502,15 @@ export default function MutashabihatScreen({ navigation }: any) {
               </Animated.View>
             )}
 
+            {/* 3. Turquoise Domes (Unlocked at 3 Correct Answers) */}
             {correctCount >= (overlayCorrect ? 3 : 4) && (
               <Animated.View 
                 style={[
                   styles.palacePiece, 
                   { bottom: 20 },
                   (overlayCorrect && correctCount === 3) && {
-                    transform: [{ translateY: fallingPieceY }, { scale: fallingPieceScale }],
-                    opacity: fallingPieceOpacity
+                    transform: [{ scale: snapPopScale }],
+                    opacity: isSnapped ? 1 : 0.25
                   }
                 ]}
               >
@@ -490,14 +518,15 @@ export default function MutashabihatScreen({ navigation }: any) {
               </Animated.View>
             )}
 
+            {/* 4. Golden Dome & Crescent (Unlocked at 4 Correct Answers) */}
             {correctCount >= (overlayCorrect ? 4 : 5) && (
               <Animated.View 
                 style={[
                   styles.palacePiece, 
                   { bottom: 85 },
                   (overlayCorrect && correctCount === 4) && {
-                    transform: [{ translateY: fallingPieceY }, { scale: fallingPieceScale }],
-                    opacity: fallingPieceOpacity
+                    transform: [{ scale: snapPopScale }],
+                    opacity: isSnapped ? 1 : 0.25
                   }
                 ]}
               >
@@ -506,11 +535,29 @@ export default function MutashabihatScreen({ navigation }: any) {
             )}
           </View>
 
+          {/* Interactive Drag & Drop Game Zone */}
           {overlayCorrect ? (
-            <View style={styles.statusBox}>
-              <Text style={styles.statusTitle}>✅ إجابة صحيحة!</Text>
-              <Text style={styles.statusSubtitle}>تم تشييد وتركيب: {unlockedSegment} (+10 XP)</Text>
-            </View>
+            isSnapped ? (
+              <View style={styles.statusBox}>
+                <Text style={styles.statusTitle}>✨ تم التركيب بنجاح!</Text>
+                <Text style={styles.statusSubtitle}>تمت إضافة: {unlockedSegment} (+10 XP)</Text>
+              </View>
+            ) : (
+              <View style={[styles.dragArea, { borderColor: colors.primary }]}>
+                <Text style={styles.dragInstructions}>👇 اسحب القطعة الذهبية وضعها في هيكل القصر بالأعلى:</Text>
+                <Animated.View 
+                  style={[
+                    styles.draggableItem, 
+                    {
+                      transform: [{ translateX: pan.x }, { translateY: pan.y }]
+                    }
+                  ]}
+                  {...panResponder.panHandlers}
+                >
+                  {renderActivePiece(1.0)}
+                </Animated.View>
+              </View>
+            )
           ) : (
             <View style={[styles.statusBox, { backgroundColor: '#FDF2F2', borderColor: '#EF4444' }]}>
               <Text style={[styles.statusTitle, { color: '#E74C3C' }]}>❌ إجابة خاطئة</Text>
@@ -518,18 +565,23 @@ export default function MutashabihatScreen({ navigation }: any) {
             </View>
           )}
 
-          <ScrollView style={styles.explanationScroll} contentContainerStyle={{ paddingBottom: 30 }} showsVerticalScrollIndicator={false}>
-            <View style={styles.overlayExplanationCard}>
-              <Text style={styles.overlayExplanationHeader}>💡 توضيح متشابهة الآية:</Text>
-              <Text style={styles.overlayExplanationText}>{currentQuestion.explanation}</Text>
-            </View>
+          {/* Display Explanations & Next Button */}
+          {(isSnapped || !overlayCorrect) ? (
+            <ScrollView style={styles.explanationScroll} contentContainerStyle={{ paddingBottom: 30 }} showsVerticalScrollIndicator={false}>
+              <View style={styles.overlayExplanationCard}>
+                <Text style={styles.overlayExplanationHeader}>💡 توضيح متشابهة الآية:</Text>
+                <Text style={styles.overlayExplanationText}>{currentQuestion.explanation}</Text>
+              </View>
 
-            <TouchableOpacity style={styles.overlayNextBtn} onPress={handleNextQuestion}>
-              <Text style={styles.overlayNextBtnText}>
-                {currentIndex === questions.length - 1 ? 'متابعة وعرض النتيجة النهائية' : 'متابعة التحدي'}
-              </Text>
-            </TouchableOpacity>
-          </ScrollView>
+              <TouchableOpacity style={styles.overlayNextBtn} onPress={handleNextQuestion}>
+                <Text style={styles.overlayNextBtnText}>
+                  {currentIndex === questions.length - 1 ? 'متابعة وعرض النتيجة النهائية' : 'متابعة التحدي'}
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+          ) : (
+            <View style={styles.bottomSpacer} />
+          )}
         </Animated.View>
       )}
     </View>
@@ -816,7 +868,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     alignItems: 'center',
     position: 'relative',
-    marginBottom: 35,
+    marginBottom: 20,
   },
   palaceContainer: {
     width: 240,
@@ -854,6 +906,33 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#2E7D32',
     textAlign: 'center',
+  },
+  dragArea: {
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderRadius: 15,
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.75)',
+    minHeight: 150,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+  },
+  dragInstructions: {
+    fontSize: 14,
+    color: '#4B5563',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 15,
+  },
+  draggableItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 10,
   },
   explanationScroll: {
     flex: 1,
@@ -898,5 +977,8 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: 'bold',
+  },
+  bottomSpacer: {
+    height: 120,
   },
 });

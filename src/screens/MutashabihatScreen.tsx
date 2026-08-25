@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Dimensions, PanResponder } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Dimensions, PanResponder, Image } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { mutashabihatQuestions, type MutashabahQuestion } from '../data/mutashabihat';
-import Svg, { Path, Rect, Circle, G } from 'react-native-svg';
+import Svg, { Path, Circle } from 'react-native-svg';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -76,134 +76,59 @@ const Sparkle = React.memo(({ delay, left, size }: SparkleProps) => {
   );
 });
 
-// --- COMPONENT: UNIFIED HEAVENLY PALACE (MEMOIZED & CACHED) ---
-// Renders the entire palace inside a single, perfectly structured SVG coordinate space (0,0 to 240,200)
-// Uses solid shaded paths (Light/Dark sides) for a gorgeous Monument Valley flat-3D style that is 100% stable on iOS.
+// --- COMPONENT: PHOTOREALISTIC HEAVENLY PALACE CANVAS ---
 interface HeavenPalaceProps {
   correctCount: number;
   overlayCorrect: boolean;
   isSnapped: boolean;
-  snapPopScale: Animated.Value | Animated.AnimatedInterpolation<number>;
+  revealHeight: Animated.Value;
 }
 
-const HeavenPalace = React.memo(({ correctCount, overlayCorrect, isSnapped, snapPopScale }: HeavenPalaceProps) => {
-  const showWalls = correctCount >= 1 && (correctCount > 1 || !overlayCorrect || isSnapped);
-  const showPillars = correctCount >= 2 && (correctCount > 2 || !overlayCorrect || isSnapped);
-  const showTurrets = correctCount >= 3 && (correctCount > 3 || !overlayCorrect || isSnapped);
-  const showDome = correctCount >= 4 && (correctCount > 4 || !overlayCorrect || isSnapped);
+const HeavenPalace = React.memo(({ correctCount, overlayCorrect, isSnapped, revealHeight }: HeavenPalaceProps) => {
+  // Glow beam pulse animation
+  const glowPulse = useRef(new Animated.Value(0.4)).current;
 
-  const showWallsPlaceholder = overlayCorrect && correctCount === 1 && !isSnapped;
-  const showPillarsPlaceholder = overlayCorrect && correctCount === 2 && !isSnapped;
-  const showTurretsPlaceholder = overlayCorrect && correctCount === 3 && !isSnapped;
-  const showDomePlaceholder = overlayCorrect && correctCount === 4 && !isSnapped;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowPulse, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(glowPulse, { toValue: 0.4, duration: 800, useNativeDriver: true })
+      ])
+    ).start();
+  }, []);
+
+  // Determine current construction target label based on correctCount
+  const showPlaceholderHighlight = overlayCorrect && !isSnapped;
 
   return (
-    <Animated.View style={{ transform: [{ scale: snapPopScale }] }}>
-      <Svg width="240" height="200" viewBox="0 0 240 200" fill="none">
-        
-        {/* 1. Clouds Base */}
-        <G id="cloudsBase">
-          <Circle cx="35" cy="175" r="20" fill="#FFEAF2" />
-          <Circle cx="35" cy="171" r="18" fill="#FFFFFF" />
-          
-          <Circle cx="65" cy="167" r="24" fill="#FFEAF2" />
-          <Circle cx="65" cy="163" r="22" fill="#FFFFFF" />
+    <View style={styles.palaceCanvasOuter}>
+      {/* 1. Underlying Blueprint: Desaturated, low opacity version of the gorgeous photorealistic render */}
+      <Image 
+        source={require('../../assets/heaven_palace_render.jpg')}
+        style={[styles.palaceImageBase, { opacity: 0.15 }]}
+        resizeMode="cover"
+      />
 
-          <Circle cx="105" cy="171" r="26" fill="#FFEAF2" />
-          <Circle cx="105" cy="167" r="24" fill="#FFFFFF" />
+      {/* 2. Full Color Construction Layer: Clipped height container revealing from bottom to top */}
+      <Animated.View style={[styles.palaceRevealContainer, { height: revealHeight }]}>
+        <Image 
+          source={require('../../assets/heaven_palace_render.jpg')}
+          style={styles.palaceImageFull}
+          resizeMode="cover"
+        />
+      </Animated.View>
 
-          <Circle cx="145" cy="163" r="28" fill="#FFEAF2" />
-          <Circle cx="145" cy="159" r="26" fill="#FFFFFF" />
-
-          <Circle cx="190" cy="169" r="24" fill="#FFEAF2" />
-          <Circle cx="190" cy="165" r="22" fill="#FFFFFF" />
-
-          <Circle cx="220" cy="173" r="20" fill="#FFEAF2" />
-          <Circle cx="220" cy="169" r="18" fill="#FFFFFF" />
-
-          <Rect width="220" height="16" x="10" y="165" rx="8" fill="#FFFFFF" />
-          
-          <Circle cx="55" cy="160" r="2.5" fill="#F5D061" />
-          <Circle cx="135" cy="152" r="2" fill="#F5D061" />
-          <Circle cx="180" cy="162" r="3" fill="#E5B942" />
-        </G>
-
-        {/* 2. Main Walls */}
-        {showWalls && (
-          <G id="walls">
-            <Rect width="62" height="75" x="58" y="90" rx="4" fill="#FFFFFF" stroke="#E5B942" strokeWidth="1" />
-            <Rect width="62" height="75" x="120" y="90" rx="4" fill="#EAE5DA" stroke="#C9981E" strokeWidth="1" />
-            <Rect width="46" height="58" x="97" y="107" rx="3" fill="#D5CDBE" stroke="#E5B942" strokeWidth="1.2" />
-            <Path d="M97 165v-37c0-11 8-20 19-20s19 9 19 20v37H97z" fill="#FFFDF0" stroke="#E5B942" strokeWidth="1.5" />
-            <Path d="M101 165v-34c0-8 7-14 15-14s15 6 15 14v34H101z" fill="#008080" /> 
-            <Path d="M68 128v-18c0-6 4-10 8-10s8 4 8 10v18H68z" fill="#00A89F" stroke="#E5B942" strokeWidth="1" />
-            <Path d="M152 128v-18c0-6 4-10 8-10s8 4 8 10v18h-16z" fill="#006660" stroke="#C9981E" strokeWidth="1" />
-            <Rect width="64" height="6" x="56" y="86" fill="#F5D061" rx="1" />
-            <Rect width="64" height="6" x="120" y="86" fill="#C9981E" rx="1" />
-          </G>
-        )}
-        {showWallsPlaceholder && (
-          <G id="wallsPlaceholder" opacity="0.35">
-            <Rect width="124" height="75" x="58" y="90" rx="8" fill="none" stroke="#F5D061" strokeWidth="2.5" strokeDasharray="5,5" />
-          </G>
-        )}
-
-        {/* 3. Outer Pillars */}
-        {showPillars && (
-          <G id="pillars">
-            <Rect width="12" height="74" x="48" y="92" rx="3" fill="#FFFFFF" stroke="#E5B942" strokeWidth="1" />
-            <Rect width="18" height="6" x="45" y="88" rx="1.5" fill="#FFECA7" />
-            <Rect width="18" height="6" x="45" y="163" rx="1.5" fill="#E5B942" />
-
-            <Rect width="12" height="74" x="180" y="92" rx="3" fill="#D5CDBE" stroke="#C9981E" strokeWidth="1" />
-            <Rect width="18" height="6" x="177" y="88" rx="1.5" fill="#C9981E" />
-            <Rect width="18" height="6" x="177" y="163" rx="1.5" fill="#876106" />
-          </G>
-        )}
-        {showPillarsPlaceholder && (
-          <G id="pillarsPlaceholder" opacity="0.35">
-            <Rect width="12" height="74" x="48" y="92" rx="3" fill="none" stroke="#F5D061" strokeWidth="2.5" strokeDasharray="5,5" />
-            <Rect width="12" height="74" x="180" y="92" rx="3" fill="none" stroke="#F5D061" strokeWidth="2.5" strokeDasharray="5,5" />
-          </G>
-        )}
-
-        {/* 4. Turquoise Domes */}
-        {showTurrets && (
-          <G id="turrets">
-            <Path d="M20 148c0-18 10-25 18-25s18 7 18 25H20z" fill="#48D1CC" stroke="#E5B942" strokeWidth="1" />
-            <Path d="M38 123v-10" stroke="#FFECA7" strokeWidth="1.5" />
-            <Circle cx="38" cy="111" r="1.5" fill="#FFECA7" />
-
-            <Path d="M182 148c0-18 10-25 18-25s18 7 18 25h-36z" fill="#008080" stroke="#C9981E" strokeWidth="1" />
-            <Path d="M200 123v-10" stroke="#C9981E" strokeWidth="1.5" />
-            <Circle cx="200" cy="111" r="1.5" fill="#C9981E" />
-          </G>
-        )}
-        {showTurretsPlaceholder && (
-          <G id="turretsPlaceholder" opacity="0.35">
-            <Path d="M20 148c0-18 10-25 18-25s18 7 18 25H20z" fill="none" stroke="#F5D061" strokeWidth="2.5" strokeDasharray="5,5" />
-            <Path d="M182 148c0-18 10-25 18-25s18 7 18 25h-36z" fill="none" stroke="#F5D061" strokeWidth="2.5" strokeDasharray="5,5" />
-          </G>
-        )}
-
-        {/* 5. Main Golden Dome */}
-        {showDome && (
-          <G id="dome">
-            <Rect width="31" height="8" x="89" y="78" fill="#FFFFFF" stroke="#E5B942" strokeWidth="1" />
-            <Rect width="31" height="8" x="120" y="78" fill="#D5CDBE" stroke="#C9981E" strokeWidth="1" />
-            <Path d="M90 78C90 48 110 38 120 38v40H90z" fill="#F5D061" stroke="#FFF" strokeWidth="1.5" />
-            <Path d="M120 38c10 0 30 10 30 40H120V38z" fill="#C9981E" stroke="#FFF" strokeWidth="1.5" />
-            <Path d="M120 38V25" stroke="#FFECA7" strokeWidth="2.5" />
-            <Circle cx="120" cy="24" r="3" fill="#F5D061" />
-          </G>
-        )}
-        {showDomePlaceholder && (
-          <G id="domePlaceholder" opacity="0.35">
-            <Path d="M90 78C90 48 110 38 120 38s30 10 30 40H90z" fill="none" stroke="#F5D061" strokeWidth="2.5" strokeDasharray="5,5" />
-          </G>
-        )}
-      </Svg>
-    </Animated.View>
+      {/* 3. Golden Laser/Glow beam at the construction boundary */}
+      <Animated.View 
+        style={[
+          styles.constructionLaser, 
+          { 
+            bottom: Animated.subtract(revealHeight, 1.5),
+            opacity: showPlaceholderHighlight ? glowPulse : 0.85
+          }
+        ]} 
+      />
+    </View>
   );
 });
 
@@ -229,7 +154,9 @@ export default function MutashabihatScreen({ navigation }: any) {
   const pan = useRef(new Animated.ValueXY()).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   const pieceGlowAnim = useRef(new Animated.Value(0)).current;
-  const snapPopScale = useRef(new Animated.Value(1)).current;
+
+  // Reveal height animation value (image height is 210)
+  const revealHeight = useRef(new Animated.Value(0)).current;
 
   // Ambient rotation for the gold halo ring
   const rotateAnim = useRef(new Animated.Value(0)).current;
@@ -275,7 +202,7 @@ export default function MutashabihatScreen({ navigation }: any) {
       },
       onPanResponderMove: Animated.event(
         [null, { dx: pan.x, dy: pan.y }],
-        { useNativeDriver: false } // Tracking layout gesture offset
+        { useNativeDriver: false } // panResponder tracking offset
       ),
       onPanResponderRelease: (e, gestureState) => {
         pan.flattenOffset();
@@ -286,10 +213,19 @@ export default function MutashabihatScreen({ navigation }: any) {
             Animated.spring(pan.y, { toValue: 0, useNativeDriver: true })
           ]).start(() => {
             setIsSnapped(true);
-            snapPopScale.setValue(1);
+            
+            // Animate reveal of the next stage of the photorealistic image (height limits: 0 to 210)
+            const targetHeights = [52, 105, 147, 184, 210];
+            const targetH = targetHeights[correctCount - 1] || 210;
+
+            Animated.spring(revealHeight, {
+              toValue: targetH,
+              tension: 20,
+              friction: 6,
+              useNativeDriver: false // height layout changes require JS thread
+            }).start();
+
             Animated.sequence([
-              Animated.timing(snapPopScale, { toValue: 1.3, duration: 120, useNativeDriver: true }),
-              Animated.timing(snapPopScale, { toValue: 1.0, duration: 120, useNativeDriver: true }),
               Animated.timing(pieceGlowAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
               Animated.timing(pieceGlowAnim, { toValue: 0, duration: 250, useNativeDriver: true })
             ]).start();
@@ -315,6 +251,7 @@ export default function MutashabihatScreen({ navigation }: any) {
     setSelectedAnswer('');
     setAnswered(false);
     setCorrectCount(0);
+    revealHeight.setValue(0);
     setScreenState('quiz');
   };
 
@@ -329,11 +266,11 @@ export default function MutashabihatScreen({ navigation }: any) {
     pan.setValue({ x: 0, y: 0 });
 
     const segmentNames = [
-      'جدران المحراب الرخامية المطعمة بالذهب',
-      'أعمدة القصر المرخمة والتيجان الذهبية',
-      'القباب الجانبية الفيروزية المشعة',
-      'الهيكل الأساسي للقبة الذهبية الكبرى',
-      'هلال النصر والرمح المضيء في قمة القصر'
+      'الأساسات السحابية ومصارف الشلالات الجنة',
+      'الساحات السفلية والأدراج الرخامية الفاخرة',
+      'المحراب الأوسط والقباب الهيكلية الحامية',
+      'المنابر العلوية والأبراج الفيروزية العالية',
+      'القبة الذهبية الكبرى وهلال صرح النور السماوي'
     ];
     const activeSegment = segmentNames[correctCount] || 'ملحقات الزخرفة';
     setUnlockedSegment(activeSegment);
@@ -377,6 +314,7 @@ export default function MutashabihatScreen({ navigation }: any) {
     setSelectedAnswer('');
     setAnswered(false);
     setCorrectCount(0);
+    revealHeight.setValue(0);
   };
 
   const finalScore = useMemo(() => {
@@ -388,15 +326,13 @@ export default function MutashabihatScreen({ navigation }: any) {
     return correctCount * 10;
   }, [correctCount]);
 
-  const resultsPalaceScale = useRef(new Animated.Value(1)).current;
-
-  // Spin interpolation for rotating celestial halo ring
+  // Spin rotation for rotating celestial halo ring
   const spinRotation = rotateAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg']
   });
 
-  // Bob translation interpolation for idle key
+  // Bob translation for idle key
   const keyBobY = bobAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [0, -8]
@@ -508,14 +444,14 @@ export default function MutashabihatScreen({ navigation }: any) {
         <ScrollView contentContainerStyle={styles.resultsScroll}>
           <View style={styles.showcaseBox}>
             <View style={styles.palaceContainer}>
-              <HeavenPalace 
-                correctCount={correctCount} 
-                overlayCorrect={false} 
-                isSnapped={true} 
-                snapPopScale={resultsPalaceScale} 
+              {/* Full high-fidelity complete heaven palace display card */}
+              <Image 
+                source={require('../../assets/heaven_palace_render.jpg')}
+                style={styles.resultsPalaceImage}
+                resizeMode="cover"
               />
             </View>
-            <Text style={styles.showcaseLabel}>لقد اكتمل تجميع قصر الجنة العائم الخاص بك!</Text>
+            <Text style={styles.showcaseLabel}>لقد اكتمل تجميع صرح النور العائم الخاص بك!</Text>
           </View>
 
           <View style={[styles.scoreCircle, { borderColor: colors.primary }]}>
@@ -587,7 +523,7 @@ export default function MutashabihatScreen({ navigation }: any) {
               correctCount={correctCount} 
               overlayCorrect={overlayCorrect} 
               isSnapped={isSnapped} 
-              snapPopScale={snapPopScale} 
+              revealHeight={revealHeight} 
             />
           </View>
 
@@ -824,6 +760,17 @@ const styles = StyleSheet.create({
     marginTop: 15,
     textAlign: 'center',
   },
+  resultsPalaceImage: {
+    width: 280,
+    height: 210,
+    borderRadius: 18,
+    borderWidth: 2.5,
+    borderColor: '#E5B942',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+  },
   scoreCircle: {
     width: 150,
     height: 150,
@@ -924,36 +871,76 @@ const styles = StyleSheet.create({
     textShadowRadius: 3,
   },
   palaceStage: {
-    width: 240,
-    height: 200,
+    width: 280,
+    height: 210,
     alignSelf: 'center',
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
     marginBottom: 20,
   },
+  palaceCanvasOuter: {
+    width: 280,
+    height: 210,
+    borderRadius: 18,
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: '#000',
+    borderWidth: 2,
+    borderColor: '#E5B942',
+  },
+  palaceImageBase: {
+    width: 280,
+    height: 210,
+  },
+  palaceRevealContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    width: 280,
+    overflow: 'hidden',
+  },
+  palaceImageFull: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    width: 280,
+    height: 210,
+  },
+  constructionLaser: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 3,
+    backgroundColor: '#FFF2A9',
+    shadowColor: '#FFECA7',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 6,
+    elevation: 4,
+  },
   palaceAuraGlow: {
     position: 'absolute',
-    width: 220,
-    height: 220,
-    borderRadius: 110,
+    width: 240,
+    height: 240,
+    borderRadius: 120,
     backgroundColor: '#FFF2CC',
     opacity: 0.12,
     zIndex: -1,
   },
   palaceRotateRing: {
     position: 'absolute',
-    width: 236,
-    height: 236,
-    borderRadius: 118,
+    width: 270,
+    height: 270,
+    borderRadius: 135,
     borderWidth: 2,
     borderColor: 'rgba(229, 185, 66, 0.25)',
     borderStyle: 'dashed',
     zIndex: -1,
   },
   palaceContainer: {
-    width: 240,
-    height: 200,
+    width: 280,
+    height: 210,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',

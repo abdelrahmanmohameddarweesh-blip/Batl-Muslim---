@@ -3,26 +3,81 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Dimensi
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { mutashabihatQuestions, type MutashabahQuestion } from '../data/mutashabihat';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Path, Rect, Circle } from 'react-native-svg';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-// Skeuomorphic Wood Corner Decorations
-function WoodCorner() {
+// --- QURAN PALACE VECTOR SVG LAYERS ---
+// Fully scalable, layered vector representation of a majestic Islamic Palace
+
+function PalaceBaseLayer({ color = '#8E8070' }) {
   return (
-    <Svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={styles.woodCorner}>
-      <Path d="M0 0h16v4H4v12H0V0z" fill="#3D1C06" />
-      <Path d="M4 4h8v2H6v6H4V4z" fill="#D4AF37" />
+    <Svg width="180" height="25" viewBox="0 0 180 25" fill="none">
+      {/* Base Platform */}
+      <Rect width="180" height="15" y="10" rx="3" fill={color} />
+      <Rect width="150" height="6" x="15" y="4" rx="2" fill="#5D5247" />
+      <Path d="M45 25h90v-5H45z" fill="#3E352E" />
     </Svg>
   );
 }
 
-// Decorative Engraved Verse Marker (Metallic Gold Ring)
-function VerseMarker({ number }: { number: number }) {
+function PalaceWallsLayer({ color = '#FFFDF0' }) {
   return (
-    <View style={styles.markerContainer}>
-      <Text style={styles.markerText}>{number}</Text>
-    </View>
+    <Svg width="110" height="75" viewBox="0 0 110 75" fill="none">
+      {/* Main Palace Hall Walls */}
+      <Rect width="110" height="70" y="5" rx="4" fill={color} stroke="#D4AF37" strokeWidth="1.5" />
+      {/* Main Arch Doorway */}
+      <Path d="M38 75V45c0-8 6-15 17-15s17 7 17 15v30H38z" fill="#B89742" />
+      <Path d="M42 75V48c0-5 5-10 13-10s13 5 13 10v27H42z" fill="#3D1C06" />
+      {/* Window Arches */}
+      <Path d="M12 45V30c0-4 3-7 7-7s7 3 7 7v15H12z" fill="#3D1C06" stroke="#D4AF37" />
+      <Path d="M74 45V30c0-4 3-7 7-7s7 3 7 7v15H74z" fill="#3D1C06" stroke="#D4AF37" />
+    </Svg>
+  );
+}
+
+function PalacePillarsLayer({ color = '#E6DCC5' }) {
+  return (
+    <Svg width="130" height="75" viewBox="0 0 130 75" fill="none">
+      {/* Side Pillars/Columns supporting the roof */}
+      <Rect width="12" height="68" x="2" y="7" rx="2" fill={color} stroke="#A4957D" />
+      <Rect width="16" height="6" x="0" y="2" rx="1" fill="#A4957D" />
+      <Rect width="16" height="6" x="0" y="71" rx="1" fill="#A4957D" />
+
+      <Rect width="12" height="68" x="116" y="7" rx="2" fill={color} stroke="#A4957D" />
+      <Rect width="16" height="6" x="114" y="2" rx="1" fill="#A4957D" />
+      <Rect width="16" height="6" x="114" y="71" rx="1" fill="#A4957D" />
+    </Svg>
+  );
+}
+
+function PalaceMinaretLayer({ color = '#FFFDF0' }) {
+  return (
+    <Svg width="35" height="135" viewBox="0 0 35 135" fill="none">
+      {/* Tall Minaret Tower */}
+      <Rect width="16" height="90" x="9.5" y="45" fill={color} stroke="#D4AF37" />
+      {/* Balcony */}
+      <Rect width="24" height="8" x="5.5" y="37" rx="2" fill="#B89742" />
+      <Path d="M6 37l11.5-12L29 37H6z" fill="#3D1C06" />
+      {/* Upper Shaft */}
+      <Rect width="10" height="25" x="12.5" y="12" fill={color} />
+      {/* Dome top of minaret */}
+      <Path d="M12.5 12c0-8 5-12 5-12s5 4 5 12h-10z" fill="#D4AF37" />
+      <Circle cx="17.5" cy="2" r="1.5" fill="#3D1C06" />
+    </Svg>
+  );
+}
+
+function PalaceDomeLayer({ color = '#D4AF37' }) {
+  return (
+    <Svg width="70" height="55" viewBox="0 0 70 55" fill="none">
+      {/* Golden Crowning Dome */}
+      <Path d="M5 50c0-28 20-45 30-45s30 17 30 45H5z" fill={color} />
+      <Path d="M12 50c0-22 17-37 23-37s23 15 23 37H12z" fill="#B89742" />
+      {/* Crescent Spire */}
+      <Rect width="3" height="15" x="33.5" fill="#B89742" />
+      <Circle cx="35" cy="3" r="3" fill="#D4AF37" />
+    </Svg>
   );
 }
 
@@ -41,19 +96,15 @@ export default function MutashabihatScreen({ navigation }: any) {
   const [answered, setAnswered] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
 
-  // Puzzle board assemblies: stores the text of correctly/incorrectly solved verses
-  const [assembledVerses, setAssembledVerses] = useState<(string | null)[]>([null, null, null, null, null]);
-  const [verseCorrectStatus, setVerseCorrectStatus] = useState<boolean[]>([]);
+  // Palace construction progress states
+  const [showPalaceOverlay, setShowPalaceOverlay] = useState(false);
+  const [overlayCorrect, setOverlayCorrect] = useState(false);
+  const [unlockedSegment, setUnlockedSegment] = useState('');
 
   // Animations
-  const puzzleAnim = useRef(new Animated.Value(0)).current;
-  const boardScale = useRef(new Animated.Value(1)).current;
-  const glowOpacity = useRef(new Animated.Value(0)).current;
-  
-  // Animation coordinates tracking for flying puzzle block
-  const [showPuzzlePiece, setShowPuzzlePiece] = useState(false);
-  const [flyingText, setFlyingText] = useState('');
-  const [tappedOptionY, setTappedOptionY] = useState(0);
+  const overlayOpacity = useRef(new Animated.Value(0)).current;
+  const pieceFlyAnim = useRef(new Animated.Value(0)).current;
+  const pieceGlowAnim = useRef(new Animated.Value(0)).current;
 
   const currentQuestion = questions[currentIndex];
 
@@ -68,71 +119,76 @@ export default function MutashabihatScreen({ navigation }: any) {
     setSelectedAnswer('');
     setAnswered(false);
     setCorrectCount(0);
-    setAssembledVerses([null, null, null, null, null]);
-    setVerseCorrectStatus([false, false, false, false, false]);
     setScreenState('quiz');
   };
 
-  // Handle Option selection and trigger full-screen flying puzzle block
-  const handleSelectOption = (option: string, pageY: number) => {
+  // Handle Option selection and trigger dedicated Palace Construction transition Screen
+  const handleSelectOption = (option: string) => {
     if (answered) return;
     setSelectedAnswer(option);
     setAnswered(true);
 
     const isCorrect = option === currentQuestion.answer;
-    
-    const newStatus = [...verseCorrectStatus];
-    newStatus[currentIndex] = isCorrect;
-    setVerseCorrectStatus(newStatus);
+    setOverlayCorrect(isCorrect);
+
+    // Identify which segment of the palace is unlocked with this correct answer
+    // Segments: 1: Walls, 2: Pillars, 3: Minaret, 4: Golden Dome, 5: Crescent/Spire
+    const segmentNames = ['جدران القصر', 'أعمدة القصر الخارجية', 'مئذنة القصر الكبرى', 'القبة الذهبية الملكية', 'هلال القمة والنصر'];
+    const activeSegment = segmentNames[correctCount] || 'ملحقات القصر';
+    setUnlockedSegment(activeSegment);
 
     if (isCorrect) {
       setCorrectCount(prev => prev + 1);
     }
 
-    // Set the flying text and start position
-    setFlyingText(option);
-    setTappedOptionY(pageY - 60); // Account for header offset
-    setShowPuzzlePiece(true);
-    puzzleAnim.setValue(0);
-
-    const completedVerse = currentQuestion.prompt.replace('...', option);
+    // Trigger full-screen Palace Construction Transition Overlay
+    setShowPalaceOverlay(true);
+    overlayOpacity.setValue(0);
+    pieceFlyAnim.setValue(0);
+    pieceGlowAnim.setValue(0);
 
     Animated.sequence([
-      // 1. Scale & fly puzzle piece from tapped option straight to its specific slot on the wood board
-      Animated.timing(puzzleAnim, {
+      // 1. Fade-in the serene construction site scene
+      Animated.timing(overlayOpacity, {
         toValue: 1,
-        duration: 850,
+        duration: 400,
         useNativeDriver: true,
       }),
-      // 2. Snapping effect on Board (Pulsing glow and Board scale jump)
-      Animated.parallel([
-        Animated.sequence([
-          Animated.timing(boardScale, { toValue: 1.04, duration: 150, useNativeDriver: true }),
-          Animated.timing(boardScale, { toValue: 1, duration: 200, useNativeDriver: true }),
-        ]),
-        Animated.sequence([
-          Animated.timing(glowOpacity, { toValue: 0.8, duration: 150, useNativeDriver: true }),
-          Animated.timing(glowOpacity, { toValue: 0, duration: 400, useNativeDriver: true }),
-        ]),
-      ]),
-    ]).start(() => {
-      // 3. Formally reveal the verse inside the Quran Board slot
-      const newAssembled = [...assembledVerses];
-      newAssembled[currentIndex] = completedVerse;
-      setAssembledVerses(newAssembled);
-      setShowPuzzlePiece(false);
-    });
+      // 2. If correct, play the physical puzzle piece falling from the sky onto the palace structure
+      isCorrect 
+        ? Animated.sequence([
+            Animated.timing(pieceFlyAnim, {
+              toValue: 1,
+              duration: 1000,
+              useNativeDriver: true,
+            }),
+            Animated.timing(pieceGlowAnim, {
+              toValue: 1,
+              duration: 400,
+              useNativeDriver: true,
+            })
+          ])
+        : Animated.delay(200)
+    ]).start();
   };
 
   // Move to next question or show results
   const handleNextQuestion = () => {
-    if (currentIndex < questions.length - 1) {
-      setCurrentIndex(prev => prev + 1);
-      setSelectedAnswer('');
-      setAnswered(false);
-    } else {
-      setScreenState('results');
-    }
+    // Fade out overlay first
+    Animated.timing(overlayOpacity, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => {
+      setShowPalaceOverlay(false);
+      if (currentIndex < questions.length - 1) {
+        setCurrentIndex(prev => prev + 1);
+        setSelectedAnswer('');
+        setAnswered(false);
+      } else {
+        setScreenState('results');
+      }
+    });
   };
 
   // Restart Quiz
@@ -143,8 +199,6 @@ export default function MutashabihatScreen({ navigation }: any) {
     setSelectedAnswer('');
     setAnswered(false);
     setCorrectCount(0);
-    setAssembledVerses([null, null, null, null, null]);
-    setVerseCorrectStatus([false, false, false, false, false]);
   };
 
   const finalScore = useMemo(() => {
@@ -156,40 +210,30 @@ export default function MutashabihatScreen({ navigation }: any) {
     return correctCount * 10;
   }, [correctCount]);
 
-  // Target Y coordinate for the active slot inside the Quran Board
-  const targetSlotY = useMemo(() => {
-    return 132 + currentIndex * 62;
-  }, [currentIndex]);
-
-  // Interpolated animation values for the flying puzzle piece block
-  const puzzleX = puzzleAnim.interpolate({
+  // Interpolations for the falling palace piece block
+  const fallingPieceY = pieceFlyAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [20, 20],
+    outputRange: [-200, 0], // falls from sky onto its slot
   });
 
-  const puzzleY = puzzleAnim.interpolate({
+  const fallingPieceScale = pieceFlyAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [tappedOptionY, targetSlotY],
+    outputRange: [1.6, 1],
   });
 
-  const puzzleScale = puzzleAnim.interpolate({
-    inputRange: [0, 0.85, 1],
-    outputRange: [1, 1.03, 0.98],
-  });
-
-  const puzzleOpacity = puzzleAnim.interpolate({
-    inputRange: [0, 0.1, 0.9, 1],
-    outputRange: [0, 1, 1, 0.95],
+  const fallingPieceOpacity = pieceFlyAnim.interpolate({
+    inputRange: [0, 0.2, 1],
+    outputRange: [0, 1, 1],
   });
 
   return (
     <View style={styles.container}>
-      {/* Wooden Finished Header */}
-      <View style={styles.header}>
+      {/* Clean Header */}
+      <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.surface }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => screenState === 'lobby' ? navigation.goBack() : handleReset()}>
-          <Text style={styles.backBtnText}>🔙</Text>
+          <Text style={[styles.backBtnText, { color: colors.primary }]}>🔙</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary, fontFamily: 'IBMPlexSansArabic-Bold' }]}>
           تحدي المتشابهات القرآني
         </Text>
       </View>
@@ -197,26 +241,26 @@ export default function MutashabihatScreen({ navigation }: any) {
       {/* Lobby State */}
       {screenState === 'lobby' && (
         <ScrollView contentContainerStyle={styles.lobbyScroll}>
-          <View style={styles.infoBox}>
-            <Text style={{ fontSize: 36, marginBottom: 10 }}>🪵</Text>
-            <Text style={styles.infoTitle}>
-              تحدي تركيب آيات المتشابهات
+          <View style={[styles.infoBox, { backgroundColor: colors.primaryLight }]}>
+            <Text style={{ fontSize: 38, marginBottom: 10 }}>🕌</Text>
+            <Text style={[styles.infoTitle, { color: colors.primary }]}>
+              تحدي بناء قصر المتشابهات
             </Text>
-            <Text style={styles.infoDesc}>
-              اجمع سور وآيات القرآن الكريم في لوحة خشبية متكاملة. اختبر تركيزك ودقتك في الألفاظ المتشابهة وركّب القطعة الصحيحة لتكتمل لوحة المصحف الشريف.
+            <Text style={[styles.infoDesc, { color: colors.textSecondary }]}>
+              اختبر قوة حفظك في متشابهات القرآن الكريم. كل إجابة صحيحة تركب قطعة جديدة في قصرك وتكمل بناء المعلم الإسلامي الفاخر.
             </Text>
           </View>
 
-          <Text style={styles.sectionTitle}>اختر مستوى الصعوبة:</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>اختر مستوى الصعوبة:</Text>
 
-          {/* Wooden Styled Difficulty Cards */}
+          {/* Difficulty Cards */}
           {(['easy', 'medium', 'hard', 'expert'] as const).map(diff => {
             const isSelected = selectedDifficulty === diff;
             const diffMeta = {
-              easy: { title: 'سهل (Easy)', desc: 'مواضع متشابهة يسيرة في السور القصيرة.', color: '#F5DEB3', border: '#CD853F' },
-              medium: { title: 'متوسط (Medium)', desc: 'تداخلات الألفاظ الشائعة والتقديم والتأخير.', color: '#E8D8C8', border: '#8B5A2B' },
-              hard: { title: 'صعب (Hard)', desc: 'مواضع الجار والمجرور ودقائق الحروف.', color: '#DEB887', border: '#A0522D' },
-              expert: { title: 'خبير (Expert)', desc: 'مواضع التشابه الكبرى في السور الطوال.', color: '#D2B48C', border: '#5C3A21' }
+              easy: { title: 'سهل (Easy)', desc: 'مواضع متشابهة يسيرة في السور القصيرة.', color: '#EBF7F3', border: '#B2E5D4' },
+              medium: { title: 'متوسط (Medium)', desc: 'تداخلات الألفاظ الشائعة والتقديم والتأخير.', color: '#FFF8E6', border: '#FAD7A0' },
+              hard: { title: 'صعب (Hard)', desc: 'مواضع الجار والمجرور ودقائق الحروف.', color: '#F7EBEB', border: '#F1948A' },
+              expert: { title: 'خبير (Expert)', desc: 'مواضع التشابه الكبرى في السور الطوال.', color: '#F7EBF7', border: '#D7BDE2' }
             }[diff];
 
             return (
@@ -224,199 +268,235 @@ export default function MutashabihatScreen({ navigation }: any) {
                 key={diff}
                 style={[
                   styles.diffCard,
-                  { backgroundColor: diffMeta.color, borderColor: isSelected ? '#3D1C06' : diffMeta.border, borderWidth: isSelected ? 3 : 1.5 }
+                  { backgroundColor: diffMeta.color, borderColor: isSelected ? colors.primary : diffMeta.border, borderWidth: isSelected ? 2.5 : 1.5 }
                 ]}
                 onPress={() => setSelectedDifficulty(diff)}
                 activeOpacity={0.8}
               >
                 <View style={styles.diffHeader}>
-                  <Text style={styles.diffTitle}>{diffMeta.title}</Text>
-                  {isSelected && <Text style={{ color: '#3D1C06', fontSize: 18, fontWeight: 'bold' }}>✓</Text>}
+                  <Text style={[styles.diffTitle, { color: '#2C3E50' }]}>{diffMeta.title}</Text>
+                  {isSelected && <Text style={{ color: colors.primary, fontSize: 18 }}>✓</Text>}
                 </View>
-                <Text style={styles.diffDesc}>{diffMeta.desc}</Text>
+                <Text style={[styles.diffDesc, { color: '#5D6D7E' }]}>{diffMeta.desc}</Text>
               </TouchableOpacity>
             );
           })}
 
           <TouchableOpacity
-            style={styles.startBtn}
+            style={[styles.startBtn, { backgroundColor: colors.primary }]}
             onPress={handleStartQuiz}
           >
-            <Text style={styles.startBtnText}>ابدأ التجميع الآن</Text>
+            <Text style={styles.startBtnText}>ابدأ التشييد الآن</Text>
           </TouchableOpacity>
         </ScrollView>
       )}
 
-      {/* Quiz State */}
+      {/* Quiz State (Clean MCQ Card) */}
       {screenState === 'quiz' && currentQuestion && (
-        <View style={styles.quizWrapper}>
-          {/* Progress Row */}
+        <ScrollView contentContainerStyle={styles.quizScroll}>
+          {/* Progress Tracker */}
           <View style={styles.progressRow}>
-            <Text style={styles.progressText}>
-              تجميع لوحة المصحف: آية {currentIndex + 1} من {questions.length}
+            <Text style={[styles.progressText, { color: colors.textSecondary }]}>
+              السؤال {currentIndex + 1} من {questions.length}
             </Text>
+            <View style={[styles.progressBarBg, { backgroundColor: colors.border }]}>
+              <View
+                style={[
+                  styles.progressBarFill,
+                  {
+                    backgroundColor: colors.primary,
+                    width: `${((currentIndex + 1) / questions.length) * 100}%`
+                  }
+                ]}
+              />
+            </View>
           </View>
 
-          {/* SKEUOMORPHIC POLISHED OLIVE WOOD TRAY BOARD */}
-          <Animated.View
-            style={[
-              styles.quranBoard,
-              {
-                transform: [{ scale: boardScale }],
-              },
-            ]}
-          >
-            {/* Wooden Frame Corner Ornaments */}
-            <WoodCorner />
-            <View style={{ position: 'absolute', right: 0, top: 0, transform: [{ rotate: '90deg' }] }}><WoodCorner /></View>
-            <View style={{ position: 'absolute', left: 0, bottom: 0, transform: [{ rotate: '270deg' }] }}><WoodCorner /></View>
-            <View style={{ position: 'absolute', right: 0, bottom: 0, transform: [{ rotate: '180deg' }] }}><WoodCorner /></View>
-
-            <Animated.View style={[styles.boardGlow, { opacity: glowOpacity }]} />
-            
-            {/* The 5 Recessed Wooden Slots */}
-            {questions.map((q, idx) => {
-              const assembledText = assembledVerses[idx];
-              const isCurrent = idx === currentIndex;
-              const isCorrect = verseCorrectStatus[idx];
-
-              return (
-                <View
-                  key={idx}
-                  style={[
-                    styles.quranSlot,
-                    isCurrent && styles.activeSlot,
-                    assembledText && (isCorrect ? styles.correctSlot : styles.wrongSlot)
-                  ]}
-                >
-                  <VerseMarker number={idx + 1} />
-                  
-                  {assembledText ? (
-                    <Text style={styles.slotVerseText} numberOfLines={1}>
-                      {assembledText}
-                    </Text>
-                  ) : (
-                    <View style={styles.emptySlotRow}>
-                      <Text style={[styles.slotPlaceholderText, { color: isCurrent ? '#A0522D' : '#7F6A56' }]}>
-                        {isCurrent ? 'بانتظار تركيب القطعة الخشبية الملائمة...' : 'موضع فارغ'}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              );
-            })}
-          </Animated.View>
-
-          {/* Quiz Question Box (Engraved Ivory Board) */}
-          <View style={styles.prompterBox}>
-            <Text style={styles.prompterText}>
+          {/* Clean Question Box */}
+          <View style={[styles.questionBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.ayahText, { color: colors.textPrimary }]}>
               {currentQuestion.prompt}
             </Text>
           </View>
 
-          {/* Puzzle Wooden Tiles choices */}
-          <ScrollView contentContainerStyle={styles.choicesScroll} showsVerticalScrollIndicator={false}>
-            {!answered ? (
-              currentQuestion.options.map((option, idx) => (
-                <TouchableOpacity
-                  key={idx}
-                  style={styles.puzzleOption}
-                  activeOpacity={0.85}
-                  onPress={(e) => handleSelectOption(option, e.nativeEvent.pageY)}
-                >
-                  {/* Skeuomorphic Wooden Pegs/Tabs */}
-                  <View style={styles.notchOut} />
-                  <View style={styles.notchIn} />
-                  
-                  <Text style={styles.optionText}>{option}</Text>
-                </TouchableOpacity>
-              ))
-            ) : (
-              /* Carved Wooden Explanation Card */
-              <Animated.View style={styles.explanationCard}>
-                <Text style={styles.explanationHeader}>
-                  💡 توضيح متشابهة الآية:
-                </Text>
-                <Text style={styles.explanationText}>
-                  {currentQuestion.explanation}
-                </Text>
-                <TouchableOpacity
-                  style={styles.nextBtn}
-                  onPress={handleNextQuestion}
-                >
-                  <Text style={styles.nextBtnText}>
-                    {currentIndex === questions.length - 1 ? 'عرض النتيجة' : 'تأكيد وتركيب القطعة التالية'}
-                  </Text>
-                </TouchableOpacity>
-              </Animated.View>
-            )}
-          </ScrollView>
-        </View>
+          {/* Simple Choice buttons */}
+          <Text style={[styles.hintLabel, { color: colors.textSecondary }]}>اختر الكلمة أو التكملة الصحيحة:</Text>
+          {currentQuestion.options.map((option, idx) => (
+            <TouchableOpacity
+              key={idx}
+              style={[styles.optionBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              onPress={() => handleSelectOption(option)}
+              disabled={answered}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.optionText, { color: colors.textPrimary }]}>{option}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       )}
 
       {/* Results State */}
       {screenState === 'results' && (
         <ScrollView contentContainerStyle={styles.resultsScroll}>
-          <View style={styles.scoreCircle}>
-            <Text style={styles.scorePercent}>
+          {/* Fully Built Palace Showcase */}
+          <View style={styles.showcaseBox}>
+            <View style={styles.palaceContainer}>
+              <PalaceBaseLayer />
+              <View style={{ position: 'absolute', bottom: 15 }}><PalacePillarsLayer /></View>
+              <View style={{ position: 'absolute', bottom: 15 }}><PalaceWallsLayer /></View>
+              <View style={{ position: 'absolute', bottom: 85 }}><PalaceDomeLayer /></View>
+              <View style={{ position: 'absolute', bottom: 15, right: 0 }}><PalaceMinaretLayer /></View>
+            </View>
+            <Text style={styles.showcaseLabel}>لقد اكتمل تشييد قصر المتشابهات الخاص بك!</Text>
+          </View>
+
+          <View style={[styles.scoreCircle, { borderColor: colors.primary }]}>
+            <Text style={[styles.scorePercent, { color: colors.primary }]}>
               {finalScore}%
             </Text>
-            <Text style={styles.scoreLabel}>
-              معدل دقة التجميع
+            <Text style={[styles.scoreLabel, { color: colors.textSecondary }]}>
+              نسبة اكتمال البناء
             </Text>
           </View>
 
-          <Text style={styles.resultTitle}>
+          <Text style={[styles.resultTitle, { color: colors.textPrimary }]}>
             {finalScore === 100 
-              ? 'تبارك الله! لوحتك الخشبية متكاملة وحفظك متقن.' 
+              ? 'ما شاء الله! قصرك متكامل وحفظك متقن للمتشابهات.' 
               : finalScore >= 70 
-                ? 'عمل رائع! أكملت اللوحة بمهارة ممتازة.' 
-                : 'أداء طيب، ننصح بمراجعة المتشابهات لتفادي اللبس.'}
+                ? 'أداء رائع! قصر شبه مكتمل ولديك علم واسع.' 
+                : 'أداء جيد، راجع مواضع الفروق لتكتمل أركان قصرك.'}
           </Text>
 
-          <View style={styles.xpCard}>
-            <Text style={styles.xpText}>
+          <View style={[styles.xpCard, { backgroundColor: colors.primaryLight }]}>
+            <Text style={[styles.xpText, { color: colors.primary }]}>
               🎉 لقد حصلت على +{earnedXP} نقطة خبرة (XP)
             </Text>
           </View>
 
           <TouchableOpacity
-            style={styles.startBtn}
+            style={[styles.startBtn, { backgroundColor: colors.primary }]}
             onPress={handleReset}
           >
-            <Text style={styles.startBtnText}>تجميع لوحة جديدة</Text>
+            <Text style={styles.startBtnText}>شيد قصراً جديداً</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.homeBtn}
+            style={[styles.homeBtn, { borderColor: colors.primary }]}
             onPress={() => navigation.goBack()}
           >
-            <Text style={styles.homeBtnText}>العودة للرئيسية</Text>
+            <Text style={[styles.homeBtnText, { color: colors.primary }]}>العودة للرئيسية</Text>
           </TouchableOpacity>
         </ScrollView>
       )}
 
-      {/* Gamification Animation Overlay - flying skeuomorphic wooden puzzle tile */}
-      {showPuzzlePiece && (
-        <Animated.View
-          style={[
-            styles.puzzleOption,
-            styles.flyingPuzzlePiece,
-            {
-              backgroundColor: '#DEB887',
-              borderColor: '#8B5A2B',
-              transform: [
-                { translateX: puzzleX },
-                { translateY: puzzleY },
-                { scale: puzzleScale },
-              ],
-              opacity: puzzleOpacity,
-            },
-          ]}
-        >
-          <View style={[styles.notchOut, { backgroundColor: '#DEB887', borderColor: '#8B5A2B' }]} />
-          <View style={styles.notchIn} />
-          <Text style={styles.optionText}>{flyingText}</Text>
+      {/* --- SEPARATE FULL-SCREEN PALACE CONSTRUCTION SITE OVERLAY --- */}
+      {showPalaceOverlay && (
+        <Animated.View style={[styles.overlayContainer, { opacity: overlayOpacity }]}>
+          {/* Dusk Sky Scenic Background */}
+          <View style={styles.skyBackground}>
+            {/* Sunrise Glow circle */}
+            <View style={styles.sunriseSun} />
+          </View>
+
+          <Text style={styles.overlayHeader}>قصر المتشابهات (تحت التشييد)</Text>
+          
+          {/* Palace Construction Area */}
+          <View style={styles.palaceStage}>
+            
+            {/* 1. Base Platform - Always visible */}
+            <PalaceBaseLayer />
+
+            {/* 2. Main Walls - Unlocked at Correct Count >= 1 */}
+            {correctCount >= (overlayCorrect ? 1 : 2) && (
+              <Animated.View 
+                style={[
+                  styles.palacePiece, 
+                  { bottom: 15 },
+                  (overlayCorrect && correctCount === 1) && {
+                    transform: [{ translateY: fallingPieceY }, { scale: fallingPieceScale }],
+                    opacity: fallingPieceOpacity
+                  }
+                ]}
+              >
+                <PalaceWallsLayer />
+              </Animated.View>
+            )}
+
+            {/* 3. Outer Columns - Unlocked at Correct Count >= 2 */}
+            {correctCount >= (overlayCorrect ? 2 : 3) && (
+              <Animated.View 
+                style={[
+                  styles.palacePiece, 
+                  { bottom: 15 },
+                  (overlayCorrect && correctCount === 2) && {
+                    transform: [{ translateY: fallingPieceY }, { scale: fallingPieceScale }],
+                    opacity: fallingPieceOpacity
+                  }
+                ]}
+              >
+                <PalacePillarsLayer />
+              </Animated.View>
+            )}
+
+            {/* 4. Minaret Tower - Unlocked at Correct Count >= 3 */}
+            {correctCount >= (overlayCorrect ? 3 : 4) && (
+              <Animated.View 
+                style={[
+                  styles.palacePiece, 
+                  { bottom: 15, right: 0 },
+                  (overlayCorrect && correctCount === 3) && {
+                    transform: [{ translateY: fallingPieceY }, { scale: fallingPieceScale }],
+                    opacity: fallingPieceOpacity
+                  }
+                ]}
+              >
+                <PalaceMinaretLayer />
+              </Animated.View>
+            )}
+
+            {/* 5. Golden Dome - Unlocked at Correct Count >= 4 */}
+            {correctCount >= (overlayCorrect ? 4 : 5) && (
+              <Animated.View 
+                style={[
+                  styles.palacePiece, 
+                  { bottom: 85 },
+                  (overlayCorrect && correctCount === 4) && {
+                    transform: [{ translateY: fallingPieceY }, { scale: fallingPieceScale }],
+                    opacity: fallingPieceOpacity
+                  }
+                ]}
+              >
+                <PalaceDomeLayer />
+              </Animated.View>
+            )}
+          </View>
+
+          {/* Constructing Status Text */}
+          {overlayCorrect ? (
+            <View style={styles.statusBox}>
+              <Text style={styles.statusTitle}>✅ إجابة صحيحة!</Text>
+              <Text style={styles.statusSubtitle}>تم تجميع وتركيب: {unlockedSegment} (+10 XP)</Text>
+            </View>
+          ) : (
+            <View style={[styles.statusBox, { backgroundColor: '#FDF2F2' }]}>
+              <Text style={[styles.statusTitle, { color: '#E74C3C' }]}>❌ إجابة خاطئة</Text>
+              <Text style={[styles.statusSubtitle, { color: '#C0392B' }]}>فشل تركيب القطعة، راجع التوضيح بالأسفل لإتمام البناء لاحقاً.</Text>
+            </View>
+          )}
+
+          {/* Educational Explanation Box (Spacious & Clean) */}
+          <ScrollView style={styles.explanationScroll} contentContainerStyle={{ paddingBottom: 30 }} showsVerticalScrollIndicator={false}>
+            <View style={styles.overlayExplanationCard}>
+              <Text style={styles.overlayExplanationHeader}>💡 توضيح متشابهة الآية:</Text>
+              <Text style={styles.overlayExplanationText}>{currentQuestion.explanation}</Text>
+            </View>
+
+            <TouchableOpacity style={styles.overlayNextBtn} onPress={handleNextQuestion}>
+              <Text style={styles.overlayNextBtnText}>
+                {currentIndex === questions.length - 1 ? 'متابعة وعرض النتيجة النهائية' : 'متابعة التحدي'}
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
         </Animated.View>
       )}
     </View>
@@ -426,89 +506,65 @@ export default function MutashabihatScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5EFEB', // Linen/Parchment Desk Background
+    backgroundColor: '#FAF9F6',
   },
   header: {
-    height: 110,
-    backgroundColor: '#3D1C06', // Rich Mahogany wood header
-    justifyContent: 'center',
+    flexDirection: 'row-reverse',
     alignItems: 'center',
-    paddingTop: 45,
-    borderBottomWidth: 4,
-    borderBottomColor: '#1A0B02',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 5,
+    justifyContent: 'space-between',
+    paddingTop: 60,
+    paddingBottom: 15,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
   },
   backBtn: {
-    position: 'absolute',
-    right: 20,
-    top: 55,
     padding: 5,
-    backgroundColor: '#5C3A21',
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#8B5A2B',
   },
   backBtnText: {
-    fontSize: 16,
+    fontSize: 20,
   },
   headerTitle: {
     fontSize: 18,
-    color: '#F4E6D6',
     fontWeight: 'bold',
   },
   lobbyScroll: {
     padding: 20,
   },
   infoBox: {
-    padding: 20,
+    padding: 24,
     borderRadius: 15,
-    backgroundColor: '#E6D2B8',
     alignItems: 'center',
     marginBottom: 25,
-    borderWidth: 2,
-    borderColor: '#8B5A2B',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
   infoTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#3D1C06',
     marginBottom: 8,
     textAlign: 'center',
   },
   infoDesc: {
     fontSize: 14,
-    color: '#5C3A21',
     textAlign: 'center',
     lineHeight: 22,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#3D1C06',
     marginBottom: 15,
     textAlign: 'right',
   },
   diffCard: {
-    borderWidth: 2,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.04,
     shadowRadius: 2,
     elevation: 1,
   },
@@ -521,270 +577,89 @@ const styles = StyleSheet.create({
   diffTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#3D1C06',
   },
   diffDesc: {
     fontSize: 13,
-    color: '#5C3A21',
     textAlign: 'right',
     lineHeight: 18,
   },
   startBtn: {
-    backgroundColor: '#8B4513', // Carved wood action button
     borderRadius: 12,
-    paddingVertical: 16,
+    paddingVertical: 15,
     alignItems: 'center',
     marginTop: 25,
-    borderBottomWidth: 4,
-    borderBottomColor: '#3D1C06',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
   },
   startBtnText: {
-    color: '#FFF8F0',
-    fontSize: 17,
+    color: '#fff',
+    fontSize: 16,
     fontWeight: 'bold',
   },
-  quizWrapper: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 15,
+  quizScroll: {
+    padding: 20,
   },
   progressRow: {
-    marginBottom: 10,
-    alignItems: 'flex-end',
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
   },
   progressText: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: '#5C3A21',
-  },
-  // SKEUOMORPHIC WOOD TRAY BOARD
-  quranBoard: {
-    borderWidth: 6,
-    borderColor: '#3D1C06', // Outer Wooden Rim Frame
-    borderRadius: 16,
-    padding: 12,
-    minHeight: 310,
-    justifyContent: 'space-around',
-    marginBottom: 15,
-    backgroundColor: '#EBDCB9', // Polished tray bottom
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 6,
-    position: 'relative',
-  },
-  woodCorner: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-  },
-  boardGlow: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(212, 175, 55, 0.2)', // Warm Gold glow burst
-    borderRadius: 10,
-  },
-  quranSlot: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#C6B29C',
-    borderStyle: 'dashed',
-    borderRadius: 10,
-    paddingVertical: 9,
-    paddingHorizontal: 12,
-    minHeight: 50,
-    marginBottom: 6,
-    backgroundColor: '#DECBA5', // Inset / recessed depth color
-    shadowColor: '#000',
-    shadowOffset: { width: 1, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 1,
-  },
-  activeSlot: {
-    borderColor: '#8B5A2B',
-    backgroundColor: '#EADBB6',
-    borderStyle: 'solid',
-  },
-  correctSlot: {
-    borderColor: '#2ECC71',
-    backgroundColor: '#E5F3EC',
-    borderStyle: 'solid',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-  },
-  wrongSlot: {
-    borderColor: '#E74C3C',
-    backgroundColor: '#F9EBEA',
-    borderStyle: 'solid',
-  },
-  emptySlotRow: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    flex: 1,
-  },
-  slotPlaceholderText: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    marginRight: 8,
-  },
-  slotVerseText: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: '#3D1C06',
-    textAlign: 'right',
-    flex: 1,
-    marginRight: 10,
-  },
-  markerContainer: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: '#C5A059',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#3D1C06',
-  },
-  markerText: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: '#3D1C06',
-  },
-  // QUESTION BOARD (IVORY PLATE)
-  prompterBox: {
-    backgroundColor: '#FFFDF0', // Polished Ivory sheet
-    borderWidth: 1.5,
-    borderColor: '#CD853F',
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  prompterText: {
-    fontSize: 16,
-    color: '#3D1C06',
-    textAlign: 'center',
-    lineHeight: 26,
+    fontSize: 14,
     fontWeight: '600',
   },
-  choicesScroll: {
-    paddingBottom: 25,
+  progressBarBg: {
+    height: 8,
+    borderRadius: 4,
+    flex: 1,
+    marginRight: 15,
+    overflow: 'hidden',
   },
-  // SKEUOMORPHIC WOOD PUZZLE PIECES
-  puzzleOption: {
-    flexDirection: 'row-reverse',
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  questionBox: {
+    borderWidth: 1,
+    borderRadius: 15,
+    padding: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: '#8B5A2B',
-    borderRadius: 10,
-    backgroundColor: '#DEB887', // Polished Oak wood block
-    paddingVertical: 14,
-    marginBottom: 12,
-    position: 'relative',
-    overflow: 'visible',
-    // 3D Block Dimension
-    borderBottomWidth: 4,
-    borderBottomColor: '#5C3A21',
-    borderRightWidth: 3,
-    borderRightColor: '#8B5A2B',
+    marginBottom: 25,
+    minHeight: 160,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  ayahText: {
+    fontSize: 20,
+    textAlign: 'center',
+    lineHeight: 34,
+    fontWeight: '600',
+  },
+  hintLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    textAlign: 'right',
+  },
+  optionBtn: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    marginBottom: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 1,
+    elevation: 1,
   },
   optionText: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#3D1C06',
-    textAlign: 'center',
-  },
-  notchOut: {
-    position: 'absolute',
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    right: -7,
-    top: '50%',
-    marginTop: -7,
-    backgroundColor: '#DEB887',
-    borderWidth: 1.5,
-    borderColor: '#8B5A2B',
-  },
-  notchIn: {
-    position: 'absolute',
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    left: -7,
-    top: '50%',
-    marginTop: -7,
-    backgroundColor: '#F5EFEB', // Matches the linen desk color, cutting out the piece
-  },
-  flyingPuzzlePiece: {
-    position: 'absolute',
-    width: SCREEN_WIDTH - 40,
-    zIndex: 9999,
-  },
-  // EXPLANATION BOARD (CARVED mahogany PLATE)
-  explanationCard: {
-    borderWidth: 2,
-    borderColor: '#8B5A2B',
-    borderRadius: 15,
-    padding: 20,
-    backgroundColor: '#F4E6D6',
-    marginTop: 5,
-    marginBottom: 30,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
-  },
-  explanationHeader: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: '#3D1C06',
-    marginBottom: 8,
-    textAlign: 'right',
-  },
-  explanationText: {
-    fontSize: 14,
-    color: '#5C3A21',
-    textAlign: 'right',
-    lineHeight: 22,
-    marginBottom: 20,
-  },
-  nextBtn: {
-    backgroundColor: '#8B4513',
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderBottomWidth: 3,
-    borderBottomColor: '#3D1C06',
-  },
-  nextBtnText: {
-    color: '#FFF8F0',
-    fontSize: 15,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   resultsScroll: {
     padding: 20,
@@ -792,32 +667,39 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingTop: 60,
   },
+  showcaseBox: {
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 35,
+  },
+  showcaseLabel: {
+    fontSize: 14,
+    color: '#8E8070',
+    fontWeight: 'bold',
+    marginTop: 15,
+    textAlign: 'center',
+  },
   scoreCircle: {
     width: 150,
     height: 150,
     borderRadius: 75,
     borderWidth: 8,
-    borderColor: '#3D1C06',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 30,
-    backgroundColor: '#DEB887',
   },
   scorePercent: {
     fontSize: 36,
     fontWeight: 'bold',
-    color: '#3D1C06',
   },
   scoreLabel: {
     fontSize: 14,
-    color: '#5C3A21',
     marginTop: 4,
   },
   resultTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     textAlign: 'center',
-    color: '#3D1C06',
     marginBottom: 15,
     paddingHorizontal: 20,
   },
@@ -825,19 +707,14 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingVertical: 12,
     paddingHorizontal: 20,
-    backgroundColor: '#E6D2B8',
     marginBottom: 40,
-    borderWidth: 1.5,
-    borderColor: '#8B5A2B',
   },
   xpText: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#3D1C06',
   },
   homeBtn: {
-    borderWidth: 1.5,
-    borderColor: '#8B4513',
+    borderWidth: 1,
     borderRadius: 12,
     paddingVertical: 15,
     alignItems: 'center',
@@ -847,6 +724,124 @@ const styles = StyleSheet.create({
   homeBtnText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#8B4513',
+  },
+  // --- FULL SCREEN OVERLAY CONTAINER ---
+  overlayContainer: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#0F172A', // Dark night sky theme
+    zIndex: 99999,
+    paddingTop: 60,
+    paddingHorizontal: 20,
+  },
+  skyBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: SCREEN_HEIGHT * 0.45,
+    backgroundColor: '#1E1B4B',
+    overflow: 'hidden',
+  },
+  sunriseSun: {
+    position: 'absolute',
+    bottom: -100,
+    left: SCREEN_WIDTH / 2 - 150,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: '#F59E0B',
+    opacity: 0.15,
+  },
+  overlayHeader: {
+    color: '#FFF8E7',
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 20,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  palaceStage: {
+    width: 200,
+    height: 180,
+    alignSelf: 'center',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    position: 'relative',
+    marginBottom: 35,
+  },
+  palaceContainer: {
+    width: 200,
+    height: 180,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  palacePiece: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusBox: {
+    backgroundColor: '#EBF7F3',
+    borderWidth: 1.5,
+    borderColor: '#2ECC71',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  statusTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#27AE60',
+    marginBottom: 4,
+  },
+  statusSubtitle: {
+    fontSize: 13,
+    color: '#2E7D32',
+    textAlign: 'center',
+  },
+  explanationScroll: {
+    flex: 1,
+  },
+  overlayExplanationCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 15,
+    padding: 20,
+    marginBottom: 20,
+  },
+  overlayExplanationHeader: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#FCD34D',
+    marginBottom: 8,
+    textAlign: 'right',
+  },
+  overlayExplanationText: {
+    fontSize: 14,
+    color: '#E2E8F0',
+    textAlign: 'right',
+    lineHeight: 22,
+  },
+  overlayNextBtn: {
+    backgroundColor: '#F59E0B',
+    borderRadius: 12,
+    paddingVertical: 15,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 5,
+  },
+  overlayNextBtnText: {
+    color: '#1E1B4B',
+    fontSize: 15,
+    fontWeight: 'bold',
   },
 });

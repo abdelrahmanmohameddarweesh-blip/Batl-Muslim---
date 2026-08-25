@@ -319,7 +319,7 @@ export default function VoiceScreen({ navigation }: any) {
         formData.append('ayah', currentAyah.id);
         formData.append('style', recitationStyle);
 
-        const serverIp = '172.20.10.2';
+        const serverIp = '192.168.240.112';
         const dspResponse = await fetch(`http://${serverIp}:5001/analyze`, {
           method: 'POST',
           body: formData,

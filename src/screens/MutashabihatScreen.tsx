@@ -7,19 +7,55 @@ import Svg, { Path, Rect, Circle, Defs, LinearGradient, Stop } from 'react-nativ
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-// --- HEAVENLY FLOATING PALACE VECTOR SVG LAYERS ---
-// Intricate, dreamy vector designs of a pearly-white marble palace with turquoise domes floating on clouds
+// --- HEAVENLY PALACE RICH GRADIENTS DEFINITIONS ---
+function PalaceGradients() {
+  return (
+    <Svg width="0" height="0" style={{ position: 'absolute' }}>
+      <Defs>
+        {/* White Marble with Soft Gray Shadows */}
+        <LinearGradient id="marbleGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+          <Stop offset="0%" stopColor="#FFFFFF" />
+          <Stop offset="30%" stopColor="#F9F6F0" />
+          <Stop offset="100%" stopColor="#D9D4C7" />
+        </LinearGradient>
+
+        {/* Polished Metallic Gold */}
+        <LinearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <Stop offset="0%" stopColor="#FFECA7" />
+          <Stop offset="40%" stopColor="#E2B842" />
+          <Stop offset="75%" stopColor="#C59B27" />
+          <Stop offset="100%" stopColor="#8A6611" />
+        </LinearGradient>
+
+        {/* Ethereal Glowing Turquoise/Teal for Domes */}
+        <LinearGradient id="turquoiseGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+          <Stop offset="0%" stopColor="#5CEEE6" />
+          <Stop offset="40%" stopColor="#00A89F" />
+          <Stop offset="100%" stopColor="#006660" />
+        </LinearGradient>
+
+        {/* Soft Pink & White Heaven Cloud Fill */}
+        <LinearGradient id="cloudGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+          <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="1" />
+          <Stop offset="50%" stopColor="#FFF2F6" stopOpacity="0.95" />
+          <Stop offset="100%" stopColor="#F8D3E9" stopOpacity="0.9" />
+        </LinearGradient>
+      </Defs>
+    </Svg>
+  );
+}
+
+// --- HEAVENLY PALACE VECTOR SVG LAYERS ---
 
 function HeavenSunbeams() {
   return (
     <Svg width={SCREEN_WIDTH} height="200" viewBox={`0 0 ${SCREEN_WIDTH} 200`} style={styles.sunbeams}>
       <Defs>
         <LinearGradient id="beamGrad" x1="0%" y1="0%" x2="50%" y2="100%">
-          <Stop offset="0%" stopColor="#FFF2CC" stopOpacity="0.3" />
+          <Stop offset="0%" stopColor="#FFF4D0" stopOpacity="0.35" />
           <Stop offset="100%" stopColor="#FFF" stopOpacity="0" />
         </LinearGradient>
       </Defs>
-      {/* Radiant Sunbeams / Heavenly Rays */}
       <Path d={`M${SCREEN_WIDTH/2} 0 L0 200 L50 200 Z`} fill="url(#beamGrad)" />
       <Path d={`M${SCREEN_WIDTH/2} 0 L${SCREEN_WIDTH/3} 200 L${SCREEN_WIDTH/2} 200 Z`} fill="url(#beamGrad)" />
       <Path d={`M${SCREEN_WIDTH/2} 0 L${SCREEN_WIDTH*0.6} 200 L${SCREEN_WIDTH*0.8} 200 Z`} fill="url(#beamGrad)" />
@@ -30,21 +66,17 @@ function HeavenSunbeams() {
 
 function HeavenCloudsBase() {
   return (
-    <Svg width="240" height="40" viewBox="0 0 240 40" fill="none">
-      {/* Soft Overlapping Floating Heaven Clouds */}
-      <Circle cx="30" cy="25" r="20" fill="#FFF" opacity="0.9" />
-      <Circle cx="60" cy="20" r="22" fill="#FFF" opacity="0.95" />
-      <Circle cx="100" cy="23" r="24" fill="#FFF" opacity="0.9" />
-      <Circle cx="140" cy="18" r="25" fill="#FFF" opacity="0.95" />
-      <Circle cx="180" cy="22" r="22" fill="#FFF" opacity="0.9" />
-      <Circle cx="210" cy="25" r="18" fill="#FFF" opacity="0.85" />
-      
-      {/* Pink Sunset Highlights on Clouds */}
-      <Circle cx="70" cy="22" r="15" fill="#FCE7F3" opacity="0.6" />
-      <Circle cx="130" cy="20" r="17" fill="#FCE7F3" opacity="0.6" />
+    <Svg width="250" height="50" viewBox="0 0 250 50" fill="none">
+      {/* Soft Overlapping Floating Heaven Clouds filled with the rose/white gradient */}
+      <Circle cx="30" cy="30" r="20" fill="url(#cloudGrad)" />
+      <Circle cx="60" cy="22" r="24" fill="url(#cloudGrad)" />
+      <Circle cx="100" cy="26" r="26" fill="url(#cloudGrad)" />
+      <Circle cx="145" cy="18" r="28" fill="url(#cloudGrad)" />
+      <Circle cx="190" cy="24" r="24" fill="url(#cloudGrad)" />
+      <Circle cx="220" cy="28" r="20" fill="url(#cloudGrad)" />
       
       {/* Base Connector */}
-      <Rect width="220" height="15" x="10" y="20" rx="7" fill="#FFF" opacity="0.9" />
+      <Rect width="230" height="18" x="10" y="24" rx="9" fill="url(#cloudGrad)" />
     </Svg>
   );
 }
@@ -53,24 +85,24 @@ function HeavenWallsLayer() {
   return (
     <Svg width="130" height="85" viewBox="0 0 130 85" fill="none">
       {/* Pearly White Marble Main Hall */}
-      <Rect width="124" height="75" x="3" y="5" rx="8" fill="#FFFFFF" stroke="#F5B841" strokeWidth="1.5" />
+      <Rect width="124" height="75" x="3" y="5" rx="8" fill="url(#marbleGrad)" stroke="url(#goldGrad)" strokeWidth="1.8" />
       
       {/* Islamic Arch Border around doorway */}
-      <Rect width="46" height="58" x="42" y="25" rx="5" fill="none" stroke="#F5B841" strokeWidth="1.2" strokeDasharray="3,3" />
+      <Rect width="46" height="58" x="42" y="25" rx="5" fill="none" stroke="url(#goldGrad)" strokeWidth="1.2" strokeDasharray="3,3" />
       
-      {/* Main Entrance Archway (Pearly White & Gold) */}
-      <Path d="M46 85V48c0-11 8-20 19-20s19 9 19 20v37H46z" fill="#FFFDF0" stroke="#F5B841" strokeWidth="1.5" />
-      <Path d="M50 85V51c0-8 7-14 15-14s15 6 15 14v34H50z" fill="#008080" /> {/* Turquoise Interior */}
+      {/* Main Entrance Archway */}
+      <Path d="M46 85V48c0-11 8-20 19-20s19 9 19 20v37H46z" fill="url(#marbleGrad)" stroke="url(#goldGrad)" strokeWidth="1.5" />
+      <Path d="M50 85V51c0-8 7-14 15-14s15 6 15 14v34H50z" fill="url(#turquoiseGrad)" /> 
       
-      {/* Intricate Arched Windows (Left & Right) */}
-      <Path d="M14 48V30c0-6 4-10 8-10s8 4 8 10v18H14z" fill="#008080" stroke="#F5B841" strokeWidth="1.5" />
-      <Path d="M14 36h16M22 20v28" stroke="#F5B841" strokeWidth="0.8" />
+      {/* Intricate Arched Windows */}
+      <Path d="M14 48V30c0-6 4-10 8-10s8 4 8 10v18H14z" fill="url(#turquoiseGrad)" stroke="url(#goldGrad)" strokeWidth="1.5" />
+      <Path d="M14 36h16M22 20v28" stroke="url(#goldGrad)" strokeWidth="0.8" />
       
-      <Path d="M98 48V30c0-6 4-10 8-10s8 4 8 10v18H98z" fill="#008080" stroke="#F5B841" strokeWidth="1.5" />
-      <Path d="M98 36h16M106 20v28" stroke="#F5B841" strokeWidth="0.8" />
+      <Path d="M98 48V30c0-6 4-10 8-10s8 4 8 10v18H98z" fill="url(#turquoiseGrad)" stroke="url(#goldGrad)" strokeWidth="1.5" />
+      <Path d="M98 36h16M106 20v28" stroke="url(#goldGrad)" strokeWidth="0.8" />
 
       {/* Roof gold trim details */}
-      <Rect width="128" height="5" x="1" y="1" fill="#F5B841" rx="2" />
+      <Rect width="128" height="6" x="1" y="1" fill="url(#goldGrad)" rx="2" />
     </Svg>
   );
 }
@@ -78,19 +110,17 @@ function HeavenWallsLayer() {
 function HeavenPillarsLayer() {
   return (
     <Svg width="150" height="85" viewBox="0 0 150 85" fill="none">
-      {/* Ethereal Side Columns support */}
       {/* Left Column */}
-      <Rect width="12" height="74" x="6" y="8" rx="3" fill="#FFF" stroke="#F5B841" strokeWidth="1" />
-      <Path d="M10 8v74" stroke="#FFF9EB" strokeWidth="1" />
-      {/* Gold Base & Capital */}
-      <Rect width="18" height="6" x="3" y="4" rx="1.5" fill="#F5B841" />
-      <Rect width="18" height="6" x="3" y="79" rx="1.5" fill="#F5B841" />
+      <Rect width="12" height="74" x="6" y="8" rx="3" fill="url(#marbleGrad)" stroke="url(#goldGrad)" strokeWidth="1" />
+      <Path d="M10 8v74" stroke="#FFF" strokeWidth="0.8" />
+      <Rect width="18" height="6" x="3" y="4" rx="1.5" fill="url(#goldGrad)" />
+      <Rect width="18" height="6" x="3" y="79" rx="1.5" fill="url(#goldGrad)" />
 
       {/* Right Column */}
-      <Rect width="12" height="74" x="132" y="8" rx="3" fill="#FFF" stroke="#F5B841" strokeWidth="1" />
-      <Path d="M136 8v74" stroke="#FFF9EB" strokeWidth="1" />
-      <Rect width="18" height="6" x="129" y="4" rx="1.5" fill="#F5B841" />
-      <Rect width="18" height="6" x="129" y="79" rx="1.5" fill="#F5B841" />
+      <Rect width="12" height="74" x="132" y="8" rx="3" fill="url(#marbleGrad)" stroke="url(#goldGrad)" strokeWidth="1" />
+      <Path d="M136 8v74" stroke="#FFF" strokeWidth="0.8" />
+      <Rect width="18" height="6" x="129" y="4" rx="1.5" fill="url(#goldGrad)" />
+      <Rect width="18" height="6" x="129" y="79" rx="1.5" fill="url(#goldGrad)" />
     </Svg>
   );
 }
@@ -99,12 +129,14 @@ function HeavenTurretsLayer() {
   return (
     <Svg width="160" height="75" viewBox="0 0 160 75" fill="none">
       {/* Left Minor Turquoise Dome */}
-      <Path d="M0 60c0-18 10-25 18-25s18 7 18 25H0z" fill="#48D1CC" stroke="#F5B841" strokeWidth="1" />
-      <Path d="M18 35V25" stroke="#F5B841" strokeWidth="1.5" />
+      <Path d="M0 60c0-18 10-25 18-25s18 7 18 25H0z" fill="url(#turquoiseGrad)" stroke="url(#goldGrad)" strokeWidth="1.2" />
+      <Path d="M18 35V25" stroke="url(#goldGrad)" strokeWidth="1.5" />
+      <Circle cx="18" cy="23" r="1.5" fill="url(#goldGrad)" />
       
       {/* Right Minor Turquoise Dome */}
-      <Path d="M124 60c0-18 10-25 18-25s18 7 18 25h-36z" fill="#48D1CC" stroke="#F5B841" strokeWidth="1" />
-      <Path d="M142 35V25" stroke="#F5B841" strokeWidth="1.5" />
+      <Path d="M124 60c0-18 10-25 18-25s18 7 18 25h-36z" fill="url(#turquoiseGrad)" stroke="url(#goldGrad)" strokeWidth="1.2" />
+      <Path d="M142 35V25" stroke="url(#goldGrad)" strokeWidth="1.5" />
+      <Circle cx="142" cy="23" r="1.5" fill="url(#goldGrad)" />
     </Svg>
   );
 }
@@ -112,22 +144,25 @@ function HeavenTurretsLayer() {
 function HeavenDomeLayer() {
   return (
     <Svg width="90" height="75" viewBox="0 0 90 75" fill="none">
-      {/* Base Ring with small windows */}
-      <Rect width="62" height="8" x="14" y="48" fill="#FFFFFF" stroke="#F5B841" strokeWidth="1" />
-      <Circle cx="22" cy="52" r="2" fill="#F5B841" />
-      <Circle cx="34" cy="52" r="2" fill="#F5B841" />
-      <Circle cx="46" cy="52" r="2" fill="#F5B841" />
-      <Circle cx="58" cy="52" r="2" fill="#F5B841" />
+      {/* Base Ring with gold details */}
+      <Rect width="62" height="8" x="14" y="48" fill="url(#marbleGrad)" stroke="url(#goldGrad)" strokeWidth="1.2" />
+      <Circle cx="22" cy="52" r="1.8" fill="url(#goldGrad)" />
+      <Circle cx="34" cy="52" r="1.8" fill="url(#goldGrad)" />
+      <Circle cx="46" cy="52" r="1.8" fill="url(#goldGrad)" />
+      <Circle cx="58" cy="52" r="1.8" fill="url(#goldGrad)" />
       
       {/* Main Golden Dome Body */}
-      <Path d="M15 48C15 18 35 8 45 8s30 10 30 40H15z" fill="#F5B841" stroke="#FFF" strokeWidth="1.5" />
-      {/* Radiant Glow Lines */}
-      <Path d="M45 8c-6 10-12 25-12 40" stroke="#FFF" strokeWidth="1" opacity="0.8" />
-      <Path d="M45 8c6 10 12 25 12 40" stroke="#FFF" strokeWidth="1" opacity="0.8" />
+      <Path d="M15 48C15 18 35 8 45 8s30 10 30 40H15z" fill="url(#goldGrad)" stroke="#FFF" strokeWidth="1.5" />
+      
+      {/* 3D Segment Highlight Lines */}
+      <Path d="M45 8c-6 10-12 25-12 40" stroke="#FFF" strokeWidth="1" opacity="0.45" />
+      <Path d="M45 8c6 10 12 25 12 40" stroke="#FFF" strokeWidth="1" opacity="0.45" />
+      <Path d="M45 8c-10 12-18 25-18 40" stroke="#8A6611" strokeWidth="1.2" opacity="0.3" />
+      <Path d="M45 8c10 12 18 25 18 40" stroke="#8A6611" strokeWidth="1.2" opacity="0.3" />
       
       {/* Golden Crescent Spire */}
-      <Path d="M45 8V-5" stroke="#F5B841" strokeWidth="2.5" />
-      <Circle cx="45" cy="-6" r="3" fill="#F5B841" />
+      <Path d="M45 8V-5" stroke="url(#goldGrad)" strokeWidth="2.8" />
+      <Circle cx="45" cy="-6" r="3" fill="url(#goldGrad)" />
     </Svg>
   );
 }
@@ -182,13 +217,13 @@ export default function MutashabihatScreen({ navigation }: any) {
     const isCorrect = option === currentQuestion.answer;
     setOverlayCorrect(isCorrect);
 
-    // Identify which specific small segment of the palace is unlocked
+    // 5 progressive detailed small segments matching Heaven Palace layout
     const segmentNames = [
-      'جدران المحراب اللؤلؤية',
-      'الأعمدة المرخمة بالذهب',
-      'القباب الجانبية الفيروزية',
-      'القبة الذهبية المشعة',
-      'هلال القمة والنور السماوي'
+      'جدران المحراب الرخامية المطعمة بالذهب',
+      'أعمدة القصر المرخمة والتيجان الذهبية',
+      'القباب الجانبية الفيروزية المشعة',
+      'الهيكل الأساسي للقبة الذهبية الكبرى',
+      'هلال النصر والرمح المضيء في قمة القصر'
     ];
     const activeSegment = segmentNames[correctCount] || 'ملحقات الزخرفة';
     setUnlockedSegment(activeSegment);
@@ -281,6 +316,9 @@ export default function MutashabihatScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
+      {/* Embed the custom SVG gradients into the DOM tree */}
+      <PalaceGradients />
+
       {/* Clean Header */}
       <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.surface }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => screenState === 'lobby' ? navigation.goBack() : handleReset()}>

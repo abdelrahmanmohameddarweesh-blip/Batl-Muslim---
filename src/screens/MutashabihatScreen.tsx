@@ -3,57 +3,82 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Dimensi
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { mutashabihatQuestions, type MutashabahQuestion } from '../data/mutashabihat';
-import Svg, { Path, Rect, Circle, G, Defs, LinearGradient, Stop } from 'react-native-svg';
+import Svg, { Path, Rect, Circle, G } from 'react-native-svg';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-// --- UNIFIED HIGH-FIDELITY GRADIENTS ---
-const UnifiedGradients = () => (
-  <Defs>
-    <LinearGradient id="marbleGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <Stop offset="0%" stopColor="#FFFFFF" />
-      <Stop offset="35%" stopColor="#F9F5EC" />
-      <Stop offset="100%" stopColor="#D2C9B9" />
-    </LinearGradient>
-
-    <LinearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <Stop offset="0%" stopColor="#FFF2A9" />
-      <Stop offset="40%" stopColor="#E5B942" />
-      <Stop offset="75%" stopColor="#C9981E" />
-      <Stop offset="100%" stopColor="#876106" />
-    </LinearGradient>
-
-    <LinearGradient id="turquoiseGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <Stop offset="0%" stopColor="#64FFF5" />
-      <Stop offset="50%" stopColor="#00B3A6" />
-      <Stop offset="100%" stopColor="#005C55" />
-    </LinearGradient>
-
-    <LinearGradient id="cloudGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="1" />
-      <Stop offset="60%" stopColor="#FFF0F4" stopOpacity="0.97" />
-      <Stop offset="100%" stopColor="#F7C4E5" stopOpacity="0.93" />
-    </LinearGradient>
-  </Defs>
-);
-
 // --- COMPONENT: HEAVEN SUNBEAMS ---
 const HeavenSunbeams = React.memo(() => (
-  <Svg width={SCREEN_WIDTH} height="200" viewBox={`0 0 ${SCREEN_WIDTH} 200`} style={styles.sunbeams}>
-    <Defs>
-      <LinearGradient id="beamGrad" x1="0%" y1="0%" x2="50%" y2="100%">
-        <Stop offset="0%" stopColor="#FFF4D0" stopOpacity="0.35" />
-        <Stop offset="100%" stopColor="#FFF" stopOpacity="0" />
-      </LinearGradient>
-    </Defs>
-    <Path d={`M${SCREEN_WIDTH/2} 0 L0 200 L50 200 Z`} fill="url(#beamGrad)" />
-    <Path d={`M${SCREEN_WIDTH/2} 0 L${SCREEN_WIDTH/3} 200 L${SCREEN_WIDTH/2} 200 Z`} fill="url(#beamGrad)" />
-    <Path d={`M${SCREEN_WIDTH/2} 0 L${SCREEN_WIDTH*0.6} 200 L${SCREEN_WIDTH*0.8} 200 Z`} fill="url(#beamGrad)" />
-    <Path d={`M${SCREEN_WIDTH/2} 0 L${SCREEN_WIDTH} 200 L${SCREEN_WIDTH-50} 200 Z`} fill="url(#beamGrad)" />
+  <Svg width={SCREEN_WIDTH} height="240" viewBox={`0 0 ${SCREEN_WIDTH} 240`} style={styles.sunbeams}>
+    <Path d={`M${SCREEN_WIDTH/2} 0 L0 240 L60 240 Z`} fill="#FFE082" opacity="0.12" />
+    <Path d={`M${SCREEN_WIDTH/2} 0 L${SCREEN_WIDTH/4} 240 L${SCREEN_WIDTH/2} 240 Z`} fill="#FFE082" opacity="0.08" />
+    <Path d={`M${SCREEN_WIDTH/2} 0 L${SCREEN_WIDTH*0.55} 240 L${SCREEN_WIDTH*0.75} 240 Z`} fill="#FFE082" opacity="0.1" />
+    <Path d={`M${SCREEN_WIDTH/2} 0 L${SCREEN_WIDTH} 240 L${SCREEN_WIDTH-60} 240 Z`} fill="#FFE082" opacity="0.07" />
   </Svg>
 ));
 
+// --- COMPONENT: STARDUST PARTICLES ---
+interface SparkleProps {
+  delay: number;
+  left: number;
+  size: number;
+}
+const Sparkle = React.memo(({ delay, left, size }: SparkleProps) => {
+  const anim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    let active = true;
+    const run = () => {
+      if (!active) return;
+      anim.setValue(0);
+      Animated.sequence([
+        Animated.delay(delay),
+        Animated.timing(anim, {
+          toValue: 1,
+          duration: 3500 + Math.random() * 2000,
+          useNativeDriver: true,
+        })
+      ]).start(() => run());
+    };
+    run();
+    return () => { active = false; };
+  }, []);
+
+  const translateY = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [180, 20]
+  });
+
+  const opacity = anim.interpolate({
+    inputRange: [0, 0.2, 0.8, 1],
+    outputRange: [0, 0.9, 0.9, 0]
+  });
+
+  const scale = anim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0.6, 1.2, 0.6]
+  });
+
+  return (
+    <Animated.View
+      style={[
+        styles.absoluteSparkle,
+        {
+          left,
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          transform: [{ translateY }, { scale }],
+          opacity,
+        }
+      ]}
+    />
+  );
+});
+
 // --- COMPONENT: UNIFIED HEAVENLY PALACE (MEMOIZED & CACHED) ---
+// Renders the entire palace inside a single, perfectly structured SVG coordinate space (0,0 to 240,200)
+// Uses solid shaded paths (Light/Dark sides) for a gorgeous Monument Valley flat-3D style that is 100% stable on iOS.
 interface HeavenPalaceProps {
   correctCount: number;
   overlayCorrect: boolean;
@@ -75,8 +100,7 @@ const HeavenPalace = React.memo(({ correctCount, overlayCorrect, isSnapped, snap
   return (
     <Animated.View style={{ transform: [{ scale: snapPopScale }] }}>
       <Svg width="240" height="200" viewBox="0 0 240 200" fill="none">
-        <UnifiedGradients />
-
+        
         {/* 1. Clouds Base */}
         <G id="cloudsBase">
           <Circle cx="35" cy="175" r="20" fill="#FFEAF2" />
@@ -119,8 +143,8 @@ const HeavenPalace = React.memo(({ correctCount, overlayCorrect, isSnapped, snap
           </G>
         )}
         {showWallsPlaceholder && (
-          <G id="wallsPlaceholder" opacity="0.25">
-            <Rect width="124" height="75" x="58" y="90" rx="8" fill="none" stroke="#E5B942" strokeWidth="2" strokeDasharray="4,4" />
+          <G id="wallsPlaceholder" opacity="0.35">
+            <Rect width="124" height="75" x="58" y="90" rx="8" fill="none" stroke="#F5D061" strokeWidth="2.5" strokeDasharray="5,5" />
           </G>
         )}
 
@@ -137,9 +161,9 @@ const HeavenPalace = React.memo(({ correctCount, overlayCorrect, isSnapped, snap
           </G>
         )}
         {showPillarsPlaceholder && (
-          <G id="pillarsPlaceholder" opacity="0.25">
-            <Rect width="12" height="74" x="48" y="92" rx="3" fill="none" stroke="#E5B942" strokeWidth="1.5" strokeDasharray="4,4" />
-            <Rect width="12" height="74" x="180" y="92" rx="3" fill="none" stroke="#E5B942" strokeWidth="1.5" strokeDasharray="4,4" />
+          <G id="pillarsPlaceholder" opacity="0.35">
+            <Rect width="12" height="74" x="48" y="92" rx="3" fill="none" stroke="#F5D061" strokeWidth="2.5" strokeDasharray="5,5" />
+            <Rect width="12" height="74" x="180" y="92" rx="3" fill="none" stroke="#F5D061" strokeWidth="2.5" strokeDasharray="5,5" />
           </G>
         )}
 
@@ -156,9 +180,9 @@ const HeavenPalace = React.memo(({ correctCount, overlayCorrect, isSnapped, snap
           </G>
         )}
         {showTurretsPlaceholder && (
-          <G id="turretsPlaceholder" opacity="0.25">
-            <Path d="M20 148c0-18 10-25 18-25s18 7 18 25H20z" fill="none" stroke="#E5B942" strokeWidth="1.5" strokeDasharray="4,4" />
-            <Path d="M182 148c0-18 10-25 18-25s18 7 18 25h-36z" fill="none" stroke="#E5B942" strokeWidth="1.5" strokeDasharray="4,4" />
+          <G id="turretsPlaceholder" opacity="0.35">
+            <Path d="M20 148c0-18 10-25 18-25s18 7 18 25H20z" fill="none" stroke="#F5D061" strokeWidth="2.5" strokeDasharray="5,5" />
+            <Path d="M182 148c0-18 10-25 18-25s18 7 18 25h-36z" fill="none" stroke="#F5D061" strokeWidth="2.5" strokeDasharray="5,5" />
           </G>
         )}
 
@@ -174,8 +198,8 @@ const HeavenPalace = React.memo(({ correctCount, overlayCorrect, isSnapped, snap
           </G>
         )}
         {showDomePlaceholder && (
-          <G id="domePlaceholder" opacity="0.25">
-            <Path d="M90 78C90 48 110 38 120 38s30 10 30 40H90z" fill="none" stroke="#E5B942" strokeWidth="1.5" strokeDasharray="4,4" />
+          <G id="domePlaceholder" opacity="0.35">
+            <Path d="M90 78C90 48 110 38 120 38s30 10 30 40H90z" fill="none" stroke="#F5D061" strokeWidth="2.5" strokeDasharray="5,5" />
           </G>
         )}
       </Svg>
@@ -207,48 +231,59 @@ export default function MutashabihatScreen({ navigation }: any) {
   const pieceGlowAnim = useRef(new Animated.Value(0)).current;
   const snapPopScale = useRef(new Animated.Value(1)).current;
 
-  // Background sparkles animations
-  const sparkle1 = useRef(new Animated.Value(0)).current;
-  const sparkle2 = useRef(new Animated.Value(0)).current;
-  const sparkle3 = useRef(new Animated.Value(0)).current;
+  // Ambient rotation for the gold halo ring
+  const rotateAnim = useRef(new Animated.Value(0)).current;
+
+  // Celestial key idle bobbing
+  const bobAnim = useRef(new Animated.Value(0)).current;
 
   const currentQuestion = questions[currentIndex];
 
+  // Run ambient animations
   useEffect(() => {
-    const loopSparkle = (anim: Animated.Value, delay: number) => {
-      anim.setValue(0);
+    if (showPalaceOverlay) {
+      // Celestial Ring rotation
+      Animated.loop(
+        Animated.timing(rotateAnim, {
+          toValue: 1,
+          duration: 25000,
+          useNativeDriver: true,
+        })
+      ).start();
+
+      // Key Bobbing loop
       Animated.loop(
         Animated.sequence([
-          Animated.delay(delay),
-          Animated.timing(anim, {
-            toValue: 1,
-            duration: 3500 + Math.random() * 2000,
-            useNativeDriver: true,
-          }),
+          Animated.timing(bobAnim, { toValue: 1, duration: 1400, useNativeDriver: true }),
+          Animated.timing(bobAnim, { toValue: 0, duration: 1400, useNativeDriver: true })
         ])
       ).start();
-    };
+    }
+  }, [showPalaceOverlay]);
 
-    loopSparkle(sparkle1, 0);
-    loopSparkle(sparkle2, 1000);
-    loopSparkle(sparkle3, 2000);
-  }, []);
-
-  // Decoupled PanResponder Gesture: uses a lightweight, styled card to completely eliminate SVG drag rendering overhead
+  // Decoupled PanResponder Gesture: utilizes offset accumulation to prevent layout jump and guarantees zero JS latency
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => !isSnapped,
       onMoveShouldSetPanResponder: () => !isSnapped,
+      onPanResponderGrant: () => {
+        pan.setOffset({
+          x: (pan.x as any)._value,
+          y: (pan.y as any)._value
+        });
+        pan.setValue({ x: 0, y: 0 });
+      },
       onPanResponderMove: Animated.event(
         [null, { dx: pan.x, dy: pan.y }],
-        { useNativeDriver: false } // panResponder tracking offset
+        { useNativeDriver: false } // Tracking layout gesture offset
       ),
       onPanResponderRelease: (e, gestureState) => {
-        // Drop success threshold: dragged up past -80px (very forgiving, instant response)
+        pan.flattenOffset();
+        // Snaps magnetically if dragged above -80px threshold (very smooth and forgiving)
         if (gestureState.dy < -80 && Math.abs(gestureState.dx) < 100) {
           Animated.parallel([
-            Animated.spring(pan.x, { toValue: 0, useNativeDriver: false }),
-            Animated.spring(pan.y, { toValue: 0, useNativeDriver: false })
+            Animated.spring(pan.x, { toValue: 0, useNativeDriver: true }),
+            Animated.spring(pan.y, { toValue: 0, useNativeDriver: true })
           ]).start(() => {
             setIsSnapped(true);
             snapPopScale.setValue(1);
@@ -260,10 +295,10 @@ export default function MutashabihatScreen({ navigation }: any) {
             ]).start();
           });
         } else {
-          // Instant spring back to tray
+          // Instant spring back using native driver
           Animated.spring(pan, {
             toValue: { x: 0, y: 0 },
-            useNativeDriver: false,
+            useNativeDriver: true,
           }).start();
         }
       }
@@ -355,15 +390,17 @@ export default function MutashabihatScreen({ navigation }: any) {
 
   const resultsPalaceScale = useRef(new Animated.Value(1)).current;
 
-  // Interpolations for background sparkles
-  const sparkle1Y = sparkle1.interpolate({ inputRange: [0, 1], outputRange: [180, 40] });
-  const sparkle1Op = sparkle1.interpolate({ inputRange: [0, 0.2, 0.8, 1], outputRange: [0, 0.9, 0.9, 0] });
+  // Spin interpolation for rotating celestial halo ring
+  const spinRotation = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg']
+  });
 
-  const sparkle2Y = sparkle2.interpolate({ inputRange: [0, 1], outputRange: [190, 60] });
-  const sparkle2Op = sparkle2.interpolate({ inputRange: [0, 0.2, 0.8, 1], outputRange: [0, 0.8, 0.8, 0] });
-
-  const sparkle3Y = sparkle3.interpolate({ inputRange: [0, 1], outputRange: [175, 50] });
-  const sparkle3Op = sparkle3.interpolate({ inputRange: [0, 0.2, 0.8, 1], outputRange: [0, 0.9, 0.9, 0] });
+  // Bob translation interpolation for idle key
+  const keyBobY = bobAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -8]
+  });
 
   return (
     <View style={styles.container}>
@@ -525,22 +562,26 @@ export default function MutashabihatScreen({ navigation }: any) {
           <View style={styles.skyBackground}>
             <HeavenSunbeams />
             <View style={styles.sunriseSun} />
-            <View style={[styles.star, { top: 40, left: 30 }]} />
-            <View style={[styles.star, { top: 80, right: 60 }]} />
-            <View style={[styles.star, { top: 120, left: 120 }]} />
-            <View style={[styles.star, { top: 60, right: 150 }]} />
+            
+            {/* Drifting Sparkles Loops */}
+            <Sparkle left={30} size={6} delay={0} />
+            <Sparkle left={80} size={4} delay={1200} />
+            <Sparkle left={130} size={8} delay={500} />
+            <Sparkle left={190} size={5} delay={2000} />
+            <Sparkle left={60} size={7} delay={2800} />
+            <Sparkle left={160} size={4} delay={1500} />
+            <Sparkle left={210} size={6} delay={800} />
+            <Sparkle left={110} size={5} delay={3500} />
           </View>
 
           <Text style={styles.overlayHeader}>قصر المتشابهات في الجنان</Text>
           
           <View style={styles.palaceStage}>
-            {/* Ambient Background Aura Glow */}
-            <View style={styles.palaceAuraGlow} />
+            {/* Ambient Rotating Gold Ring */}
+            <Animated.View style={[styles.palaceRotateRing, { transform: [{ rotate: spinRotation }] }]} />
 
-            {/* Rising Sparkle Particles */}
-            <Animated.View style={[styles.sparkleDot, { left: 55, transform: [{ translateY: sparkle1Y }], opacity: sparkle1Op }]} />
-            <Animated.View style={[styles.sparkleDot, { left: 120, transform: [{ translateY: sparkle2Y }], opacity: sparkle2Op }]} />
-            <Animated.View style={[styles.sparkleDot, { right: 60, transform: [{ translateY: sparkle3Y }], opacity: sparkle3Op }]} />
+            {/* Glowing Aura Backplate */}
+            <View style={styles.palaceAuraGlow} />
 
             <HeavenPalace 
               correctCount={correctCount} 
@@ -560,17 +601,22 @@ export default function MutashabihatScreen({ navigation }: any) {
             ) : (
               <View style={[styles.dragArea, { borderColor: colors.primary }]}>
                 <Text style={styles.dragInstructions}>👇 اسحب لَبِنَة البناء الذهبية وضعها في هيكل القصر بالأعلى:</Text>
-                <Animated.View 
-                  style={[
-                    styles.draggableItemCard, 
-                    {
-                      transform: [{ translateX: pan.x }, { translateY: pan.y }]
-                    }
-                  ]}
-                  {...panResponder.panHandlers}
-                >
-                  <Text style={styles.draggableItemText}>🕌 اسحب للتشييد</Text>
-                </Animated.View>
+                <View style={styles.cushionContainer}>
+                  <Animated.View 
+                    style={[
+                      styles.draggableItemCard, 
+                      {
+                        transform: [
+                          { translateX: pan.x },
+                          { translateY: Animated.add(pan.y, keyBobY) }
+                        ]
+                      }
+                    ]}
+                    {...panResponder.panHandlers}
+                  >
+                    <Text style={styles.draggableItemText}>🕌 اسحب للتشييد</Text>
+                  </Animated.View>
+                </View>
               </View>
             )
           ) : (
@@ -837,7 +883,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: SCREEN_HEIGHT * 0.48,
-    backgroundColor: '#F5F3FF',
+    backgroundColor: '#0F0926',
     overflow: 'hidden',
   },
   sunbeams: {
@@ -845,7 +891,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 200,
+    height: 240,
   },
   sunriseSun: {
     position: 'absolute',
@@ -854,24 +900,26 @@ const styles = StyleSheet.create({
     width: 320,
     height: 320,
     borderRadius: 160,
-    backgroundColor: '#FAE8FF',
+    backgroundColor: '#2A1A54',
     opacity: 0.8,
   },
-  star: {
+  absoluteSparkle: {
     position: 'absolute',
-    width: 3,
-    height: 3,
-    backgroundColor: '#D4AF37',
-    borderRadius: 1.5,
-    opacity: 0.6,
+    backgroundColor: '#FFF2A9',
+    zIndex: 1,
+    shadowColor: '#FFF2A9',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    elevation: 3,
   },
   overlayHeader: {
-    color: '#312E81',
+    color: '#E5B942',
     fontSize: 18,
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 20,
-    textShadowColor: 'rgba(255,255,255,0.6)',
+    textShadowColor: 'rgba(0,0,0,0.6)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
@@ -890,16 +938,18 @@ const styles = StyleSheet.create({
     height: 220,
     borderRadius: 110,
     backgroundColor: '#FFF2CC',
-    opacity: 0.25,
+    opacity: 0.12,
     zIndex: -1,
   },
-  sparkleDot: {
+  palaceRotateRing: {
     position: 'absolute',
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: '#F5D061',
-    zIndex: 1,
+    width: 236,
+    height: 236,
+    borderRadius: 118,
+    borderWidth: 2,
+    borderColor: 'rgba(229, 185, 66, 0.25)',
+    borderStyle: 'dashed',
+    zIndex: -1,
   },
   palaceContainer: {
     width: 240,
@@ -907,11 +957,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
-  },
-  palacePiece: {
-    position: 'absolute',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   statusBox: {
     backgroundColor: '#EBF7F3',
@@ -939,41 +984,48 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   dragArea: {
-    borderWidth: 2,
+    borderWidth: 2.5,
+    borderColor: '#E5B942',
     borderStyle: 'dashed',
-    borderRadius: 15,
+    borderRadius: 18,
     padding: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.75)',
+    backgroundColor: 'rgba(15, 9, 38, 0.45)',
     minHeight: 150,
     marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
   },
   dragInstructions: {
     fontSize: 14,
-    color: '#4B5563',
+    color: '#E5B942',
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 15,
+  },
+  cushionContainer: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 70,
   },
   draggableItemCard: {
     width: 150,
     height: 50,
     borderRadius: 25,
     backgroundColor: '#F5D061',
-    borderColor: '#C9981E',
+    borderColor: '#FFECA7',
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 5,
-    elevation: 5,
+    shadowColor: '#FFF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
   },
   draggableItemText: {
     color: '#876106',

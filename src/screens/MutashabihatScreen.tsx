@@ -3,46 +3,16 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Dimensi
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { mutashabihatQuestions, type MutashabahQuestion } from '../data/mutashabihat';
-import Svg, { Path, Rect, Circle, Defs, LinearGradient, Stop, G } from 'react-native-svg';
+import Svg, { Path, Rect, Circle, G, Defs, LinearGradient, Stop } from 'react-native-svg';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-
-// --- UNIFIED HIGH-FIDELITY GRADIENTS ---
-const UnifiedGradients = () => (
-  <Defs>
-    <LinearGradient id="marbleGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <Stop offset="0%" stopColor="#FFFFFF" />
-      <Stop offset="35%" stopColor="#F9F5EC" />
-      <Stop offset="100%" stopColor="#D2C9B9" />
-    </LinearGradient>
-
-    <LinearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <Stop offset="0%" stopColor="#FFF2A9" />
-      <Stop offset="40%" stopColor="#E5B942" />
-      <Stop offset="75%" stopColor="#C9981E" />
-      <Stop offset="100%" stopColor="#876106" />
-    </LinearGradient>
-
-    <LinearGradient id="turquoiseGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <Stop offset="0%" stopColor="#64FFF5" />
-      <Stop offset="50%" stopColor="#00B3A6" />
-      <Stop offset="100%" stopColor="#005C55" />
-    </LinearGradient>
-
-    <LinearGradient id="cloudGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="1" />
-      <Stop offset="60%" stopColor="#FFF0F4" stopOpacity="0.97" />
-      <Stop offset="100%" stopColor="#F7C4E5" stopOpacity="0.93" />
-    </LinearGradient>
-  </Defs>
-);
 
 // --- COMPONENT: HEAVEN SUNBEAMS ---
 const HeavenSunbeams = React.memo(() => (
   <Svg width={SCREEN_WIDTH} height="200" viewBox={`0 0 ${SCREEN_WIDTH} 200`} style={styles.sunbeams}>
     <Defs>
       <LinearGradient id="beamGrad" x1="0%" y1="0%" x2="50%" y2="100%">
-        <Stop offset="0%" stopColor="#FFF4D0" stopOpacity="0.35" />
+        <Stop offset="0%" stopColor="#FFE082" stopOpacity="0.4" />
         <Stop offset="100%" stopColor="#FFF" stopOpacity="0" />
       </LinearGradient>
     </Defs>
@@ -54,6 +24,8 @@ const HeavenSunbeams = React.memo(() => (
 ));
 
 // --- COMPONENT: UNIFIED HEAVENLY PALACE (MEMOIZED & CACHED) ---
+// Renders the entire palace inside a single, perfectly structured SVG coordinate space (0,0 to 240,200)
+// Uses solid shaded paths (Light/Dark sides) for a gorgeous Monument Valley flat-3D style that is 100% stable on iOS.
 interface HeavenPalaceProps {
   correctCount: number;
   overlayCorrect: boolean;
@@ -75,103 +47,128 @@ const HeavenPalace = React.memo(({ correctCount, overlayCorrect, isSnapped, snap
   return (
     <Animated.View style={{ transform: [{ scale: snapPopScale }] }}>
       <Svg width="240" height="200" viewBox="0 0 240 200" fill="none">
-        <UnifiedGradients />
-
-        {/* 1. Clouds Base */}
+        
+        {/* 1. Clouds Base (Light / Dark contrast) */}
         <G id="cloudsBase">
-          <Circle cx="35" cy="175" r="20" fill="url(#cloudGrad)" />
-          <Circle cx="65" cy="167" r="24" fill="url(#cloudGrad)" />
-          <Circle cx="105" cy="171" r="26" fill="url(#cloudGrad)" />
-          <Circle cx="145" cy="163" r="28" fill="url(#cloudGrad)" />
-          <Circle cx="190" cy="169" r="24" fill="url(#cloudGrad)" />
-          <Circle cx="220" cy="173" r="20" fill="url(#cloudGrad)" />
-          <Rect width="220" height="16" x="10" y="169" rx="8" fill="url(#cloudGrad)" />
+          <Circle cx="35" cy="175" r="20" fill="#FFEAF2" />
+          <Circle cx="35" cy="171" r="18" fill="#FFFFFF" />
           
-          <Circle cx="55" cy="169" r="2.5" fill="url(#goldGrad)" opacity="0.6" />
-          <Circle cx="135" cy="161" r="2" fill="url(#goldGrad)" opacity="0.7" />
-          <Circle cx="180" cy="171" r="3" fill="url(#goldGrad)" opacity="0.5" />
+          <Circle cx="65" cy="167" r="24" fill="#FFEAF2" />
+          <Circle cx="65" cy="163" r="22" fill="#FFFFFF" />
+
+          <Circle cx="105" cy="171" r="26" fill="#FFEAF2" />
+          <Circle cx="105" cy="167" r="24" fill="#FFFFFF" />
+
+          <Circle cx="145" cy="163" r="28" fill="#FFEAF2" />
+          <Circle cx="145" cy="159" r="26" fill="#FFFFFF" />
+
+          <Circle cx="190" cy="169" r="24" fill="#FFEAF2" />
+          <Circle cx="190" cy="165" r="22" fill="#FFFFFF" />
+
+          <Circle cx="220" cy="173" r="20" fill="#FFEAF2" />
+          <Circle cx="220" cy="169" r="18" fill="#FFFFFF" />
+
+          <Rect width="220" height="16" x="10" y="165" rx="8" fill="#FFFFFF" />
+          
+          {/* Gold sparks */}
+          <Circle cx="55" cy="160" r="2.5" fill="#F5D061" />
+          <Circle cx="135" cy="152" r="2" fill="#F5D061" />
+          <Circle cx="180" cy="162" r="3" fill="#E5B942" />
         </G>
 
-        {/* 2. Main Walls */}
+        {/* 2. Main Walls (Monument Valley pearly white & shadow white) */}
         {showWalls && (
           <G id="walls">
-            <Rect width="124" height="75" x="58" y="90" rx="8" fill="url(#marbleGrad)" stroke="url(#goldGrad)" strokeWidth="1.8" />
-            <Rect width="46" height="58" x="97" y="107" rx="5" fill="none" stroke="url(#goldGrad)" strokeWidth="1.2" strokeDasharray="3,3" />
-            <Path d="M97 165v-37c0-11 8-20 19-20s19 9 19 20v37H97z" fill="url(#marbleGrad)" stroke="url(#goldGrad)" strokeWidth="1.5" />
-            <Path d="M101 165v-34c0-8 7-14 15-14s15 6 15 14v34H101z" fill="url(#turquoiseGrad)" /> 
-            <Path d="M68 128v-18c0-6 4-10 8-10s8 4 8 10v18H68z" fill="url(#turquoiseGrad)" stroke="url(#goldGrad)" strokeWidth="1.5" />
-            <Path d="M68 116h16M76 100v28" stroke="url(#goldGrad)" strokeWidth="0.8" />
-            <Path d="M152 128v-18c0-6 4-10 8-10s8 4 8 10v18h-16z" fill="url(#turquoiseGrad)" stroke="url(#goldGrad)" strokeWidth="1.5" />
-            <Path d="M152 116h16M160 100v28" stroke="url(#goldGrad)" strokeWidth="0.8" />
-            <Rect width="128" height="6" x="56" y="86" fill="url(#goldGrad)" rx="2" />
+            {/* Left/Light Side Wall */}
+            <Rect width="62" height="75" x="58" y="90" rx="4" fill="#FFFFFF" stroke="#E5B942" strokeWidth="1" />
+            {/* Right/Dark Side Wall */}
+            <Rect width="62" height="75" x="120" y="90" rx="4" fill="#EAE5DA" stroke="#C9981E" strokeWidth="1" />
+            
+            {/* Entrance Gate Frame */}
+            <Rect width="46" height="58" x="97" y="107" rx="3" fill="#D5CDBE" stroke="#E5B942" strokeWidth="1.2" />
+            
+            {/* Entrance Arch Doorway */}
+            <Path d="M97 165v-37c0-11 8-20 19-20s19 9 19 20v37H97z" fill="#FFFDF0" stroke="#E5B942" strokeWidth="1.5" />
+            <Path d="M101 165v-34c0-8 7-14 15-14s15 6 15 14v34H101z" fill="#008080" /> 
+            
+            {/* Left Windows */}
+            <Path d="M68 128v-18c0-6 4-10 8-10s8 4 8 10v18H68z" fill="#00A89F" stroke="#E5B942" strokeWidth="1" />
+            {/* Right Windows */}
+            <Path d="M152 128v-18c0-6 4-10 8-10s8 4 8 10v18h-16z" fill="#006660" stroke="#C9981E" strokeWidth="1" />
+            
+            {/* Roof Gold Cornice */}
+            <Rect width="64" height="6" x="56" y="86" fill="#F5D061" rx="1" />
+            <Rect width="64" height="6" x="120" y="86" fill="#C9981E" rx="1" />
           </G>
         )}
         {showWallsPlaceholder && (
           <G id="wallsPlaceholder" opacity="0.25">
-            <Rect width="124" height="75" x="58" y="90" rx="8" fill="none" stroke="url(#goldGrad)" strokeWidth="2" strokeDasharray="4,4" />
+            <Rect width="124" height="75" x="58" y="90" rx="8" fill="none" stroke="#E5B942" strokeWidth="2" strokeDasharray="4,4" />
           </G>
         )}
 
         {/* 3. Outer Pillars */}
         {showPillars && (
           <G id="pillars">
-            <Rect width="12" height="74" x="48" y="92" rx="3" fill="url(#marbleGrad)" stroke="url(#goldGrad)" strokeWidth="1" />
-            <Path d="M54 92v74" stroke="#FFF" strokeWidth="0.8" />
-            <Rect width="18" height="6" x="45" y="88" rx="1.5" fill="url(#goldGrad)" />
-            <Rect width="18" height="6" x="45" y="163" rx="1.5" fill="url(#goldGrad)" />
+            {/* Left Pillar */}
+            <Rect width="12" height="74" x="48" y="92" rx="3" fill="#FFFFFF" stroke="#E5B942" strokeWidth="1" />
+            <Rect width="18" height="6" x="45" y="88" rx="1.5" fill="#FFECA7" />
+            <Rect width="18" height="6" x="45" y="163" rx="1.5" fill="#E5B942" />
 
-            <Rect width="12" height="74" x="180" y="92" rx="3" fill="url(#marbleGrad)" stroke="url(#goldGrad)" strokeWidth="1" />
-            <Path d="M186 92v74" stroke="#FFF" strokeWidth="0.8" />
-            <Rect width="18" height="6" x="177" y="88" rx="1.5" fill="url(#goldGrad)" />
-            <Rect width="18" height="6" x="177" y="163" rx="1.5" fill="url(#goldGrad)" />
+            {/* Right Pillar */}
+            <Rect width="12" height="74" x="180" y="92" rx="3" fill="#D5CDBE" stroke="#C9981E" strokeWidth="1" />
+            <Rect width="18" height="6" x="177" y="88" rx="1.5" fill="#C9981E" />
+            <Rect width="18" height="6" x="177" y="163" rx="1.5" fill="#876106" />
           </G>
         )}
         {showPillarsPlaceholder && (
           <G id="pillarsPlaceholder" opacity="0.25">
-            <Rect width="12" height="74" x="48" y="92" rx="3" fill="none" stroke="url(#goldGrad)" strokeWidth="1.5" strokeDasharray="4,4" />
-            <Rect width="12" height="74" x="180" y="92" rx="3" fill="none" stroke="url(#goldGrad)" strokeWidth="1.5" strokeDasharray="4,4" />
+            <Rect width="12" height="74" x="48" y="92" rx="3" fill="none" stroke="#E5B942" strokeWidth="1.5" strokeDasharray="4,4" />
+            <Rect width="12" height="74" x="180" y="92" rx="3" fill="none" stroke="#E5B942" strokeWidth="1.5" strokeDasharray="4,4" />
           </G>
         )}
 
         {/* 4. Turquoise Domes */}
         {showTurrets && (
           <G id="turrets">
-            <Path d="M20 148c0-18 10-25 18-25s18 7 18 25H20z" fill="url(#turquoiseGrad)" stroke="url(#goldGrad)" strokeWidth="1.2" />
-            <Path d="M38 123v-10" stroke="url(#goldGrad)" strokeWidth="1.5" />
-            <Circle cx="38" cy="111" r="1.5" fill="url(#goldGrad)" />
+            {/* Left Turquoise Dome */}
+            <Path d="M20 148c0-18 10-25 18-25s18 7 18 25H20z" fill="#48D1CC" stroke="#E5B942" strokeWidth="1" />
+            <Path d="M38 123v-10" stroke="#FFECA7" strokeWidth="1.5" />
+            <Circle cx="38" cy="111" r="1.5" fill="#FFECA7" />
 
-            <Path d="M182 148c0-18 10-25 18-25s18 7 18 25h-36z" fill="url(#turquoiseGrad)" stroke="url(#goldGrad)" strokeWidth="1.2" />
-            <Path d="M200 123v-10" stroke="url(#goldGrad)" strokeWidth="1.5" />
-            <Circle cx="200" cy="111" r="1.5" fill="url(#goldGrad)" />
+            {/* Right Turquoise Dome */}
+            <Path d="M182 148c0-18 10-25 18-25s18 7 18 25h-36z" fill="#008080" stroke="#C9981E" strokeWidth="1" />
+            <Path d="M200 123v-10" stroke="#C9981E" strokeWidth="1.5" />
+            <Circle cx="200" cy="111" r="1.5" fill="#C9981E" />
           </G>
         )}
         {showTurretsPlaceholder && (
           <G id="turretsPlaceholder" opacity="0.25">
-            <Path d="M20 148c0-18 10-25 18-25s18 7 18 25H20z" fill="none" stroke="url(#goldGrad)" strokeWidth="1.5" strokeDasharray="4,4" />
-            <Path d="M182 148c0-18 10-25 18-25s18 7 18 25h-36z" fill="none" stroke="url(#goldGrad)" strokeWidth="1.5" strokeDasharray="4,4" />
+            <Path d="M20 148c0-18 10-25 18-25s18 7 18 25H20z" fill="none" stroke="#E5B942" strokeWidth="1.5" strokeDasharray="4,4" />
+            <Path d="M182 148c0-18 10-25 18-25s18 7 18 25h-36z" fill="none" stroke="#E5B942" strokeWidth="1.5" strokeDasharray="4,4" />
           </G>
         )}
 
         {/* 5. Main Golden Dome */}
         {showDome && (
           <G id="dome">
-            <Rect width="62" height="8" x="89" y="78" fill="url(#marbleGrad)" stroke="url(#goldGrad)" strokeWidth="1.2" />
-            <Circle cx="97" cy="82" r="1.8" fill="url(#goldGrad)" />
-            <Circle cx="109" cy="82" r="1.8" fill="url(#goldGrad)" />
-            <Circle cx="121" cy="82" r="1.8" fill="url(#goldGrad)" />
-            <Circle cx="133" cy="82" r="1.8" fill="url(#goldGrad)" />
-            <Circle cx="145" cy="82" r="1.8" fill="url(#goldGrad)" />
+            {/* Dome Drum base */}
+            <Rect width="31" height="8" x="89" y="78" fill="#FFFFFF" stroke="#E5B942" strokeWidth="1" />
+            <Rect width="31" height="8" x="120" y="78" fill="#D5CDBE" stroke="#C9981E" strokeWidth="1" />
             
-            <Path d="M90 78C90 48 110 38 120 38s30 10 30 40H90z" fill="url(#goldGrad)" stroke="#FFF" strokeWidth="1.5" />
-            <Path d="M120 38c-6 10-12 25-12 40" stroke="#FFF" strokeWidth="1" opacity="0.45" />
-            <Path d="M120 38c6 10 12 25 12 40" stroke="#FFF" strokeWidth="1" opacity="0.45" />
-            <Path d="M120 38V25" stroke="url(#goldGrad)" strokeWidth="2.8" />
-            <Circle cx="120" cy="24" r="3" fill="url(#goldGrad)" />
+            {/* Left Dome Cupola (Light Side) */}
+            <Path d="M90 78C90 48 110 38 120 38v40H90z" fill="#F5D061" stroke="#FFF" strokeWidth="1.5" />
+            {/* Right Dome Cupola (Dark Side) */}
+            <Path d="M120 38c10 0 30 10 30 40H120V38z" fill="#C9981E" stroke="#FFF" strokeWidth="1.5" />
+            
+            {/* Spire and Crescent */}
+            <Path d="M120 38V25" stroke="#FFECA7" strokeWidth="2.5" />
+            <Circle cx="120" cy="24" r="3" fill="#F5D061" />
           </G>
         )}
         {showDomePlaceholder && (
           <G id="domePlaceholder" opacity="0.25">
-            <Path d="M90 78C90 48 110 38 120 38s30 10 30 40H90z" fill="none" stroke="url(#goldGrad)" strokeWidth="1.5" strokeDasharray="4,4" />
+            <Path d="M90 78C90 48 110 38 120 38s30 10 30 40H90z" fill="none" stroke="#E5B942" strokeWidth="1.5" strokeDasharray="4,4" />
           </G>
         )}
       </Svg>
@@ -179,48 +176,49 @@ const HeavenPalace = React.memo(({ correctCount, overlayCorrect, isSnapped, snap
   );
 });
 
-// --- INDIVIDUAL TRAY PREVIEW COMPONENTS ---
+// --- INDIVIDUAL TRAY PREVIEWS ---
 const WallsPreview = React.memo(() => (
-  <Svg width="100" height="65" viewBox="0 0 130 85" fill="none">
-    <UnifiedGradients />
-    <Rect width="124" height="75" x="3" y="5" rx="8" fill="url(#marbleGrad)" stroke="url(#goldGrad)" strokeWidth="2" />
-    <Path d="M46 85V48c0-11 8-20 19-20s19 9 19 20v37H46z" fill="url(#marbleGrad)" stroke="url(#goldGrad)" strokeWidth="1.5" />
-    <Path d="M50 85V51c0-8 7-14 15-14s15 6 15 14v34H50z" fill="url(#turquoiseGrad)" /> 
-    <Rect width="128" height="6" x="1" y="1" fill="url(#goldGrad)" rx="2" />
+  <Svg width="110" height="75" viewBox="0 0 130 85" fill="none">
+    <Rect width="62" height="75" x="3" y="5" rx="4" fill="#FFFFFF" stroke="#E5B942" strokeWidth="1.8" />
+    <Rect width="62" height="75" x="65" y="5" rx="4" fill="#EAE5DA" stroke="#C9981E" strokeWidth="1.8" />
+    <Path d="M46 85V48c0-11 8-20 19-20s19 9 19 20v37H46z" fill="#FFFFFF" stroke="#E5B942" strokeWidth="1.5" />
+    <Path d="M50 85V51c0-8 7-14 15-14s15 6 15 14v34H50z" fill="#008080" /> 
+    <Rect width="128" height="6" x="1" y="1" fill="#F5D061" rx="2" />
   </Svg>
 ));
 
 const PillarsPreview = React.memo(() => (
-  <Svg width="100" height="65" viewBox="0 0 150 85" fill="none">
-    <UnifiedGradients />
-    <Rect width="12" height="74" x="15" y="8" rx="3" fill="url(#marbleGrad)" stroke="url(#goldGrad)" strokeWidth="1.2" />
-    <Rect width="18" height="6" x="12" y="4" rx="1.5" fill="url(#goldGrad)" />
-    <Rect width="18" height="6" x="12" y="79" rx="1.5" fill="url(#goldGrad)" />
-    <Rect width="12" height="74" x="120" y="8" rx="3" fill="url(#marbleGrad)" stroke="url(#goldGrad)" strokeWidth="1.2" />
-    <Rect width="18" height="6" x="117" y="4" rx="1.5" fill="url(#goldGrad)" />
-    <Rect width="18" height="6" x="117" y="79" rx="1.5" fill="url(#goldGrad)" />
+  <Svg width="110" height="75" viewBox="0 0 150 85" fill="none">
+    <Rect width="12" height="74" x="15" y="8" rx="3" fill="#FFFFFF" stroke="#E5B942" strokeWidth="1.2" />
+    <Rect width="18" height="6" x="12" y="4" rx="1.5" fill="#FFECA7" />
+    <Rect width="18" height="6" x="12" y="79" rx="1.5" fill="#E5B942" />
+
+    <Rect width="12" height="74" x="120" y="8" rx="3" fill="#D5CDBE" stroke="#C9981E" strokeWidth="1.2" />
+    <Rect width="18" height="6" x="117" y="4" rx="1.5" fill="#C9981E" />
+    <Rect width="18" height="6" x="117" y="79" rx="1.5" fill="#876106" />
   </Svg>
 ));
 
 const TurretsPreview = React.memo(() => (
-  <Svg width="100" height="65" viewBox="0 0 160 75" fill="none">
-    <UnifiedGradients />
-    <Path d="M10 60c0-18 10-25 18-25s18 7 18 25H10z" fill="url(#turquoiseGrad)" stroke="url(#goldGrad)" strokeWidth="1.2" />
-    <Path d="M28 35V25" stroke="url(#goldGrad)" strokeWidth="1.5" />
-    <Circle cx="28" cy="23" r="1.5" fill="url(#goldGrad)" />
-    <Path d="M114 60c0-18 10-25 18-25s18 7 18 25h-36z" fill="url(#turquoiseGrad)" stroke="url(#goldGrad)" strokeWidth="1.2" />
-    <Path d="M132 35V25" stroke="url(#goldGrad)" strokeWidth="1.5" />
-    <Circle cx="132" cy="23" r="1.5" fill="url(#goldGrad)" />
+  <Svg width="110" height="75" viewBox="0 0 160 75" fill="none">
+    <Path d="M10 60c0-18 10-25 18-25s18 7 18 25H10z" fill="#48D1CC" stroke="#E5B942" strokeWidth="1.2" />
+    <Path d="M28 35V25" stroke="#FFECA7" strokeWidth="1.5" />
+    <Circle cx="28" cy="23" r="1.5" fill="#FFECA7" />
+    
+    <Path d="M114 60c0-18 10-25 18-25s18 7 18 25h-36z" fill="#008080" stroke="#C9981E" strokeWidth="1.2" />
+    <Path d="M132 35V25" stroke="#C9981E" strokeWidth="1.5" />
+    <Circle cx="132" cy="23" r="1.5" fill="#C9981E" />
   </Svg>
 ));
 
 const DomePreview = React.memo(() => (
-  <Svg width="80" height="65" viewBox="0 0 90 75" fill="none">
-    <UnifiedGradients />
-    <Rect width="62" height="8" x="14" y="48" fill="url(#marbleGrad)" stroke="url(#goldGrad)" strokeWidth="1.2" />
-    <Path d="M15 48C15 18 35 8 45 8s30 10 30 40H15z" fill="url(#goldGrad)" stroke="#FFF" strokeWidth="1.5" />
-    <Path d="M45 8V-5" stroke="url(#goldGrad)" strokeWidth="2.8" />
-    <Circle cx="45" cy="-6" r="3" fill="url(#goldGrad)" />
+  <Svg width="90" height="75" viewBox="0 0 90 75" fill="none">
+    <Rect width="31" height="8" x="14" y="48" fill="#FFFFFF" stroke="#E5B942" strokeWidth="1" />
+    <Rect width="31" height="8" x="45" y="48" fill="#D5CDBE" stroke="#C9981E" strokeWidth="1" />
+    <Path d="M15 48C15 18 35 8 45 8v40H15z" fill="#F5D061" stroke="#FFF" strokeWidth="1.5" />
+    <Path d="M45 8c10 0 30 10 30 40H45V8z" fill="#C9981E" stroke="#FFF" strokeWidth="1.5" />
+    <Path d="M45 8V-5" stroke="#FFECA7" strokeWidth="2.8" />
+    <Circle cx="45" cy="-6" r="3" fill="#F5D061" />
   </Svg>
 ));
 
@@ -242,7 +240,7 @@ export default function MutashabihatScreen({ navigation }: any) {
   const [unlockedSegment, setUnlockedSegment] = useState('');
   const [isSnapped, setIsSnapped] = useState(false);
 
-  // Gesture animated values
+  // DRAG & SNAP ANIMATED STATE: Using native driver for 60 FPS hardware accelerated translation
   const pan = useRef(new Animated.ValueXY()).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   const pieceGlowAnim = useRef(new Animated.Value(0)).current;
@@ -250,17 +248,16 @@ export default function MutashabihatScreen({ navigation }: any) {
 
   const currentQuestion = questions[currentIndex];
 
-  // Drag and Drop Gesture Setup with Native Driver for buttery smooth 60 FPS translation
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => !isSnapped,
       onMoveShouldSetPanResponder: () => !isSnapped,
       onPanResponderMove: Animated.event(
         [null, { dx: pan.x, dy: pan.y }],
-        { useNativeDriver: false }
+        { useNativeDriver: false } // panResponder requires false during gesture, but we decouple re-renders
       ),
       onPanResponderRelease: (e, gestureState) => {
-        // Drop success threshold: dragged high enough (dy < -110)
+        // Success: Dragged up to threshold (dy < -110)
         if (gestureState.dy < -110 && Math.abs(gestureState.dx) < 95) {
           Animated.parallel([
             Animated.spring(pan.x, { toValue: 0, useNativeDriver: false }),

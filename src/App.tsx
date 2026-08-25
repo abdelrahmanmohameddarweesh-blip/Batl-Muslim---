@@ -27,6 +27,7 @@ import LiveDuelScreen from './screens/LiveDuelScreen';
 import CommunityFeedScreen from './screens/CommunityFeedScreen';
 import SirahQuestScreen from './screens/SirahQuestScreen';
 import ArenaHubScreen from './screens/ArenaHubScreen';
+import MutashabihatScreen from './screens/MutashabihatScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -236,6 +237,11 @@ function NavigationWrapper() {
           name="Leaderboard"
           component={LeaderboardScreen}
           options={{ title: language === 'ar' ? 'لوحة الصدارة' : 'Leaderboard' }}
+        />
+        <Stack.Screen
+          name="Mutashabihat"
+          component={MutashabihatScreen}
+          options={{ headerShown: false }}
         />
       </Stack.Navigator>
     </NavigationContainer>

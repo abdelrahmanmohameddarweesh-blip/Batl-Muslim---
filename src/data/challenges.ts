@@ -110,4 +110,14 @@ export const challenges: Challenge[] = [
     difficulty: 'متقدم',
     points: 25,
   },
+  {
+    id: 'mutashabihat',
+    title: 'تحدي المتشابهات القرآني',
+    description: 'اختبار دقيق للمتشابهات في الآيات، ميز بين الألفاظ المتشابهة واحذر مواضع اللبس.',
+    emoji: '🧩',
+    route: 'Mutashabihat',
+    color: '#F4F1EA',
+    difficulty: 'متقدم',
+    points: 30,
+  },
 ];

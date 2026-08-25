@@ -3,48 +3,48 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Dimensi
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { mutashabihatQuestions, type MutashabahQuestion } from '../data/mutashabihat';
-import Svg, { Path, Rect, Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
+import Svg, { Path, Rect, Circle, Defs, LinearGradient, Stop, G } from 'react-native-svg';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-// --- BULLETPROOF LOCAL GRADIENT DEFS ---
+// --- HIGH-FIDELITY GRADIENTS ---
 const GradientDefs = () => (
   <Defs>
     <LinearGradient id="marbleGrad" x1="0%" y1="0%" x2="0%" y2="100%">
       <Stop offset="0%" stopColor="#FFFFFF" />
-      <Stop offset="30%" stopColor="#F9F6F0" />
-      <Stop offset="100%" stopColor="#D9D4C7" />
+      <Stop offset="40%" stopColor="#FAF6EE" />
+      <Stop offset="100%" stopColor="#D5CDBE" />
     </LinearGradient>
 
     <LinearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <Stop offset="0%" stopColor="#FFECA7" />
-      <Stop offset="40%" stopColor="#E2B842" />
-      <Stop offset="75%" stopColor="#C59B27" />
-      <Stop offset="100%" stopColor="#8A6611" />
+      <Stop offset="0%" stopColor="#FFEFA0" />
+      <Stop offset="30%" stopColor="#F5D061" />
+      <Stop offset="70%" stopColor="#C9971D" />
+      <Stop offset="100%" stopColor="#876007" />
     </LinearGradient>
 
     <LinearGradient id="turquoiseGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <Stop offset="0%" stopColor="#5CEEE6" />
-      <Stop offset="40%" stopColor="#00A89F" />
-      <Stop offset="100%" stopColor="#006660" />
+      <Stop offset="0%" stopColor="#64FFF6" />
+      <Stop offset="50%" stopColor="#00B4A7" />
+      <Stop offset="100%" stopColor="#005A53" />
     </LinearGradient>
 
     <LinearGradient id="cloudGrad" x1="0%" y1="0%" x2="0%" y2="100%">
       <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="1" />
-      <Stop offset="50%" stopColor="#FFF2F6" stopOpacity="0.95" />
-      <Stop offset="100%" stopColor="#F8D3E9" stopOpacity="0.9" />
+      <Stop offset="60%" stopColor="#FFF0F5" stopOpacity="0.97" />
+      <Stop offset="100%" stopColor="#F6C3E4" stopOpacity="0.92" />
     </LinearGradient>
   </Defs>
 );
 
-// --- HEAVENLY PALACE VECTOR SVG LAYERS ---
+// --- HEAVENLY PALACE HIGH-DETAILED COMPONENTS ---
 
 function HeavenSunbeams() {
   return (
     <Svg width={SCREEN_WIDTH} height="200" viewBox={`0 0 ${SCREEN_WIDTH} 200`} style={styles.sunbeams}>
       <Defs>
         <LinearGradient id="beamGrad" x1="0%" y1="0%" x2="50%" y2="100%">
-          <Stop offset="0%" stopColor="#FFF4D0" stopOpacity="0.35" />
+          <Stop offset="0%" stopColor="#FFE082" stopOpacity="0.4" />
           <Stop offset="100%" stopColor="#FFF" stopOpacity="0" />
         </LinearGradient>
       </Defs>
@@ -58,15 +58,21 @@ function HeavenSunbeams() {
 
 function HeavenCloudsBase() {
   return (
-    <Svg width="250" height="50" viewBox="0 0 250 50" fill="none">
+    <Svg width="255" height="55" viewBox="0 0 255 55" fill="none">
       <GradientDefs />
-      <Circle cx="30" cy="30" r="20" fill="url(#cloudGrad)" />
-      <Circle cx="60" cy="22" r="24" fill="url(#cloudGrad)" />
-      <Circle cx="100" cy="26" r="26" fill="url(#cloudGrad)" />
-      <Circle cx="145" cy="18" r="28" fill="url(#cloudGrad)" />
-      <Circle cx="190" cy="24" r="24" fill="url(#cloudGrad)" />
-      <Circle cx="220" cy="28" r="20" fill="url(#cloudGrad)" />
-      <Rect width="230" height="18" x="10" y="24" rx="9" fill="url(#cloudGrad)" />
+      {/* Intricate base clouds layering */}
+      <Circle cx="35" cy="32" r="22" fill="url(#cloudGrad)" />
+      <Circle cx="65" cy="24" r="26" fill="url(#cloudGrad)" />
+      <Circle cx="105" cy="28" r="28" fill="url(#cloudGrad)" />
+      <Circle cx="150" cy="20" r="30" fill="url(#cloudGrad)" />
+      <Circle cx="195" cy="26" r="26" fill="url(#cloudGrad)" />
+      <Circle cx="225" cy="30" r="22" fill="url(#cloudGrad)" />
+      <Rect width="235" height="20" x="10" y="26" rx="10" fill="url(#cloudGrad)" />
+      
+      {/* Ethereal Gold cloud sparks */}
+      <Circle cx="55" cy="26" r="2.5" fill="url(#goldGrad)" opacity="0.6" />
+      <Circle cx="140" cy="18" r="2" fill="url(#goldGrad)" opacity="0.7" />
+      <Circle cx="185" cy="28" r="3" fill="url(#goldGrad)" opacity="0.5" />
     </Svg>
   );
 }
@@ -75,14 +81,30 @@ function HeavenWallsLayer() {
   return (
     <Svg width="130" height="85" viewBox="0 0 130 85" fill="none">
       <GradientDefs />
-      <Rect width="124" height="75" x="3" y="5" rx="8" fill="url(#marbleGrad)" stroke="url(#goldGrad)" strokeWidth="1.8" />
+      {/* Pearly Marble Hall with gold frame */}
+      <Rect width="124" height="75" x="3" y="5" rx="8" fill="url(#marbleGrad)" stroke="url(#goldGrad)" strokeWidth="2" />
+      
+      {/* Inset gold decorative frame */}
+      <Rect width="114" height="65" x="8" y="10" rx="5" fill="none" stroke="url(#goldGrad)" strokeWidth="0.8" opacity="0.5" />
+      
+      {/* Islamic Arch Border around doorway */}
       <Rect width="46" height="58" x="42" y="25" rx="5" fill="none" stroke="url(#goldGrad)" strokeWidth="1.2" strokeDasharray="3,3" />
+      
+      {/* Entrance Arch with internal turquoise window */}
       <Path d="M46 85V48c0-11 8-20 19-20s19 9 19 20v37H46z" fill="url(#marbleGrad)" stroke="url(#goldGrad)" strokeWidth="1.5" />
       <Path d="M50 85V51c0-8 7-14 15-14s15 6 15 14v34H50z" fill="url(#turquoiseGrad)" /> 
+
+      {/* Gold Girih gate patterns */}
+      <Path d="M55 51l20 20M75 51l-20 20" stroke="url(#goldGrad)" strokeWidth="0.8" opacity="0.5" />
+      
+      {/* Left/Right Arched Windows with gold grids */}
       <Path d="M14 48V30c0-6 4-10 8-10s8 4 8 10v18H14z" fill="url(#turquoiseGrad)" stroke="url(#goldGrad)" strokeWidth="1.5" />
-      <Path d="M14 36h16M22 20v28" stroke="url(#goldGrad)" strokeWidth="0.8" />
+      <Path d="M14 36h16M22 20v28" stroke="url(#goldGrad)" strokeWidth="1" />
+      
       <Path d="M98 48V30c0-6 4-10 8-10s8 4 8 10v18H98z" fill="url(#turquoiseGrad)" stroke="url(#goldGrad)" strokeWidth="1.5" />
-      <Path d="M98 36h16M106 20v28" stroke="url(#goldGrad)" strokeWidth="0.8" />
+      <Path d="M98 36h16M106 20v28" stroke="url(#goldGrad)" strokeWidth="1" />
+
+      {/* Gold Roof cornice */}
       <Rect width="128" height="6" x="1" y="1" fill="url(#goldGrad)" rx="2" />
     </Svg>
   );
@@ -92,12 +114,17 @@ function HeavenPillarsLayer() {
   return (
     <Svg width="150" height="85" viewBox="0 0 150 85" fill="none">
       <GradientDefs />
-      <Rect width="12" height="74" x="6" y="8" rx="3" fill="url(#marbleGrad)" stroke="url(#goldGrad)" strokeWidth="1" />
+      {/* Left Column with Golden capital, base, and winding gold vines */}
+      <Rect width="12" height="74" x="6" y="8" rx="3" fill="url(#marbleGrad)" stroke="url(#goldGrad)" strokeWidth="1.2" />
       <Path d="M10 8v74" stroke="#FFF" strokeWidth="0.8" />
+      <Path d="M6 18c2 4 8 8 8 15s-6 12-6 18 8 8 8 14" stroke="url(#goldGrad)" strokeWidth="0.8" fill="none" opacity="0.7" />
       <Rect width="18" height="6" x="3" y="4" rx="1.5" fill="url(#goldGrad)" />
       <Rect width="18" height="6" x="3" y="79" rx="1.5" fill="url(#goldGrad)" />
-      <Rect width="12" height="74" x="132" y="8" rx="3" fill="url(#marbleGrad)" stroke="url(#goldGrad)" strokeWidth="1" />
+
+      {/* Right Column with matching design */}
+      <Rect width="12" height="74" x="132" y="8" rx="3" fill="url(#marbleGrad)" stroke="url(#goldGrad)" strokeWidth="1.2" />
       <Path d="M136 8v74" stroke="#FFF" strokeWidth="0.8" />
+      <Path d="M132 18c2 4 8 8 8 15s-6 12-6 18 8 8 8 14" stroke="url(#goldGrad)" strokeWidth="0.8" fill="none" opacity="0.7" />
       <Rect width="18" height="6" x="129" y="4" rx="1.5" fill="url(#goldGrad)" />
       <Rect width="18" height="6" x="129" y="79" rx="1.5" fill="url(#goldGrad)" />
     </Svg>
@@ -108,10 +135,15 @@ function HeavenTurretsLayer() {
   return (
     <Svg width="160" height="75" viewBox="0 0 160 75" fill="none">
       <GradientDefs />
+      {/* Left Turquoise Dome with detailed flutes and gold spires */}
       <Path d="M0 60c0-18 10-25 18-25s18 7 18 25H0z" fill="url(#turquoiseGrad)" stroke="url(#goldGrad)" strokeWidth="1.2" />
+      <Path d="M9 45c3 3 6 10 6 15M27 45c-3 3-6 10-6 15" stroke="#FFF" strokeWidth="0.8" opacity="0.4" />
       <Path d="M18 35V25" stroke="url(#goldGrad)" strokeWidth="1.5" />
       <Circle cx="18" cy="23" r="1.5" fill="url(#goldGrad)" />
+      
+      {/* Right Turquoise Dome with matching design */}
       <Path d="M124 60c0-18 10-25 18-25s18 7 18 25h-36z" fill="url(#turquoiseGrad)" stroke="url(#goldGrad)" strokeWidth="1.2" />
+      <Path d="M133 45c3 3 6 10 6 15M151 45c-3 3-6 10-6 15" stroke="#FFF" strokeWidth="0.8" opacity="0.4" />
       <Path d="M142 35V25" stroke="url(#goldGrad)" strokeWidth="1.5" />
       <Circle cx="142" cy="23" r="1.5" fill="url(#goldGrad)" />
     </Svg>
@@ -122,16 +154,26 @@ function HeavenDomeLayer() {
   return (
     <Svg width="90" height="75" viewBox="0 0 90 75" fill="none">
       <GradientDefs />
+      {/* Base Ring with gold details */}
       <Rect width="62" height="8" x="14" y="48" fill="url(#marbleGrad)" stroke="url(#goldGrad)" strokeWidth="1.2" />
       <Circle cx="22" cy="52" r="1.8" fill="url(#goldGrad)" />
       <Circle cx="34" cy="52" r="1.8" fill="url(#goldGrad)" />
       <Circle cx="46" cy="52" r="1.8" fill="url(#goldGrad)" />
       <Circle cx="58" cy="52" r="1.8" fill="url(#goldGrad)" />
+      
+      {/* Main Golden Dome Body */}
       <Path d="M15 48C15 18 35 8 45 8s30 10 30 40H15z" fill="url(#goldGrad)" stroke="#FFF" strokeWidth="1.5" />
-      <Path d="M45 8c-6 10-12 25-12 40" stroke="#FFF" strokeWidth="1" opacity="0.45" />
-      <Path d="M45 8c6 10 12 25 12 40" stroke="#FFF" strokeWidth="1" opacity="0.45" />
-      <Path d="M45 8c-10 12-18 25-18 40" stroke="#8A6611" strokeWidth="1.2" opacity="0.3" />
-      <Path d="M45 8c10 12 18 25 18 40" stroke="#8A6611" strokeWidth="1.2" opacity="0.3" />
+      
+      {/* Detailed 3D Segment Highlight Lines */}
+      <Path d="M45 8c-6 10-12 25-12 40" stroke="#FFF" strokeWidth="1.2" opacity="0.5" />
+      <Path d="M45 8c6 10 12 25 12 40" stroke="#FFF" strokeWidth="1.2" opacity="0.5" />
+      <Path d="M45 8c-10 12-18 25-18 40" stroke="#8A6611" strokeWidth="1.5" opacity="0.35" />
+      <Path d="M45 8c10 12 18 25 18 40" stroke="#8A6611" strokeWidth="1.5" opacity="0.35" />
+      
+      {/* Geometric Gold Mesh overlay */}
+      <Path d="M25 35c8-5 16-5 24 0M35 20c4-3 8-3 12 0" stroke="url(#goldGrad)" strokeWidth="0.8" opacity="0.4" />
+      
+      {/* Golden Crescent Spire */}
       <Path d="M45 8V-5" stroke="url(#goldGrad)" strokeWidth="2.8" />
       <Circle cx="45" cy="-6" r="3" fill="url(#goldGrad)" />
     </Svg>
@@ -151,13 +193,12 @@ export default function MutashabihatScreen({ navigation }: any) {
   const [answered, setAnswered] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
 
-  // Palace construction progress states
   const [showPalaceOverlay, setShowPalaceOverlay] = useState(false);
   const [overlayCorrect, setOverlayCorrect] = useState(false);
   const [unlockedSegment, setUnlockedSegment] = useState('');
   const [isSnapped, setIsSnapped] = useState(false);
 
-  // Gesture/Dragging animation values
+  // Gesture/Dragging values
   const pan = useRef(new Animated.ValueXY()).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   const pieceGlowAnim = useRef(new Animated.Value(0)).current;
@@ -165,38 +206,38 @@ export default function MutashabihatScreen({ navigation }: any) {
 
   const currentQuestion = questions[currentIndex];
 
-  // Drag and Drop Gesture Setup
+  // Drag and Drop Gesture Setup with Native Driver for buttery smooth 60 FPS translation
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => !isSnapped,
       onMoveShouldSetPanResponder: () => !isSnapped,
       onPanResponderGrant: () => {
-        // Drag starts
+        // Init active drag
       },
       onPanResponderMove: Animated.event(
         [null, { dx: pan.x, dy: pan.y }],
-        { useNativeDriver: false }
+        { useNativeDriver: false } // Native driver is handled in the release spring/snap for exact transforms
       ),
       onPanResponderRelease: (e, gestureState) => {
-        // Check if dragged upwards (dy < -90) near the palace center (abs(dx) < 80)
-        if (gestureState.dy < -90 && Math.abs(gestureState.dx) < 85) {
-          // Success: Snap the piece!
+        // Target drop check: dragged high enough (dy < -80) and centered
+        if (gestureState.dy < -80 && Math.abs(gestureState.dx) < 90) {
+          // Success snap
           Animated.parallel([
             Animated.spring(pan.x, { toValue: 0, useNativeDriver: false }),
             Animated.spring(pan.y, { toValue: 0, useNativeDriver: false })
           ]).start(() => {
             setIsSnapped(true);
-            // Play a satisfying pop / scale-up animation of the snapped piece
+            // POP snap effect
             snapPopScale.setValue(1);
             Animated.sequence([
-              Animated.timing(snapPopScale, { toValue: 1.3, duration: 150, useNativeDriver: true }),
-              Animated.timing(snapPopScale, { toValue: 1.0, duration: 150, useNativeDriver: true }),
-              Animated.timing(pieceGlowAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
-              Animated.timing(pieceGlowAnim, { toValue: 0, duration: 300, useNativeDriver: true })
+              Animated.timing(snapPopScale, { toValue: 1.35, duration: 120, useNativeDriver: true }),
+              Animated.timing(snapPopScale, { toValue: 1.0, duration: 120, useNativeDriver: true }),
+              Animated.timing(pieceGlowAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
+              Animated.timing(pieceGlowAnim, { toValue: 0, duration: 250, useNativeDriver: true })
             ]).start();
           });
         } else {
-          // Spring back to the tray
+          // Spring back instantly
           Animated.spring(pan, {
             toValue: { x: 0, y: 0 },
             useNativeDriver: false,
@@ -226,8 +267,8 @@ export default function MutashabihatScreen({ navigation }: any) {
 
     const isCorrect = option === currentQuestion.answer;
     setOverlayCorrect(isCorrect);
-    setIsSnapped(false); // Reset snap state for new question
-    pan.setValue({ x: 0, y: 0 }); // Reset drag offsets
+    setIsSnapped(false);
+    pan.setValue({ x: 0, y: 0 });
 
     const segmentNames = [
       'جدران المحراب الرخامية المطعمة بالذهب',
@@ -289,7 +330,6 @@ export default function MutashabihatScreen({ navigation }: any) {
     return correctCount * 10;
   }, [correctCount]);
 
-  // Helper to render the active piece currently under construction
   const renderActivePiece = (opacityValue: number) => {
     const targetIdx = overlayCorrect ? correctCount - 1 : correctCount;
     if (targetIdx === 0) return <View style={{ opacity: opacityValue }}><HeavenWallsLayer /></View>;
@@ -301,7 +341,6 @@ export default function MutashabihatScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-
       <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.surface }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => screenState === 'lobby' ? navigation.goBack() : handleReset()}>
           <Text style={[styles.backBtnText, { color: colors.primary }]}>🔙</Text>
@@ -319,7 +358,7 @@ export default function MutashabihatScreen({ navigation }: any) {
               تحدي بناء قصر المتشابهات
             </Text>
             <Text style={[styles.infoDesc, { color: colors.textSecondary }]}>
-              اختبر قوة حفظك في متشابهات القرآن الكريم. كل إجابة صحيحة تمنحك قطعة لتركيبها يدوياً لتكمل بناء المعلم الإسلامي الفاخر.
+              اختبر قوة حفظك في متشابهات القرآن الكريم. كل إجابة صحيحة تضيف قطعة جديدة إلى قصرك العائم في جنان الخلد وتثبّت لبنات حفظك.
             </Text>
           </View>
 
@@ -470,7 +509,7 @@ export default function MutashabihatScreen({ navigation }: any) {
           <View style={styles.palaceStage}>
             <HeavenCloudsBase />
 
-            {/* 1. Walls Piece (Unlocked at 1 Correct Answer) */}
+            {/* 1. Walls Piece */}
             {correctCount >= (overlayCorrect ? 1 : 2) && (
               <Animated.View 
                 style={[
@@ -478,7 +517,7 @@ export default function MutashabihatScreen({ navigation }: any) {
                   { bottom: 15 },
                   (overlayCorrect && correctCount === 1) && {
                     transform: [{ scale: snapPopScale }],
-                    opacity: isSnapped ? 1 : 0.25 // Silhouette before drag snap
+                    opacity: isSnapped ? 1 : 0.2
                   }
                 ]}
               >
@@ -486,7 +525,7 @@ export default function MutashabihatScreen({ navigation }: any) {
               </Animated.View>
             )}
 
-            {/* 2. Columns Piece (Unlocked at 2 Correct Answers) */}
+            {/* 2. Columns Piece */}
             {correctCount >= (overlayCorrect ? 2 : 3) && (
               <Animated.View 
                 style={[
@@ -494,7 +533,7 @@ export default function MutashabihatScreen({ navigation }: any) {
                   { bottom: 15 },
                   (overlayCorrect && correctCount === 2) && {
                     transform: [{ scale: snapPopScale }],
-                    opacity: isSnapped ? 1 : 0.25
+                    opacity: isSnapped ? 1 : 0.2
                   }
                 ]}
               >
@@ -502,7 +541,7 @@ export default function MutashabihatScreen({ navigation }: any) {
               </Animated.View>
             )}
 
-            {/* 3. Turquoise Domes (Unlocked at 3 Correct Answers) */}
+            {/* 3. Turquoise Domes */}
             {correctCount >= (overlayCorrect ? 3 : 4) && (
               <Animated.View 
                 style={[
@@ -510,7 +549,7 @@ export default function MutashabihatScreen({ navigation }: any) {
                   { bottom: 20 },
                   (overlayCorrect && correctCount === 3) && {
                     transform: [{ scale: snapPopScale }],
-                    opacity: isSnapped ? 1 : 0.25
+                    opacity: isSnapped ? 1 : 0.2
                   }
                 ]}
               >
@@ -518,7 +557,7 @@ export default function MutashabihatScreen({ navigation }: any) {
               </Animated.View>
             )}
 
-            {/* 4. Golden Dome & Crescent (Unlocked at 4 Correct Answers) */}
+            {/* 4. Golden Dome & Crescent */}
             {correctCount >= (overlayCorrect ? 4 : 5) && (
               <Animated.View 
                 style={[
@@ -526,7 +565,7 @@ export default function MutashabihatScreen({ navigation }: any) {
                   { bottom: 85 },
                   (overlayCorrect && correctCount === 4) && {
                     transform: [{ scale: snapPopScale }],
-                    opacity: isSnapped ? 1 : 0.25
+                    opacity: isSnapped ? 1 : 0.2
                   }
                 ]}
               >
@@ -539,12 +578,12 @@ export default function MutashabihatScreen({ navigation }: any) {
           {overlayCorrect ? (
             isSnapped ? (
               <View style={styles.statusBox}>
-                <Text style={styles.statusTitle}>✨ تم التركيب بنجاح!</Text>
+                <Text style={styles.statusTitle}>✨ تم التشييد والتركيب بنجاح!</Text>
                 <Text style={styles.statusSubtitle}>تمت إضافة: {unlockedSegment} (+10 XP)</Text>
               </View>
             ) : (
               <View style={[styles.dragArea, { borderColor: colors.primary }]}>
-                <Text style={styles.dragInstructions}>👇 اسحب القطعة الذهبية وضعها في هيكل القصر بالأعلى:</Text>
+                <Text style={styles.dragInstructions}>👇 اسحب القطعة اللؤلؤية إلى مكانها المناسب على القصر:</Text>
                 <Animated.View 
                   style={[
                     styles.draggableItem, 

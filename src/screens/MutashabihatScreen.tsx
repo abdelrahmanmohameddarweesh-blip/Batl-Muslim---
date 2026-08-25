@@ -112,6 +112,8 @@ const PalaceClipDefs = () => (
   </Defs>
 );
 
+const resolvedPalaceAsset = RNImage.resolveAssetSource(require('../../assets/heaven_palace_render.jpg'));
+
 // --- COMPONENT: UNIFIED HIGH-QUALITY CLIP PALACE ---
 interface HeavenPalaceProps {
   correctCount: number;
@@ -138,7 +140,7 @@ const HeavenPalace = React.memo(({ correctCount, overlayCorrect, isSnapped, snap
 
         {/* 1. Underlying Blueprint */}
         <SvgImage 
-          href={require('../../assets/heaven_palace_render.jpg')}
+          href={resolvedPalaceAsset}
           width="280"
           height="210"
           opacity="0.18"
@@ -147,7 +149,7 @@ const HeavenPalace = React.memo(({ correctCount, overlayCorrect, isSnapped, snap
         {/* 2. Clouds Base */}
         <G id="cloudsLayer">
           <SvgImage 
-            href={require('../../assets/heaven_palace_render.jpg')}
+            href={resolvedPalaceAsset}
             width="280"
             height="210"
             clipPath="url(#clipClouds)"
@@ -157,20 +159,20 @@ const HeavenPalace = React.memo(({ correctCount, overlayCorrect, isSnapped, snap
         {/* 3. Main Walls */}
         {showWalls && (
           <SvgImage 
-            href={require('../../assets/heaven_palace_render.jpg')}
+            href={resolvedPalaceAsset}
             width="280"
             height="210"
             clipPath="url(#clipWalls)"
           />
         )}
         {showWallsPlaceholder && (
-          <Rect x="78" y="85" width="124" height="75" rx="8" fill="none" stroke="#F5D061" strokeWidth="3" strokeDasharray="6,6" />
+          <Rect x="78" y="85" width="124" height="75" rx="8" fill="none" stroke="#E5B942" strokeWidth="2.5" strokeDasharray="5,5" />
         )}
 
         {/* 4. Pillars */}
         {showPillars && (
           <SvgImage 
-            href={require('../../assets/heaven_palace_render.jpg')}
+            href={resolvedPalaceAsset}
             width="280"
             height="210"
             clipPath="url(#clipPillars)"
@@ -178,15 +180,15 @@ const HeavenPalace = React.memo(({ correctCount, overlayCorrect, isSnapped, snap
         )}
         {showPillarsPlaceholder && (
           <G>
-            <Rect x="52" y="80" width="25" height="85" rx="3" fill="none" stroke="#F5D061" strokeWidth="3" strokeDasharray="6,6" />
-            <Rect x="202" y="80" width="25" height="85" rx="3" fill="none" stroke="#F5D061" strokeWidth="3" strokeDasharray="6,6" />
+            <Rect x="52" y="80" width="25" height="85" rx="3" fill="none" stroke="#E5B942" strokeWidth="2.5" strokeDasharray="5,5" />
+            <Rect x="202" y="80" width="25" height="85" rx="3" fill="none" stroke="#E5B942" strokeWidth="2.5" strokeDasharray="5,5" />
           </G>
         )}
 
         {/* 5. Turrets */}
         {showTurrets && (
           <SvgImage 
-            href={require('../../assets/heaven_palace_render.jpg')}
+            href={resolvedPalaceAsset}
             width="280"
             height="210"
             clipPath="url(#clipTurrets)"
@@ -194,34 +196,34 @@ const HeavenPalace = React.memo(({ correctCount, overlayCorrect, isSnapped, snap
         )}
         {showTurretsPlaceholder && (
           <G>
-            <Rect x="10" y="85" width="45" height="75" rx="6" fill="none" stroke="#F5D061" strokeWidth="3" strokeDasharray="6,6" />
-            <Rect x="225" y="85" width="45" height="75" rx="6" fill="none" stroke="#F5D061" strokeWidth="3" strokeDasharray="6,6" />
+            <Rect x="10" y="85" width="45" height="75" rx="6" fill="none" stroke="#E5B942" strokeWidth="2.5" strokeDasharray="5,5" />
+            <Rect x="225" y="85" width="45" height="75" rx="6" fill="none" stroke="#E5B942" strokeWidth="2.5" strokeDasharray="5,5" />
           </G>
         )}
 
         {/* 6. Main Golden Dome */}
         {showDome && (
           <SvgImage 
-            href={require('../../assets/heaven_palace_render.jpg')}
+            href={resolvedPalaceAsset}
             width="280"
             height="210"
             clipPath="url(#clipDome)"
           />
         )}
         {showDomePlaceholder && (
-          <Path d="M80 85 C80 20 120 10 140 10 C160 10 200 20 200 85 Z" fill="none" stroke="#F5D061" strokeWidth="3" strokeDasharray="6,6" />
+          <Path d="M80 85 C80 20 120 10 140 10 C160 10 200 20 200 85 Z" fill="none" stroke="#E5B942" strokeWidth="2.5" strokeDasharray="5,5" />
         )}
       </Svg>
     </Animated.View>
   );
 });
 
-// --- TRAY PIECE PREVIEWS ---
+// --- INDIVIDUAL TRAY PIECE PREVIEWS ---
 const WallsPreview = () => (
-  <Svg width="100" height="70" viewBox="50 50 180 130" fill="none">
+  <Svg width="110" height="75" viewBox="50 50 180 130" fill="none">
     <PalaceClipDefs />
     <SvgImage 
-      href={require('../../assets/heaven_palace_render.jpg')}
+      href={resolvedPalaceAsset}
       width="280"
       height="210"
       clipPath="url(#clipWalls)"
@@ -230,10 +232,10 @@ const WallsPreview = () => (
 );
 
 const PillarsPreview = () => (
-  <Svg width="100" height="70" viewBox="40 70 200 110" fill="none">
+  <Svg width="110" height="75" viewBox="40 70 200 110" fill="none">
     <PalaceClipDefs />
     <SvgImage 
-      href={require('../../assets/heaven_palace_render.jpg')}
+      href={resolvedPalaceAsset}
       width="280"
       height="210"
       clipPath="url(#clipPillars)"
@@ -242,10 +244,10 @@ const PillarsPreview = () => (
 );
 
 const TurretsPreview = () => (
-  <Svg width="100" height="70" viewBox="0 70 280 110" fill="none">
+  <Svg width="110" height="75" viewBox="0 70 280 110" fill="none">
     <PalaceClipDefs />
     <SvgImage 
-      href={require('../../assets/heaven_palace_render.jpg')}
+      href={resolvedPalaceAsset}
       width="280"
       height="210"
       clipPath="url(#clipTurrets)"
@@ -254,10 +256,10 @@ const TurretsPreview = () => (
 );
 
 const DomePreview = () => (
-  <Svg width="85" height="70" viewBox="60 0 160 110" fill="none">
+  <Svg width="90" height="75" viewBox="60 0 160 110" fill="none">
     <PalaceClipDefs />
     <SvgImage 
-      href={require('../../assets/heaven_palace_render.jpg')}
+      href={resolvedPalaceAsset}
       width="280"
       height="210"
       clipPath="url(#clipDome)"

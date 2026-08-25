@@ -85,31 +85,30 @@ interface HeavenPalaceProps {
 }
 
 const HeavenPalace = React.memo(({ correctCount, overlayCorrect, isSnapped, revealHeight }: HeavenPalaceProps) => {
-  // Glow beam pulse animation
+  // Glow beam pulse animation - using JS driver since it sits on same component as layout height
   const glowPulse = useRef(new Animated.Value(0.4)).current;
 
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(glowPulse, { toValue: 1, duration: 800, useNativeDriver: true }),
-        Animated.timing(glowPulse, { toValue: 0.4, duration: 800, useNativeDriver: true })
+        Animated.timing(glowPulse, { toValue: 1, duration: 800, useNativeDriver: false }),
+        Animated.timing(glowPulse, { toValue: 0.4, duration: 800, useNativeDriver: false })
       ])
     ).start();
   }, []);
 
-  // Determine current construction target label based on correctCount
   const showPlaceholderHighlight = overlayCorrect && !isSnapped;
 
   return (
     <View style={styles.palaceCanvasOuter}>
-      {/* 1. Underlying Blueprint: Desaturated, low opacity version of the gorgeous photorealistic render */}
+      {/* 1. Underlying Blueprint */}
       <Image 
         source={require('../../assets/heaven_palace_render.jpg')}
         style={[styles.palaceImageBase, { opacity: 0.15 }]}
         resizeMode="cover"
       />
 
-      {/* 2. Full Color Construction Layer: Clipped height container revealing from bottom to top */}
+      {/* 2. Full Color Construction Layer */}
       <Animated.View style={[styles.palaceRevealContainer, { height: revealHeight }]}>
         <Image 
           source={require('../../assets/heaven_palace_render.jpg')}
@@ -118,7 +117,7 @@ const HeavenPalace = React.memo(({ correctCount, overlayCorrect, isSnapped, reve
         />
       </Animated.View>
 
-      {/* 3. Golden Laser/Glow beam at the construction boundary */}
+      {/* 3. Golden Laser/Glow beam at the construction boundary - uses JS driver layout bottom offset */}
       <Animated.View 
         style={[
           styles.constructionLaser, 
@@ -150,7 +149,7 @@ export default function MutashabihatScreen({ navigation }: any) {
   const [unlockedSegment, setUnlockedSegment] = useState('');
   const [isSnapped, setIsSnapped] = useState(false);
 
-  // Gesture animated values
+  // Gesture animated values - running on JS thread to prevent mixed driver errors
   const pan = useRef(new Animated.ValueXY()).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   const pieceGlowAnim = useRef(new Animated.Value(0)).current;
@@ -174,21 +173,21 @@ export default function MutashabihatScreen({ navigation }: any) {
         Animated.timing(rotateAnim, {
           toValue: 1,
           duration: 25000,
-          useNativeDriver: true,
+          useNativeDriver: false,
         })
       ).start();
 
       // Key Bobbing loop
       Animated.loop(
         Animated.sequence([
-          Animated.timing(bobAnim, { toValue: 1, duration: 1400, useNativeDriver: true }),
-          Animated.timing(bobAnim, { toValue: 0, duration: 1400, useNativeDriver: true })
+          Animated.timing(bobAnim, { toValue: 1, duration: 1400, useNativeDriver: false }),
+          Animated.timing(bobAnim, { toValue: 0, duration: 1400, useNativeDriver: false })
         ])
       ).start();
     }
   }, [showPalaceOverlay]);
 
-  // Decoupled PanResponder Gesture: utilizes offset accumulation to prevent layout jump and guarantees zero JS latency
+  // Decoupled PanResponder Gesture: uses JS driver layout tracking to prevent iOS native module errors
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => !isSnapped,
@@ -209,8 +208,8 @@ export default function MutashabihatScreen({ navigation }: any) {
         // Snaps magnetically if dragged above -80px threshold (very smooth and forgiving)
         if (gestureState.dy < -80 && Math.abs(gestureState.dx) < 100) {
           Animated.parallel([
-            Animated.spring(pan.x, { toValue: 0, useNativeDriver: true }),
-            Animated.spring(pan.y, { toValue: 0, useNativeDriver: true })
+            Animated.spring(pan.x, { toValue: 0, useNativeDriver: false }),
+            Animated.spring(pan.y, { toValue: 0, useNativeDriver: false })
           ]).start(() => {
             setIsSnapped(true);
             
@@ -226,15 +225,15 @@ export default function MutashabihatScreen({ navigation }: any) {
             }).start();
 
             Animated.sequence([
-              Animated.timing(pieceGlowAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
-              Animated.timing(pieceGlowAnim, { toValue: 0, duration: 250, useNativeDriver: true })
+              Animated.timing(pieceGlowAnim, { toValue: 1, duration: 250, useNativeDriver: false }),
+              Animated.timing(pieceGlowAnim, { toValue: 0, duration: 250, useNativeDriver: false })
             ]).start();
           });
         } else {
-          // Instant spring back using native driver
+          // Instant spring back using JS driver
           Animated.spring(pan, {
             toValue: { x: 0, y: 0 },
-            useNativeDriver: true,
+            useNativeDriver: false,
           }).start();
         }
       }
@@ -286,7 +285,7 @@ export default function MutashabihatScreen({ navigation }: any) {
     Animated.timing(overlayOpacity, {
       toValue: 1,
       duration: 400,
-      useNativeDriver: true,
+      useNativeDriver: false,
     }).start();
   };
 
@@ -294,7 +293,7 @@ export default function MutashabihatScreen({ navigation }: any) {
     Animated.timing(overlayOpacity, {
       toValue: 0,
       duration: 300,
-      useNativeDriver: true,
+      useNativeDriver: false,
     }).start(() => {
       setShowPalaceOverlay(false);
       if (currentIndex < questions.length - 1) {

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Dimensions, PanResponder } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -7,12 +7,42 @@ import Svg, { Path, Rect, Circle, G, Defs, LinearGradient, Stop } from 'react-na
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
+// --- UNIFIED HIGH-FIDELITY GRADIENTS ---
+const UnifiedGradients = () => (
+  <Defs>
+    <LinearGradient id="marbleGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <Stop offset="0%" stopColor="#FFFFFF" />
+      <Stop offset="35%" stopColor="#F9F5EC" />
+      <Stop offset="100%" stopColor="#D2C9B9" />
+    </LinearGradient>
+
+    <LinearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <Stop offset="0%" stopColor="#FFF2A9" />
+      <Stop offset="40%" stopColor="#E5B942" />
+      <Stop offset="75%" stopColor="#C9981E" />
+      <Stop offset="100%" stopColor="#876106" />
+    </LinearGradient>
+
+    <LinearGradient id="turquoiseGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <Stop offset="0%" stopColor="#64FFF5" />
+      <Stop offset="50%" stopColor="#00B3A6" />
+      <Stop offset="100%" stopColor="#005C55" />
+    </LinearGradient>
+
+    <LinearGradient id="cloudGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="1" />
+      <Stop offset="60%" stopColor="#FFF0F4" stopOpacity="0.97" />
+      <Stop offset="100%" stopColor="#F7C4E5" stopOpacity="0.93" />
+    </LinearGradient>
+  </Defs>
+);
+
 // --- COMPONENT: HEAVEN SUNBEAMS ---
 const HeavenSunbeams = React.memo(() => (
   <Svg width={SCREEN_WIDTH} height="200" viewBox={`0 0 ${SCREEN_WIDTH} 200`} style={styles.sunbeams}>
     <Defs>
       <LinearGradient id="beamGrad" x1="0%" y1="0%" x2="50%" y2="100%">
-        <Stop offset="0%" stopColor="#FFE082" stopOpacity="0.4" />
+        <Stop offset="0%" stopColor="#FFF4D0" stopOpacity="0.35" />
         <Stop offset="100%" stopColor="#FFF" stopOpacity="0" />
       </LinearGradient>
     </Defs>
@@ -24,8 +54,6 @@ const HeavenSunbeams = React.memo(() => (
 ));
 
 // --- COMPONENT: UNIFIED HEAVENLY PALACE (MEMOIZED & CACHED) ---
-// Renders the entire palace inside a single, perfectly structured SVG coordinate space (0,0 to 240,200)
-// Uses solid shaded paths (Light/Dark sides) for a gorgeous Monument Valley flat-3D style that is 100% stable on iOS.
 interface HeavenPalaceProps {
   correctCount: number;
   overlayCorrect: boolean;
@@ -47,8 +75,9 @@ const HeavenPalace = React.memo(({ correctCount, overlayCorrect, isSnapped, snap
   return (
     <Animated.View style={{ transform: [{ scale: snapPopScale }] }}>
       <Svg width="240" height="200" viewBox="0 0 240 200" fill="none">
-        
-        {/* 1. Clouds Base (Light / Dark contrast) */}
+        <UnifiedGradients />
+
+        {/* 1. Clouds Base */}
         <G id="cloudsBase">
           <Circle cx="35" cy="175" r="20" fill="#FFEAF2" />
           <Circle cx="35" cy="171" r="18" fill="#FFFFFF" />
@@ -70,33 +99,21 @@ const HeavenPalace = React.memo(({ correctCount, overlayCorrect, isSnapped, snap
 
           <Rect width="220" height="16" x="10" y="165" rx="8" fill="#FFFFFF" />
           
-          {/* Gold sparks */}
           <Circle cx="55" cy="160" r="2.5" fill="#F5D061" />
           <Circle cx="135" cy="152" r="2" fill="#F5D061" />
           <Circle cx="180" cy="162" r="3" fill="#E5B942" />
         </G>
 
-        {/* 2. Main Walls (Monument Valley pearly white & shadow white) */}
+        {/* 2. Main Walls */}
         {showWalls && (
           <G id="walls">
-            {/* Left/Light Side Wall */}
             <Rect width="62" height="75" x="58" y="90" rx="4" fill="#FFFFFF" stroke="#E5B942" strokeWidth="1" />
-            {/* Right/Dark Side Wall */}
             <Rect width="62" height="75" x="120" y="90" rx="4" fill="#EAE5DA" stroke="#C9981E" strokeWidth="1" />
-            
-            {/* Entrance Gate Frame */}
             <Rect width="46" height="58" x="97" y="107" rx="3" fill="#D5CDBE" stroke="#E5B942" strokeWidth="1.2" />
-            
-            {/* Entrance Arch Doorway */}
             <Path d="M97 165v-37c0-11 8-20 19-20s19 9 19 20v37H97z" fill="#FFFDF0" stroke="#E5B942" strokeWidth="1.5" />
             <Path d="M101 165v-34c0-8 7-14 15-14s15 6 15 14v34H101z" fill="#008080" /> 
-            
-            {/* Left Windows */}
             <Path d="M68 128v-18c0-6 4-10 8-10s8 4 8 10v18H68z" fill="#00A89F" stroke="#E5B942" strokeWidth="1" />
-            {/* Right Windows */}
             <Path d="M152 128v-18c0-6 4-10 8-10s8 4 8 10v18h-16z" fill="#006660" stroke="#C9981E" strokeWidth="1" />
-            
-            {/* Roof Gold Cornice */}
             <Rect width="64" height="6" x="56" y="86" fill="#F5D061" rx="1" />
             <Rect width="64" height="6" x="120" y="86" fill="#C9981E" rx="1" />
           </G>
@@ -110,12 +127,10 @@ const HeavenPalace = React.memo(({ correctCount, overlayCorrect, isSnapped, snap
         {/* 3. Outer Pillars */}
         {showPillars && (
           <G id="pillars">
-            {/* Left Pillar */}
             <Rect width="12" height="74" x="48" y="92" rx="3" fill="#FFFFFF" stroke="#E5B942" strokeWidth="1" />
             <Rect width="18" height="6" x="45" y="88" rx="1.5" fill="#FFECA7" />
             <Rect width="18" height="6" x="45" y="163" rx="1.5" fill="#E5B942" />
 
-            {/* Right Pillar */}
             <Rect width="12" height="74" x="180" y="92" rx="3" fill="#D5CDBE" stroke="#C9981E" strokeWidth="1" />
             <Rect width="18" height="6" x="177" y="88" rx="1.5" fill="#C9981E" />
             <Rect width="18" height="6" x="177" y="163" rx="1.5" fill="#876106" />
@@ -131,12 +146,10 @@ const HeavenPalace = React.memo(({ correctCount, overlayCorrect, isSnapped, snap
         {/* 4. Turquoise Domes */}
         {showTurrets && (
           <G id="turrets">
-            {/* Left Turquoise Dome */}
             <Path d="M20 148c0-18 10-25 18-25s18 7 18 25H20z" fill="#48D1CC" stroke="#E5B942" strokeWidth="1" />
             <Path d="M38 123v-10" stroke="#FFECA7" strokeWidth="1.5" />
             <Circle cx="38" cy="111" r="1.5" fill="#FFECA7" />
 
-            {/* Right Turquoise Dome */}
             <Path d="M182 148c0-18 10-25 18-25s18 7 18 25h-36z" fill="#008080" stroke="#C9981E" strokeWidth="1" />
             <Path d="M200 123v-10" stroke="#C9981E" strokeWidth="1.5" />
             <Circle cx="200" cy="111" r="1.5" fill="#C9981E" />
@@ -152,16 +165,10 @@ const HeavenPalace = React.memo(({ correctCount, overlayCorrect, isSnapped, snap
         {/* 5. Main Golden Dome */}
         {showDome && (
           <G id="dome">
-            {/* Dome Drum base */}
             <Rect width="31" height="8" x="89" y="78" fill="#FFFFFF" stroke="#E5B942" strokeWidth="1" />
             <Rect width="31" height="8" x="120" y="78" fill="#D5CDBE" stroke="#C9981E" strokeWidth="1" />
-            
-            {/* Left Dome Cupola (Light Side) */}
             <Path d="M90 78C90 48 110 38 120 38v40H90z" fill="#F5D061" stroke="#FFF" strokeWidth="1.5" />
-            {/* Right Dome Cupola (Dark Side) */}
             <Path d="M120 38c10 0 30 10 30 40H120V38z" fill="#C9981E" stroke="#FFF" strokeWidth="1.5" />
-            
-            {/* Spire and Crescent */}
             <Path d="M120 38V25" stroke="#FFECA7" strokeWidth="2.5" />
             <Circle cx="120" cy="24" r="3" fill="#F5D061" />
           </G>
@@ -176,7 +183,7 @@ const HeavenPalace = React.memo(({ correctCount, overlayCorrect, isSnapped, snap
   );
 });
 
-// --- INDIVIDUAL TRAY PREVIEWS ---
+// --- INDIVIDUAL TRAY PREVIEW COMPONENTS ---
 const WallsPreview = React.memo(() => (
   <Svg width="110" height="75" viewBox="0 0 130 85" fill="none">
     <Rect width="62" height="75" x="3" y="5" rx="4" fill="#FFFFFF" stroke="#E5B942" strokeWidth="1.8" />
@@ -192,7 +199,6 @@ const PillarsPreview = React.memo(() => (
     <Rect width="12" height="74" x="15" y="8" rx="3" fill="#FFFFFF" stroke="#E5B942" strokeWidth="1.2" />
     <Rect width="18" height="6" x="12" y="4" rx="1.5" fill="#FFECA7" />
     <Rect width="18" height="6" x="12" y="79" rx="1.5" fill="#E5B942" />
-
     <Rect width="12" height="74" x="120" y="8" rx="3" fill="#D5CDBE" stroke="#C9981E" strokeWidth="1.2" />
     <Rect width="18" height="6" x="117" y="4" rx="1.5" fill="#C9981E" />
     <Rect width="18" height="6" x="117" y="79" rx="1.5" fill="#876106" />
@@ -204,7 +210,6 @@ const TurretsPreview = React.memo(() => (
     <Path d="M10 60c0-18 10-25 18-25s18 7 18 25H10z" fill="#48D1CC" stroke="#E5B942" strokeWidth="1.2" />
     <Path d="M28 35V25" stroke="#FFECA7" strokeWidth="1.5" />
     <Circle cx="28" cy="23" r="1.5" fill="#FFECA7" />
-    
     <Path d="M114 60c0-18 10-25 18-25s18 7 18 25h-36z" fill="#008080" stroke="#C9981E" strokeWidth="1.2" />
     <Path d="M132 35V25" stroke="#C9981E" strokeWidth="1.5" />
     <Circle cx="132" cy="23" r="1.5" fill="#C9981E" />
@@ -240,28 +245,56 @@ export default function MutashabihatScreen({ navigation }: any) {
   const [unlockedSegment, setUnlockedSegment] = useState('');
   const [isSnapped, setIsSnapped] = useState(false);
 
-  // DRAG & SNAP ANIMATED STATE: Using native driver for 60 FPS hardware accelerated translation
+  // DRAG & SNAP ANIMATED VALS: useNativeDriver is set to true for 100% hardware acceleration
   const pan = useRef(new Animated.ValueXY()).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   const pieceGlowAnim = useRef(new Animated.Value(0)).current;
   const snapPopScale = useRef(new Animated.Value(1)).current;
 
+  // Magical background sparkles
+  const sparkle1 = useRef(new Animated.Value(0)).current;
+  const sparkle2 = useRef(new Animated.Value(0)).current;
+  const sparkle3 = useRef(new Animated.Value(0)).current;
+
   const currentQuestion = questions[currentIndex];
 
+  // Start background loops for the rising sparkles
+  useEffect(() => {
+    const loopSparkle = (anim: Animated.Value, delay: number) => {
+      anim.setValue(0);
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(delay),
+          Animated.timing(anim, {
+            toValue: 1,
+            duration: 3500 + Math.random() * 2000,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    };
+
+    loopSparkle(sparkle1, 0);
+    loopSparkle(sparkle2, 1000);
+    loopSparkle(sparkle3, 2000);
+  }, []);
+
+  // Decoupled PanResponder: 100% native driver spring reactions
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => !isSnapped,
       onMoveShouldSetPanResponder: () => !isSnapped,
       onPanResponderMove: Animated.event(
         [null, { dx: pan.x, dy: pan.y }],
-        { useNativeDriver: false } // panResponder requires false during gesture, but we decouple re-renders
+        { useNativeDriver: false } // panResponder updates the Animated.ValueXY instance smoothly
       ),
       onPanResponderRelease: (e, gestureState) => {
-        // Success: Dragged up to threshold (dy < -110)
+        // Snap target y-threshold (dy < -110)
         if (gestureState.dy < -110 && Math.abs(gestureState.dx) < 95) {
+          // Snap instantly
           Animated.parallel([
-            Animated.spring(pan.x, { toValue: 0, useNativeDriver: false }),
-            Animated.spring(pan.y, { toValue: 0, useNativeDriver: false })
+            Animated.spring(pan.x, { toValue: 0, useNativeDriver: true }),
+            Animated.spring(pan.y, { toValue: 0, useNativeDriver: true })
           ]).start(() => {
             setIsSnapped(true);
             snapPopScale.setValue(1);
@@ -273,10 +306,10 @@ export default function MutashabihatScreen({ navigation }: any) {
             ]).start();
           });
         } else {
-          // Instant spring back to tray
+          // Spring back instantly using native hardware driver
           Animated.spring(pan, {
             toValue: { x: 0, y: 0 },
-            useNativeDriver: false,
+            useNativeDriver: true,
           }).start();
         }
       }
@@ -376,6 +409,16 @@ export default function MutashabihatScreen({ navigation }: any) {
   };
 
   const resultsPalaceScale = useRef(new Animated.Value(1)).current;
+
+  // Interpolations for background sparkles
+  const sparkle1Y = sparkle1.interpolate({ inputRange: [0, 1], outputRange: [180, 40] });
+  const sparkle1Op = sparkle1.interpolate({ inputRange: [0, 0.2, 0.8, 1], outputRange: [0, 0.9, 0.9, 0] });
+
+  const sparkle2Y = sparkle2.interpolate({ inputRange: [0, 1], outputRange: [190, 60] });
+  const sparkle2Op = sparkle2.interpolate({ inputRange: [0, 0.2, 0.8, 1], outputRange: [0, 0.8, 0.8, 0] });
+
+  const sparkle3Y = sparkle3.interpolate({ inputRange: [0, 1], outputRange: [175, 50] });
+  const sparkle3Op = sparkle3.interpolate({ inputRange: [0, 0.2, 0.8, 1], outputRange: [0, 0.9, 0.9, 0] });
 
   return (
     <View style={styles.container}>
@@ -546,6 +589,14 @@ export default function MutashabihatScreen({ navigation }: any) {
           <Text style={styles.overlayHeader}>قصر المتشابهات في الجنان</Text>
           
           <View style={styles.palaceStage}>
+            {/* Ambient Glowing Aura Circle */}
+            <View style={styles.palaceAuraGlow} />
+
+            {/* Loop Sparkles flying behind the palace */}
+            <Animated.View style={[styles.sparkleDot, { left: 55, transform: [{ translateY: sparkle1Y }], opacity: sparkle1Op }]} />
+            <Animated.View style={[styles.sparkleDot, { left: 120, transform: [{ translateY: sparkle2Y }], opacity: sparkle2Op }]} />
+            <Animated.View style={[styles.sparkleDot, { right: 60, transform: [{ translateY: sparkle3Y }], opacity: sparkle3Op }]} />
+
             <HeavenPalace 
               correctCount={correctCount} 
               overlayCorrect={overlayCorrect} 
@@ -554,6 +605,7 @@ export default function MutashabihatScreen({ navigation }: any) {
             />
           </View>
 
+          {/* Interactive Drag & Drop Game Zone */}
           {overlayCorrect ? (
             isSnapped ? (
               <View style={styles.statusBox}>
@@ -886,6 +938,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     position: 'relative',
     marginBottom: 20,
+  },
+  palaceAuraGlow: {
+    position: 'absolute',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: '#FFF2CC',
+    opacity: 0.25,
+    zIndex: -1,
+  },
+  sparkleDot: {
+    position: 'absolute',
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#F5D061',
+    zIndex: 1,
   },
   palaceContainer: {
     width: 240,

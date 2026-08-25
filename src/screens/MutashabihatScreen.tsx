@@ -7,19 +7,16 @@ import Svg, { Path, Rect, Circle, Defs, LinearGradient, Stop } from 'react-nativ
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-// --- HEAVENLY PALACE RICH GRADIENTS DEFINITIONS ---
 function PalaceGradients() {
   return (
     <Svg width="0" height="0" style={{ position: 'absolute' }}>
       <Defs>
-        {/* White Marble with Soft Gray Shadows */}
         <LinearGradient id="marbleGrad" x1="0%" y1="0%" x2="0%" y2="100%">
           <Stop offset="0%" stopColor="#FFFFFF" />
           <Stop offset="30%" stopColor="#F9F6F0" />
           <Stop offset="100%" stopColor="#D9D4C7" />
         </LinearGradient>
 
-        {/* Polished Metallic Gold */}
         <LinearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
           <Stop offset="0%" stopColor="#FFECA7" />
           <Stop offset="40%" stopColor="#E2B842" />
@@ -27,14 +24,12 @@ function PalaceGradients() {
           <Stop offset="100%" stopColor="#8A6611" />
         </LinearGradient>
 
-        {/* Ethereal Glowing Turquoise/Teal for Domes */}
         <LinearGradient id="turquoiseGrad" x1="0%" y1="0%" x2="0%" y2="100%">
           <Stop offset="0%" stopColor="#5CEEE6" />
           <Stop offset="40%" stopColor="#00A89F" />
           <Stop offset="100%" stopColor="#006660" />
         </LinearGradient>
 
-        {/* Soft Pink & White Heaven Cloud Fill */}
         <LinearGradient id="cloudGrad" x1="0%" y1="0%" x2="0%" y2="100%">
           <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="1" />
           <Stop offset="50%" stopColor="#FFF2F6" stopOpacity="0.95" />
@@ -44,8 +39,6 @@ function PalaceGradients() {
     </Svg>
   );
 }
-
-// --- HEAVENLY PALACE VECTOR SVG LAYERS ---
 
 function HeavenSunbeams() {
   return (
@@ -67,15 +60,12 @@ function HeavenSunbeams() {
 function HeavenCloudsBase() {
   return (
     <Svg width="250" height="50" viewBox="0 0 250 50" fill="none">
-      {/* Soft Overlapping Floating Heaven Clouds filled with the rose/white gradient */}
       <Circle cx="30" cy="30" r="20" fill="url(#cloudGrad)" />
       <Circle cx="60" cy="22" r="24" fill="url(#cloudGrad)" />
       <Circle cx="100" cy="26" r="26" fill="url(#cloudGrad)" />
       <Circle cx="145" cy="18" r="28" fill="url(#cloudGrad)" />
       <Circle cx="190" cy="24" r="24" fill="url(#cloudGrad)" />
       <Circle cx="220" cy="28" r="20" fill="url(#cloudGrad)" />
-      
-      {/* Base Connector */}
       <Rect width="230" height="18" x="10" y="24" rx="9" fill="url(#cloudGrad)" />
     </Svg>
   );
@@ -84,24 +74,14 @@ function HeavenCloudsBase() {
 function HeavenWallsLayer() {
   return (
     <Svg width="130" height="85" viewBox="0 0 130 85" fill="none">
-      {/* Pearly White Marble Main Hall */}
       <Rect width="124" height="75" x="3" y="5" rx="8" fill="url(#marbleGrad)" stroke="url(#goldGrad)" strokeWidth="1.8" />
-      
-      {/* Islamic Arch Border around doorway */}
       <Rect width="46" height="58" x="42" y="25" rx="5" fill="none" stroke="url(#goldGrad)" strokeWidth="1.2" strokeDasharray="3,3" />
-      
-      {/* Main Entrance Archway */}
       <Path d="M46 85V48c0-11 8-20 19-20s19 9 19 20v37H46z" fill="url(#marbleGrad)" stroke="url(#goldGrad)" strokeWidth="1.5" />
       <Path d="M50 85V51c0-8 7-14 15-14s15 6 15 14v34H50z" fill="url(#turquoiseGrad)" /> 
-      
-      {/* Intricate Arched Windows */}
       <Path d="M14 48V30c0-6 4-10 8-10s8 4 8 10v18H14z" fill="url(#turquoiseGrad)" stroke="url(#goldGrad)" strokeWidth="1.5" />
       <Path d="M14 36h16M22 20v28" stroke="url(#goldGrad)" strokeWidth="0.8" />
-      
       <Path d="M98 48V30c0-6 4-10 8-10s8 4 8 10v18H98z" fill="url(#turquoiseGrad)" stroke="url(#goldGrad)" strokeWidth="1.5" />
       <Path d="M98 36h16M106 20v28" stroke="url(#goldGrad)" strokeWidth="0.8" />
-
-      {/* Roof gold trim details */}
       <Rect width="128" height="6" x="1" y="1" fill="url(#goldGrad)" rx="2" />
     </Svg>
   );
@@ -110,13 +90,10 @@ function HeavenWallsLayer() {
 function HeavenPillarsLayer() {
   return (
     <Svg width="150" height="85" viewBox="0 0 150 85" fill="none">
-      {/* Left Column */}
       <Rect width="12" height="74" x="6" y="8" rx="3" fill="url(#marbleGrad)" stroke="url(#goldGrad)" strokeWidth="1" />
       <Path d="M10 8v74" stroke="#FFF" strokeWidth="0.8" />
       <Rect width="18" height="6" x="3" y="4" rx="1.5" fill="url(#goldGrad)" />
       <Rect width="18" height="6" x="3" y="79" rx="1.5" fill="url(#goldGrad)" />
-
-      {/* Right Column */}
       <Rect width="12" height="74" x="132" y="8" rx="3" fill="url(#marbleGrad)" stroke="url(#goldGrad)" strokeWidth="1" />
       <Path d="M136 8v74" stroke="#FFF" strokeWidth="0.8" />
       <Rect width="18" height="6" x="129" y="4" rx="1.5" fill="url(#goldGrad)" />
@@ -128,12 +105,9 @@ function HeavenPillarsLayer() {
 function HeavenTurretsLayer() {
   return (
     <Svg width="160" height="75" viewBox="0 0 160 75" fill="none">
-      {/* Left Minor Turquoise Dome */}
       <Path d="M0 60c0-18 10-25 18-25s18 7 18 25H0z" fill="url(#turquoiseGrad)" stroke="url(#goldGrad)" strokeWidth="1.2" />
       <Path d="M18 35V25" stroke="url(#goldGrad)" strokeWidth="1.5" />
       <Circle cx="18" cy="23" r="1.5" fill="url(#goldGrad)" />
-      
-      {/* Right Minor Turquoise Dome */}
       <Path d="M124 60c0-18 10-25 18-25s18 7 18 25h-36z" fill="url(#turquoiseGrad)" stroke="url(#goldGrad)" strokeWidth="1.2" />
       <Path d="M142 35V25" stroke="url(#goldGrad)" strokeWidth="1.5" />
       <Circle cx="142" cy="23" r="1.5" fill="url(#goldGrad)" />
@@ -144,23 +118,16 @@ function HeavenTurretsLayer() {
 function HeavenDomeLayer() {
   return (
     <Svg width="90" height="75" viewBox="0 0 90 75" fill="none">
-      {/* Base Ring with gold details */}
       <Rect width="62" height="8" x="14" y="48" fill="url(#marbleGrad)" stroke="url(#goldGrad)" strokeWidth="1.2" />
       <Circle cx="22" cy="52" r="1.8" fill="url(#goldGrad)" />
       <Circle cx="34" cy="52" r="1.8" fill="url(#goldGrad)" />
       <Circle cx="46" cy="52" r="1.8" fill="url(#goldGrad)" />
       <Circle cx="58" cy="52" r="1.8" fill="url(#goldGrad)" />
-      
-      {/* Main Golden Dome Body */}
       <Path d="M15 48C15 18 35 8 45 8s30 10 30 40H15z" fill="url(#goldGrad)" stroke="#FFF" strokeWidth="1.5" />
-      
-      {/* 3D Segment Highlight Lines */}
       <Path d="M45 8c-6 10-12 25-12 40" stroke="#FFF" strokeWidth="1" opacity="0.45" />
       <Path d="M45 8c6 10 12 25 12 40" stroke="#FFF" strokeWidth="1" opacity="0.45" />
       <Path d="M45 8c-10 12-18 25-18 40" stroke="#8A6611" strokeWidth="1.2" opacity="0.3" />
       <Path d="M45 8c10 12 18 25 18 40" stroke="#8A6611" strokeWidth="1.2" opacity="0.3" />
-      
-      {/* Golden Crescent Spire */}
       <Path d="M45 8V-5" stroke="url(#goldGrad)" strokeWidth="2.8" />
       <Circle cx="45" cy="-6" r="3" fill="url(#goldGrad)" />
     </Svg>
@@ -171,30 +138,25 @@ export default function MutashabihatScreen({ navigation }: any) {
   const { colors } = useTheme();
   const { language } = useLanguage();
 
-  // Screen State: 'lobby' | 'quiz' | 'results'
   const [screenState, setScreenState] = useState<'lobby' | 'quiz' | 'results'>('lobby');
   const [selectedDifficulty, setSelectedDifficulty] = useState<'easy' | 'medium' | 'hard' | 'expert'>('medium');
 
-  // Quiz States
   const [questions, setQuestions] = useState<MutashabahQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState('');
   const [answered, setAnswered] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
 
-  // Palace construction progress states
   const [showPalaceOverlay, setShowPalaceOverlay] = useState(false);
   const [overlayCorrect, setOverlayCorrect] = useState(false);
   const [unlockedSegment, setUnlockedSegment] = useState('');
 
-  // Animations
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   const pieceFlyAnim = useRef(new Animated.Value(0)).current;
   const pieceGlowAnim = useRef(new Animated.Value(0)).current;
 
   const currentQuestion = questions[currentIndex];
 
-  // Start the Mutashabihat Quiz
   const handleStartQuiz = () => {
     const filtered = mutashabihatQuestions.filter(q => q.difficulty === selectedDifficulty);
     const shuffled = [...filtered].sort(() => Math.random() - 0.5);
@@ -208,7 +170,6 @@ export default function MutashabihatScreen({ navigation }: any) {
     setScreenState('quiz');
   };
 
-  // Handle Option selection and trigger full-screen Heavenly Palace Overlay
   const handleSelectOption = (option: string) => {
     if (answered) return;
     setSelectedAnswer(option);
@@ -217,7 +178,6 @@ export default function MutashabihatScreen({ navigation }: any) {
     const isCorrect = option === currentQuestion.answer;
     setOverlayCorrect(isCorrect);
 
-    // 5 progressive detailed small segments matching Heaven Palace layout
     const segmentNames = [
       'جدران المحراب الرخامية المطعمة بالذهب',
       'أعمدة القصر المرخمة والتيجان الذهبية',
@@ -232,7 +192,6 @@ export default function MutashabihatScreen({ navigation }: any) {
       setCorrectCount(prev => prev + 1);
     }
 
-    // Trigger full-screen Palace Construction Transition Overlay
     setShowPalaceOverlay(true);
     overlayOpacity.setValue(0);
     pieceFlyAnim.setValue(0);
@@ -261,7 +220,6 @@ export default function MutashabihatScreen({ navigation }: any) {
     ]).start();
   };
 
-  // Move to next question or show results
   const handleNextQuestion = () => {
     Animated.timing(overlayOpacity, {
       toValue: 0,
@@ -279,7 +237,6 @@ export default function MutashabihatScreen({ navigation }: any) {
     });
   };
 
-  // Restart Quiz
   const handleReset = () => {
     setScreenState('lobby');
     setQuestions([]);
@@ -298,7 +255,6 @@ export default function MutashabihatScreen({ navigation }: any) {
     return correctCount * 10;
   }, [correctCount]);
 
-  // Interpolations for the falling palace piece block
   const fallingPieceY = pieceFlyAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [-250, 0],
@@ -316,10 +272,8 @@ export default function MutashabihatScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      {/* Embed the custom SVG gradients into the DOM tree */}
       <PalaceGradients />
 
-      {/* Clean Header */}
       <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.surface }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => screenState === 'lobby' ? navigation.goBack() : handleReset()}>
           <Text style={[styles.backBtnText, { color: colors.primary }]}>🔙</Text>
@@ -329,7 +283,6 @@ export default function MutashabihatScreen({ navigation }: any) {
         </Text>
       </View>
 
-      {/* Lobby State */}
       {screenState === 'lobby' && (
         <ScrollView contentContainerStyle={styles.lobbyScroll}>
           <View style={[styles.infoBox, { backgroundColor: colors.primaryLight }]}>
@@ -344,7 +297,6 @@ export default function MutashabihatScreen({ navigation }: any) {
 
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>اختر مستوى الصعوبة:</Text>
 
-          {/* Difficulty Cards */}
           {(['easy', 'medium', 'hard', 'expert'] as const).map(diff => {
             const isSelected = selectedDifficulty === diff;
             const diffMeta = {
@@ -382,10 +334,8 @@ export default function MutashabihatScreen({ navigation }: any) {
         </ScrollView>
       )}
 
-      {/* Quiz State (Clean MCQ Card) */}
       {screenState === 'quiz' && currentQuestion && (
         <ScrollView contentContainerStyle={styles.quizScroll}>
-          {/* Progress Tracker */}
           <View style={styles.progressRow}>
             <Text style={[styles.progressText, { color: colors.textSecondary }]}>
               السؤال {currentIndex + 1} من {questions.length}
@@ -403,14 +353,12 @@ export default function MutashabihatScreen({ navigation }: any) {
             </View>
           </View>
 
-          {/* Clean Question Box */}
           <View style={[styles.questionBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Text style={[styles.ayahText, { color: colors.textPrimary }]}>
               {currentQuestion.prompt}
             </Text>
           </View>
 
-          {/* Simple Choice buttons */}
           <Text style={[styles.hintLabel, { color: colors.textSecondary }]}>اختر الكلمة أو التكملة الصحيحة:</Text>
           {currentQuestion.options.map((option, idx) => (
             <TouchableOpacity
@@ -426,10 +374,8 @@ export default function MutashabihatScreen({ navigation }: any) {
         </ScrollView>
       )}
 
-      {/* Results State */}
       {screenState === 'results' && (
         <ScrollView contentContainerStyle={styles.resultsScroll}>
-          {/* Fully Built Detailed Palace Showcase */}
           <View style={styles.showcaseBox}>
             <View style={styles.palaceContainer}>
               <HeavenCloudsBase />
@@ -480,17 +426,11 @@ export default function MutashabihatScreen({ navigation }: any) {
         </ScrollView>
       )}
 
-      {/* --- SEPARATE FULL-SCREEN PALACE CONSTRUCTION SITE OVERLAY --- */}
       {showPalaceOverlay && (
         <Animated.View style={[styles.overlayContainer, { opacity: overlayOpacity }]}>
-          {/* Dreamy Heaven Pastel Sky Gradient Background */}
           <View style={styles.skyBackground}>
             <HeavenSunbeams />
-            
-            {/* Sunrise Glow circle */}
             <View style={styles.sunriseSun} />
-            
-            {/* Twinkling Stars */}
             <View style={[styles.star, { top: 40, left: 30 }]} />
             <View style={[styles.star, { top: 80, right: 60 }]} />
             <View style={[styles.star, { top: 120, left: 120 }]} />
@@ -499,13 +439,9 @@ export default function MutashabihatScreen({ navigation }: any) {
 
           <Text style={styles.overlayHeader}>قصر المتشابهات في الجنان</Text>
           
-          {/* Palace Construction Area */}
           <View style={styles.palaceStage}>
-            
-            {/* 1. Clouds base - Always visible */}
             <HeavenCloudsBase />
 
-            {/* 2. Main Pearly Walls - Unlocked at Correct Count >= 1 */}
             {correctCount >= (overlayCorrect ? 1 : 2) && (
               <Animated.View 
                 style={[
@@ -521,7 +457,6 @@ export default function MutashabihatScreen({ navigation }: any) {
               </Animated.View>
             )}
 
-            {/* 3. Columns - Unlocked at Correct Count >= 2 */}
             {correctCount >= (overlayCorrect ? 2 : 3) && (
               <Animated.View 
                 style={[
@@ -537,7 +472,6 @@ export default function MutashabihatScreen({ navigation }: any) {
               </Animated.View>
             )}
 
-            {/* 4. Turquoise Minor Domes - Unlocked at Correct Count >= 3 */}
             {correctCount >= (overlayCorrect ? 3 : 4) && (
               <Animated.View 
                 style={[
@@ -553,7 +487,6 @@ export default function MutashabihatScreen({ navigation }: any) {
               </Animated.View>
             )}
 
-            {/* 5. Golden Dome & Crescent - Unlocked at Correct Count >= 4 */}
             {correctCount >= (overlayCorrect ? 4 : 5) && (
               <Animated.View 
                 style={[
@@ -570,7 +503,6 @@ export default function MutashabihatScreen({ navigation }: any) {
             )}
           </View>
 
-          {/* Constructing Status Text */}
           {overlayCorrect ? (
             <View style={styles.statusBox}>
               <Text style={styles.statusTitle}>✅ إجابة صحيحة!</Text>
@@ -583,7 +515,6 @@ export default function MutashabihatScreen({ navigation }: any) {
             </View>
           )}
 
-          {/* Educational Explanation Box (Spacious & Clean) */}
           <ScrollView style={styles.explanationScroll} contentContainerStyle={{ paddingBottom: 30 }} showsVerticalScrollIndicator={false}>
             <View style={styles.overlayExplanationCard}>
               <Text style={styles.overlayExplanationHeader}>💡 توضيح متشابهة الآية:</Text>
@@ -824,7 +755,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  // --- FULL SCREEN OVERLAY CONTAINER ---
   overlayContainer: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: '#F3F4F6',
@@ -838,7 +768,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: SCREEN_HEIGHT * 0.48,
-    backgroundColor: '#F5F3FF', // Soft violet pastel sky base
+    backgroundColor: '#F5F3FF',
     overflow: 'hidden',
   },
   sunbeams: {
@@ -855,19 +785,19 @@ const styles = StyleSheet.create({
     width: 320,
     height: 320,
     borderRadius: 160,
-    backgroundColor: '#FAE8FF', // Dreamy rose pink sunrise glow
+    backgroundColor: '#FAE8FF',
     opacity: 0.8,
   },
   star: {
     position: 'absolute',
     width: 3,
     height: 3,
-    backgroundColor: '#D4AF37', // Gold stars
+    backgroundColor: '#D4AF37',
     borderRadius: 1.5,
     opacity: 0.6,
   },
   overlayHeader: {
-    color: '#312E81', // Indigo deep title
+    color: '#312E81',
     fontSize: 18,
     fontWeight: 'bold',
     textAlign: 'center',
@@ -940,7 +870,7 @@ const styles = StyleSheet.create({
   overlayExplanationHeader: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: '#D4AF37', // Gold header
+    color: '#D4AF37',
     marginBottom: 8,
     textAlign: 'right',
   },

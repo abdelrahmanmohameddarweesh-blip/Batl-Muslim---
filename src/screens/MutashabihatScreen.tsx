@@ -9,11 +9,11 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // --- COMPONENT: HEAVEN SUNBEAMS ---
 const HeavenSunbeams = React.memo(() => (
-  <Svg width={SCREEN_WIDTH} height="240" viewBox={`0 0 ${SCREEN_WIDTH} 240`} style={styles.sunbeams}>
-    <Path d={`M${SCREEN_WIDTH/2} 0 L0 240 L60 240 Z`} fill="#FFE082" opacity="0.12" />
-    <Path d={`M${SCREEN_WIDTH/2} 0 L${SCREEN_WIDTH/4} 240 L${SCREEN_WIDTH/2} 240 Z`} fill="#FFE082" opacity="0.08" />
-    <Path d={`M${SCREEN_WIDTH/2} 0 L${SCREEN_WIDTH*0.55} 240 L${SCREEN_WIDTH*0.75} 240 Z`} fill="#FFE082" opacity="0.1" />
-    <Path d={`M${SCREEN_WIDTH/2} 0 L${SCREEN_WIDTH} 240 L${SCREEN_WIDTH-60} 240 Z`} fill="#FFE082" opacity="0.07" />
+  <Svg width={SCREEN_WIDTH} height="280" viewBox={`0 0 ${SCREEN_WIDTH} 280`} style={styles.sunbeams}>
+    <Path d={`M${SCREEN_WIDTH/2} 0 L0 280 L80 280 Z`} fill="#FFF2A9" opacity="0.1" />
+    <Path d={`M${SCREEN_WIDTH/2} 0 L${SCREEN_WIDTH/3} 280 L${SCREEN_WIDTH/2} 280 Z`} fill="#FFF2A9" opacity="0.07" />
+    <Path d={`M${SCREEN_WIDTH/2} 0 L${SCREEN_WIDTH*0.6} 280 L${SCREEN_WIDTH*0.85} 280 Z`} fill="#FFF2A9" opacity="0.08" />
+    <Path d={`M${SCREEN_WIDTH/2} 0 L${SCREEN_WIDTH} 280 L${SCREEN_WIDTH-80} 280 Z`} fill="#FFF2A9" opacity="0.06" />
   </Svg>
 ));
 
@@ -35,7 +35,7 @@ const Sparkle = React.memo(({ delay, left, size }: SparkleProps) => {
         Animated.delay(delay),
         Animated.timing(anim, {
           toValue: 1,
-          duration: 3500 + Math.random() * 2000,
+          duration: 4000 + Math.random() * 2000,
           useNativeDriver: true,
         })
       ]).start(() => run());
@@ -46,17 +46,17 @@ const Sparkle = React.memo(({ delay, left, size }: SparkleProps) => {
 
   const translateY = anim.interpolate({
     inputRange: [0, 1],
-    outputRange: [180, 20]
+    outputRange: [220, 20]
   });
 
   const opacity = anim.interpolate({
     inputRange: [0, 0.2, 0.8, 1],
-    outputRange: [0, 0.9, 0.9, 0]
+    outputRange: [0, 1, 1, 0]
   });
 
   const scale = anim.interpolate({
     inputRange: [0, 0.5, 1],
-    outputRange: [0.6, 1.2, 0.6]
+    outputRange: [0.5, 1.3, 0.5]
   });
 
   return (
@@ -136,15 +136,15 @@ const HeavenPalace = React.memo(({ correctCount, overlayCorrect, isSnapped, snap
       <Svg width="280" height="210" viewBox="0 0 280 210" fill="none">
         <PalaceClipDefs />
 
-        {/* 1. Underlying Blueprint (Always visible, very low opacity) */}
+        {/* 1. Underlying Blueprint */}
         <SvgImage 
           href={require('../../assets/heaven_palace_render.jpg')}
           width="280"
           height="210"
-          opacity="0.15"
+          opacity="0.18"
         />
 
-        {/* 2. Clouds Base (Always visible in full color at the bottom) */}
+        {/* 2. Clouds Base */}
         <G id="cloudsLayer">
           <SvgImage 
             href={require('../../assets/heaven_palace_render.jpg')}
@@ -164,7 +164,7 @@ const HeavenPalace = React.memo(({ correctCount, overlayCorrect, isSnapped, snap
           />
         )}
         {showWallsPlaceholder && (
-          <Rect x="78" y="85" width="124" height="75" rx="8" fill="none" stroke="#E5B942" strokeWidth="2.5" strokeDasharray="5,5" />
+          <Rect x="78" y="85" width="124" height="75" rx="8" fill="none" stroke="#F5D061" strokeWidth="3" strokeDasharray="6,6" />
         )}
 
         {/* 4. Pillars */}
@@ -178,8 +178,8 @@ const HeavenPalace = React.memo(({ correctCount, overlayCorrect, isSnapped, snap
         )}
         {showPillarsPlaceholder && (
           <G>
-            <Rect x="52" y="80" width="25" height="85" rx="3" fill="none" stroke="#E5B942" strokeWidth="2.5" strokeDasharray="5,5" />
-            <Rect x="202" y="80" width="25" height="85" rx="3" fill="none" stroke="#E5B942" strokeWidth="2.5" strokeDasharray="5,5" />
+            <Rect x="52" y="80" width="25" height="85" rx="3" fill="none" stroke="#F5D061" strokeWidth="3" strokeDasharray="6,6" />
+            <Rect x="202" y="80" width="25" height="85" rx="3" fill="none" stroke="#F5D061" strokeWidth="3" strokeDasharray="6,6" />
           </G>
         )}
 
@@ -194,8 +194,8 @@ const HeavenPalace = React.memo(({ correctCount, overlayCorrect, isSnapped, snap
         )}
         {showTurretsPlaceholder && (
           <G>
-            <Rect x="10" y="85" width="45" height="75" rx="6" fill="none" stroke="#E5B942" strokeWidth="2.5" strokeDasharray="5,5" />
-            <Rect x="225" y="85" width="45" height="75" rx="6" fill="none" stroke="#E5B942" strokeWidth="2.5" strokeDasharray="5,5" />
+            <Rect x="10" y="85" width="45" height="75" rx="6" fill="none" stroke="#F5D061" strokeWidth="3" strokeDasharray="6,6" />
+            <Rect x="225" y="85" width="45" height="75" rx="6" fill="none" stroke="#F5D061" strokeWidth="3" strokeDasharray="6,6" />
           </G>
         )}
 
@@ -209,16 +209,16 @@ const HeavenPalace = React.memo(({ correctCount, overlayCorrect, isSnapped, snap
           />
         )}
         {showDomePlaceholder && (
-          <Path d="M80 85 C80 20 120 10 140 10 C160 10 200 20 200 85 Z" fill="none" stroke="#E5B942" strokeWidth="2.5" strokeDasharray="5,5" />
+          <Path d="M80 85 C80 20 120 10 140 10 C160 10 200 20 200 85 Z" fill="none" stroke="#F5D061" strokeWidth="3" strokeDasharray="6,6" />
         )}
       </Svg>
     </Animated.View>
   );
 });
 
-// --- INDIVIDUAL TRAY PIECE PREVIEWS (CLIPPED FROM THE CORRESPONDING HIGH-RES REGIONS) ---
+// --- TRAY PIECE PREVIEWS ---
 const WallsPreview = () => (
-  <Svg width="110" height="75" viewBox="50 50 180 130" fill="none">
+  <Svg width="100" height="70" viewBox="50 50 180 130" fill="none">
     <PalaceClipDefs />
     <SvgImage 
       href={require('../../assets/heaven_palace_render.jpg')}
@@ -230,7 +230,7 @@ const WallsPreview = () => (
 );
 
 const PillarsPreview = () => (
-  <Svg width="110" height="75" viewBox="40 70 200 110" fill="none">
+  <Svg width="100" height="70" viewBox="40 70 200 110" fill="none">
     <PalaceClipDefs />
     <SvgImage 
       href={require('../../assets/heaven_palace_render.jpg')}
@@ -242,7 +242,7 @@ const PillarsPreview = () => (
 );
 
 const TurretsPreview = () => (
-  <Svg width="110" height="75" viewBox="0 70 280 110" fill="none">
+  <Svg width="100" height="70" viewBox="0 70 280 110" fill="none">
     <PalaceClipDefs />
     <SvgImage 
       href={require('../../assets/heaven_palace_render.jpg')}
@@ -254,7 +254,7 @@ const TurretsPreview = () => (
 );
 
 const DomePreview = () => (
-  <Svg width="90" height="75" viewBox="60 0 160 110" fill="none">
+  <Svg width="85" height="70" viewBox="60 0 160 110" fill="none">
     <PalaceClipDefs />
     <SvgImage 
       href={require('../../assets/heaven_palace_render.jpg')}
@@ -387,7 +387,7 @@ export default function MutashabihatScreen({ navigation }: any) {
     pan.setValue({ x: 0, y: 0 });
 
     const segmentNames = [
-      'جدران القلعة الرخامية المكتملة',
+      'جدران المحراب الرخامية المكتملة',
       'أعمدة الصرح المرخمة والتيجان الذهبية',
       'الأبراج والقنوات الفيروزية الحامية',
       'القبة الكبرى والهلال الذهبي المشع صرح النور'

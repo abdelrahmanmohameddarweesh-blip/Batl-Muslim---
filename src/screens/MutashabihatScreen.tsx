@@ -1,9 +1,30 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated } from 'react-native';
+import React, { useState, useMemo, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Dimensions } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { mutashabihatQuestions, type MutashabahQuestion } from '../data/mutashabihat';
 import Svg, { Path } from 'react-native-svg';
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+// Premium Custom SVGs for Quran Book and Puzzle Piece
+function QuranBookIcon({ color }: { color: string }) {
+  return (
+    <Svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <Path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+      <Path d="M12 6v10" strokeWidth="1.5" />
+    </Svg>
+  );
+}
+
+function PuzzlePieceIcon({ color }: { color: string }) {
+  return (
+    <Svg width="36" height="36" viewBox="0 0 24 24" fill={color}>
+      <Path d="M19.5 9h-3V6c0-1.1-.9-2-2-2h-3V1.5C11.5.67 10.83 0 10 0s-1.5.67-1.5 1.5V4h-3c-1.1 0-2 .9-2 2v3H1.5C.67 9 0 9.67 0 10.5S.67 12 1.5 12H3.5v3c0 1.1.9 2 2 2h3v1.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V17h3c1.1 0 2-.9 2-2v-3h1.5c.83 0 1.5-.67 1.5-1.5S20.33 9 19.5 9z" />
+    </Svg>
+  );
+}
 
 export default function MutashabihatScreen({ navigation }: any) {
   const { colors } = useTheme();
@@ -19,6 +40,12 @@ export default function MutashabihatScreen({ navigation }: any) {
   const [selectedAnswer, setSelectedAnswer] = useState('');
   const [answered, setAnswered] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
+
+  // Animation values
+  const puzzleAnim = useRef(new Animated.Value(0)).current;
+  const bookScale = useRef(new Animated.Value(1)).current;
+  const glowOpacity = useRef(new Animated.Value(0)).current;
+  const [showPuzzlePiece, setShowPuzzlePiece] = useState(false);
 
   const currentQuestion = questions[currentIndex];
 
@@ -39,13 +66,40 @@ export default function MutashabihatScreen({ navigation }: any) {
     setScreenState('quiz');
   };
 
-  // Handle Option selection
+  // Handle Option selection with animated gamification feedback
   const handleSelectOption = (option: string) => {
     if (answered) return;
     setSelectedAnswer(option);
     setAnswered(true);
+
     if (option === currentQuestion.answer) {
       setCorrectCount(prev => prev + 1);
+
+      // Trigger Puzzle Piece Flying and Quran Book Glow/Pulse animation
+      setShowPuzzlePiece(true);
+      puzzleAnim.setValue(0);
+
+      Animated.sequence([
+        // 1. Puzzle piece flies up, spins, and moves to the top-left Quran book
+        Animated.timing(puzzleAnim, {
+          toValue: 1,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+        // 2. Pulse & Golden Glow triggers on Quran book upon merging
+        Animated.parallel([
+          Animated.sequence([
+            Animated.timing(bookScale, { toValue: 1.35, duration: 150, useNativeDriver: true }),
+            Animated.timing(bookScale, { toValue: 1, duration: 250, useNativeDriver: true }),
+          ]),
+          Animated.sequence([
+            Animated.timing(glowOpacity, { toValue: 0.9, duration: 150, useNativeDriver: true }),
+            Animated.timing(glowOpacity, { toValue: 0, duration: 450, useNativeDriver: true }),
+          ]),
+        ]),
+      ]).start(() => {
+        setShowPuzzlePiece(false);
+      });
     }
   };
 
@@ -79,13 +133,50 @@ export default function MutashabihatScreen({ navigation }: any) {
     return correctCount * 10;
   }, [correctCount]);
 
+  // Interpolated values for flying puzzle piece
+  const puzzleX = puzzleAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [SCREEN_WIDTH / 2 - 18, 20],
+  });
+
+  const puzzleY = puzzleAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [SCREEN_HEIGHT / 2 + 50, 55],
+  });
+
+  const puzzleScale = puzzleAnim.interpolate({
+    inputRange: [0, 0.85, 1],
+    outputRange: [1.7, 1.1, 0.45],
+  });
+
+  const puzzleRotate = puzzleAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '720deg'],
+  });
+
+  const puzzleOpacity = puzzleAnim.interpolate({
+    inputRange: [0, 0.15, 0.85, 1],
+    outputRange: [0, 1, 1, 0],
+  });
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+      <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.surface }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => screenState === 'lobby' ? navigation.goBack() : handleReset()}>
           <Text style={[styles.backBtnText, { color: colors.primary }]}>🔙</Text>
         </TouchableOpacity>
+
+        {/* Pulsing & Glowing Quran Book */}
+        {screenState === 'quiz' && (
+          <View style={styles.bookWrapper}>
+            <Animated.View style={[styles.glowRing, { opacity: glowOpacity, backgroundColor: colors.accent }]} />
+            <Animated.View style={{ transform: [{ scale: bookScale }] }}>
+              <QuranBookIcon color={colors.primary} />
+            </Animated.View>
+          </View>
+        )}
+
         <Text style={[styles.headerTitle, { color: colors.textPrimary, fontFamily: 'IBMPlexSansArabic-Bold' }]}>
           تحدي المتشابهات القرآني
         </Text>
@@ -274,6 +365,26 @@ export default function MutashabihatScreen({ navigation }: any) {
           </TouchableOpacity>
         </ScrollView>
       )}
+
+      {/* Gamification Animation Overlay */}
+      {showPuzzlePiece && (
+        <Animated.View
+          style={[
+            styles.floatingPuzzle,
+            {
+              transform: [
+                { translateX: puzzleX },
+                { translateY: puzzleY },
+                { scale: puzzleScale },
+                { rotate: puzzleRotate },
+              ],
+              opacity: puzzleOpacity,
+            },
+          ]}
+        >
+          <PuzzlePieceIcon color={colors.accent} />
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -283,19 +394,35 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    flexDirection: 'row-reverse',
+    height: 110,
+    justifyContent: 'center',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 60,
-    paddingBottom: 15,
-    paddingHorizontal: 20,
     borderBottomWidth: 1,
+    paddingTop: 45,
   },
   backBtn: {
+    position: 'absolute',
+    right: 20,
+    top: 55,
     padding: 5,
   },
   backBtnText: {
     fontSize: 20,
+  },
+  bookWrapper: {
+    position: 'absolute',
+    left: 20,
+    top: 52,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  glowRing: {
+    position: 'absolute',
+    width: 46,
+    height: 46,
+    borderRadius: 23,
   },
   headerTitle: {
     fontSize: 18,
@@ -512,5 +639,13 @@ const styles = StyleSheet.create({
   homeBtnText: {
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  floatingPuzzle: {
+    position: 'absolute',
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 9999,
   },
 });

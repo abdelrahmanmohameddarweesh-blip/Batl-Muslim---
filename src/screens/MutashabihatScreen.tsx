@@ -899,11 +899,9 @@ const styles = StyleSheet.create({
     width: 280,
     height: 0,
     overflow: 'hidden',
+    justifyContent: 'flex-end',
   },
   palaceImageFull: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
     width: 280,
     height: 210,
   },

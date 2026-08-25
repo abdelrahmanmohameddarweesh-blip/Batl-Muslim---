@@ -183,50 +183,6 @@ const HeavenPalace = React.memo(({ correctCount, overlayCorrect, isSnapped, snap
   );
 });
 
-// --- INDIVIDUAL TRAY PREVIEW COMPONENTS ---
-const WallsPreview = React.memo(() => (
-  <Svg width="110" height="75" viewBox="0 0 130 85" fill="none">
-    <Rect width="62" height="75" x="3" y="5" rx="4" fill="#FFFFFF" stroke="#E5B942" strokeWidth="1.8" />
-    <Rect width="62" height="75" x="65" y="5" rx="4" fill="#EAE5DA" stroke="#C9981E" strokeWidth="1.8" />
-    <Path d="M46 85V48c0-11 8-20 19-20s19 9 19 20v37H46z" fill="#FFFFFF" stroke="#E5B942" strokeWidth="1.5" />
-    <Path d="M50 85V51c0-8 7-14 15-14s15 6 15 14v34H50z" fill="#008080" /> 
-    <Rect width="128" height="6" x="1" y="1" fill="#F5D061" rx="2" />
-  </Svg>
-));
-
-const PillarsPreview = React.memo(() => (
-  <Svg width="110" height="75" viewBox="0 0 150 85" fill="none">
-    <Rect width="12" height="74" x="15" y="8" rx="3" fill="#FFFFFF" stroke="#E5B942" strokeWidth="1.2" />
-    <Rect width="18" height="6" x="12" y="4" rx="1.5" fill="#FFECA7" />
-    <Rect width="18" height="6" x="12" y="79" rx="1.5" fill="#E5B942" />
-    <Rect width="12" height="74" x="120" y="8" rx="3" fill="#D5CDBE" stroke="#C9981E" strokeWidth="1.2" />
-    <Rect width="18" height="6" x="117" y="4" rx="1.5" fill="#C9981E" />
-    <Rect width="18" height="6" x="117" y="79" rx="1.5" fill="#876106" />
-  </Svg>
-));
-
-const TurretsPreview = React.memo(() => (
-  <Svg width="110" height="75" viewBox="0 0 160 75" fill="none">
-    <Path d="M10 60c0-18 10-25 18-25s18 7 18 25H10z" fill="#48D1CC" stroke="#E5B942" strokeWidth="1.2" />
-    <Path d="M28 35V25" stroke="#FFECA7" strokeWidth="1.5" />
-    <Circle cx="28" cy="23" r="1.5" fill="#FFECA7" />
-    <Path d="M114 60c0-18 10-25 18-25s18 7 18 25h-36z" fill="#008080" stroke="#C9981E" strokeWidth="1.2" />
-    <Path d="M132 35V25" stroke="#C9981E" strokeWidth="1.5" />
-    <Circle cx="132" cy="23" r="1.5" fill="#C9981E" />
-  </Svg>
-));
-
-const DomePreview = React.memo(() => (
-  <Svg width="90" height="75" viewBox="0 0 90 75" fill="none">
-    <Rect width="31" height="8" x="14" y="48" fill="#FFFFFF" stroke="#E5B942" strokeWidth="1" />
-    <Rect width="31" height="8" x="45" y="48" fill="#D5CDBE" stroke="#C9981E" strokeWidth="1" />
-    <Path d="M15 48C15 18 35 8 45 8v40H15z" fill="#F5D061" stroke="#FFF" strokeWidth="1.5" />
-    <Path d="M45 8c10 0 30 10 30 40H45V8z" fill="#C9981E" stroke="#FFF" strokeWidth="1.5" />
-    <Path d="M45 8V-5" stroke="#FFECA7" strokeWidth="2.8" />
-    <Circle cx="45" cy="-6" r="3" fill="#F5D061" />
-  </Svg>
-));
-
 export default function MutashabihatScreen({ navigation }: any) {
   const { colors } = useTheme();
   const { language } = useLanguage();
@@ -245,20 +201,19 @@ export default function MutashabihatScreen({ navigation }: any) {
   const [unlockedSegment, setUnlockedSegment] = useState('');
   const [isSnapped, setIsSnapped] = useState(false);
 
-  // DRAG & SNAP ANIMATED VALS: useNativeDriver is set to true for 100% hardware acceleration
+  // Gesture animated values
   const pan = useRef(new Animated.ValueXY()).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   const pieceGlowAnim = useRef(new Animated.Value(0)).current;
   const snapPopScale = useRef(new Animated.Value(1)).current;
 
-  // Magical background sparkles
+  // Background sparkles animations
   const sparkle1 = useRef(new Animated.Value(0)).current;
   const sparkle2 = useRef(new Animated.Value(0)).current;
   const sparkle3 = useRef(new Animated.Value(0)).current;
 
   const currentQuestion = questions[currentIndex];
 
-  // Start background loops for the rising sparkles
   useEffect(() => {
     const loopSparkle = (anim: Animated.Value, delay: number) => {
       anim.setValue(0);
@@ -279,22 +234,21 @@ export default function MutashabihatScreen({ navigation }: any) {
     loopSparkle(sparkle3, 2000);
   }, []);
 
-  // Decoupled PanResponder: 100% native driver spring reactions
+  // Decoupled PanResponder Gesture: uses a lightweight, styled card to completely eliminate SVG drag rendering overhead
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => !isSnapped,
       onMoveShouldSetPanResponder: () => !isSnapped,
       onPanResponderMove: Animated.event(
         [null, { dx: pan.x, dy: pan.y }],
-        { useNativeDriver: false } // panResponder updates the Animated.ValueXY instance smoothly
+        { useNativeDriver: false } // panResponder tracking offset
       ),
       onPanResponderRelease: (e, gestureState) => {
-        // Snap target y-threshold (dy < -110)
-        if (gestureState.dy < -110 && Math.abs(gestureState.dx) < 95) {
-          // Snap instantly
+        // Drop success threshold: dragged up past -80px (very forgiving, instant response)
+        if (gestureState.dy < -80 && Math.abs(gestureState.dx) < 100) {
           Animated.parallel([
-            Animated.spring(pan.x, { toValue: 0, useNativeDriver: true }),
-            Animated.spring(pan.y, { toValue: 0, useNativeDriver: true })
+            Animated.spring(pan.x, { toValue: 0, useNativeDriver: false }),
+            Animated.spring(pan.y, { toValue: 0, useNativeDriver: false })
           ]).start(() => {
             setIsSnapped(true);
             snapPopScale.setValue(1);
@@ -306,10 +260,10 @@ export default function MutashabihatScreen({ navigation }: any) {
             ]).start();
           });
         } else {
-          // Spring back instantly using native hardware driver
+          // Instant spring back to tray
           Animated.spring(pan, {
             toValue: { x: 0, y: 0 },
-            useNativeDriver: true,
+            useNativeDriver: false,
           }).start();
         }
       }
@@ -398,15 +352,6 @@ export default function MutashabihatScreen({ navigation }: any) {
   const earnedXP = useMemo(() => {
     return correctCount * 10;
   }, [correctCount]);
-
-  const renderActivePiecePreview = () => {
-    const targetIdx = overlayCorrect ? correctCount - 1 : correctCount;
-    if (targetIdx === 0) return <WallsPreview />;
-    if (targetIdx === 1) return <PillarsPreview />;
-    if (targetIdx === 2) return <TurretsPreview />;
-    if (targetIdx === 3) return <DomePreview />;
-    return null;
-  };
 
   const resultsPalaceScale = useRef(new Animated.Value(1)).current;
 
@@ -589,10 +534,10 @@ export default function MutashabihatScreen({ navigation }: any) {
           <Text style={styles.overlayHeader}>قصر المتشابهات في الجنان</Text>
           
           <View style={styles.palaceStage}>
-            {/* Ambient Glowing Aura Circle */}
+            {/* Ambient Background Aura Glow */}
             <View style={styles.palaceAuraGlow} />
 
-            {/* Loop Sparkles flying behind the palace */}
+            {/* Rising Sparkle Particles */}
             <Animated.View style={[styles.sparkleDot, { left: 55, transform: [{ translateY: sparkle1Y }], opacity: sparkle1Op }]} />
             <Animated.View style={[styles.sparkleDot, { left: 120, transform: [{ translateY: sparkle2Y }], opacity: sparkle2Op }]} />
             <Animated.View style={[styles.sparkleDot, { right: 60, transform: [{ translateY: sparkle3Y }], opacity: sparkle3Op }]} />
@@ -614,17 +559,17 @@ export default function MutashabihatScreen({ navigation }: any) {
               </View>
             ) : (
               <View style={[styles.dragArea, { borderColor: colors.primary }]}>
-                <Text style={styles.dragInstructions}>👇 اسحب القطعة اللؤلؤية إلى مكانها المناسب على القصر:</Text>
+                <Text style={styles.dragInstructions}>👇 اسحب لَبِنَة البناء الذهبية وضعها في هيكل القصر بالأعلى:</Text>
                 <Animated.View 
                   style={[
-                    styles.draggableItem, 
+                    styles.draggableItemCard, 
                     {
                       transform: [{ translateX: pan.x }, { translateY: pan.y }]
                     }
                   ]}
                   {...panResponder.panHandlers}
                 >
-                  {renderActivePiecePreview()}
+                  <Text style={styles.draggableItemText}>🕌 اسحب للتشييد</Text>
                 </Animated.View>
               </View>
             )
@@ -1015,10 +960,25 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 15,
   },
-  draggableItem: {
+  draggableItemCard: {
+    width: 150,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#F5D061',
+    borderColor: '#C9981E',
+    borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 5,
+  },
+  draggableItemText: {
+    color: '#876106',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
   explanationScroll: {
     flex: 1,

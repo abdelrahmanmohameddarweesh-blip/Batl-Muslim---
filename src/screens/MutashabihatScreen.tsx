@@ -7,28 +7,27 @@ import Svg, { Path } from 'react-native-svg';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-// Premium Custom SVGs for Quran Book and Puzzle Piece
-function QuranBookIcon({ color }: { color: string }) {
+// SVG Jigsaw Puzzle Piece Icon
+function PuzzlePieceIcon({ color, size = 30 }: { color: string; size?: number }) {
   return (
-    <Svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <Path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-      <Path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-      <Path d="M12 6v10" strokeWidth="1.5" />
-    </Svg>
-  );
-}
-
-function PuzzlePieceIcon({ color }: { color: string }) {
-  return (
-    <Svg width="36" height="36" viewBox="0 0 24 24" fill={color}>
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
       <Path d="M19.5 9h-3V6c0-1.1-.9-2-2-2h-3V1.5C11.5.67 10.83 0 10 0s-1.5.67-1.5 1.5V4h-3c-1.1 0-2 .9-2 2v3H1.5C.67 9 0 9.67 0 10.5S.67 12 1.5 12H3.5v3c0 1.1.9 2 2 2h3v1.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V17h3c1.1 0 2-.9 2-2v-3h1.5c.83 0 1.5-.67 1.5-1.5S20.33 9 19.5 9z" />
     </Svg>
   );
 }
 
+// Decorative Verse Marker
+function VerseMarker({ number, color }: { number: number; color: string }) {
+  return (
+    <View style={[styles.markerContainer, { borderColor: color }]}>
+      <Text style={[styles.markerText, { color }]}>{number}</Text>
+    </View>
+  );
+}
+
 export default function MutashabihatScreen({ navigation }: any) {
   const { colors } = useTheme();
-  const { language, formatNumber } = useLanguage();
+  const { language } = useLanguage();
 
   // Screen State: 'lobby' | 'quiz' | 'results'
   const [screenState, setScreenState] = useState<'lobby' | 'quiz' | 'results'>('lobby');
@@ -41,66 +40,89 @@ export default function MutashabihatScreen({ navigation }: any) {
   const [answered, setAnswered] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
 
-  // Animation values
+  // Puzzle board assemblies: stores the text of correctly/incorrectly solved verses
+  const [assembledVerses, setAssembledVerses] = useState<(string | null)[]>([null, null, null, null, null]);
+  const [verseCorrectStatus, setVerseCorrectStatus] = useState<boolean[]>([]);
+
+  // Animations
   const puzzleAnim = useRef(new Animated.Value(0)).current;
-  const bookScale = useRef(new Animated.Value(1)).current;
+  const boardScale = useRef(new Animated.Value(1)).current;
   const glowOpacity = useRef(new Animated.Value(0)).current;
+  
+  // Animation coordinates tracking for flying puzzle block
   const [showPuzzlePiece, setShowPuzzlePiece] = useState(false);
+  const [flyingText, setFlyingText] = useState('');
+  const [tappedOptionY, setTappedOptionY] = useState(0);
 
   const currentQuestion = questions[currentIndex];
 
   // Start the Mutashabihat Quiz
   const handleStartQuiz = () => {
-    // Filter questions based on selected difficulty
     const filtered = mutashabihatQuestions.filter(q => q.difficulty === selectedDifficulty);
-    
-    // Shuffle filtered questions
     const shuffled = [...filtered].sort(() => Math.random() - 0.5);
-    
-    // Select up to 5 questions
-    setQuestions(shuffled.slice(0, 5));
+    const selected = shuffled.slice(0, 5);
+
+    setQuestions(selected);
     setCurrentIndex(0);
     setSelectedAnswer('');
     setAnswered(false);
     setCorrectCount(0);
+    setAssembledVerses([null, null, null, null, null]);
+    setVerseCorrectStatus([false, false, false, false, false]);
     setScreenState('quiz');
   };
 
-  // Handle Option selection with animated gamification feedback
-  const handleSelectOption = (option: string) => {
+  // Handle Option selection and trigger full-screen flying puzzle block
+  const handleSelectOption = (option: string, pageY: number) => {
     if (answered) return;
     setSelectedAnswer(option);
     setAnswered(true);
 
-    if (option === currentQuestion.answer) {
+    const isCorrect = option === currentQuestion.answer;
+    
+    // Save correctness status for board rendering
+    const newStatus = [...verseCorrectStatus];
+    newStatus[currentIndex] = isCorrect;
+    setVerseCorrectStatus(newStatus);
+
+    if (isCorrect) {
       setCorrectCount(prev => prev + 1);
-
-      // Trigger Puzzle Piece Flying and Quran Book Glow/Pulse animation
-      setShowPuzzlePiece(true);
-      puzzleAnim.setValue(0);
-
-      Animated.sequence([
-        // 1. Puzzle piece flies up, spins, and moves to the top-left Quran book
-        Animated.timing(puzzleAnim, {
-          toValue: 1,
-          duration: 900,
-          useNativeDriver: true,
-        }),
-        // 2. Pulse & Golden Glow triggers on Quran book upon merging
-        Animated.parallel([
-          Animated.sequence([
-            Animated.timing(bookScale, { toValue: 1.35, duration: 150, useNativeDriver: true }),
-            Animated.timing(bookScale, { toValue: 1, duration: 250, useNativeDriver: true }),
-          ]),
-          Animated.sequence([
-            Animated.timing(glowOpacity, { toValue: 0.9, duration: 150, useNativeDriver: true }),
-            Animated.timing(glowOpacity, { toValue: 0, duration: 450, useNativeDriver: true }),
-          ]),
-        ]),
-      ]).start(() => {
-        setShowPuzzlePiece(false);
-      });
     }
+
+    // Set the flying text and start position
+    setFlyingText(option);
+    setTappedOptionY(pageY - 60); // Account for header offset
+    setShowPuzzlePiece(true);
+    puzzleAnim.setValue(0);
+
+    // Formulate the full completed verse for assembly board display
+    const completedVerse = currentQuestion.prompt.replace('...', option);
+
+    Animated.sequence([
+      // 1. Scale & fly puzzle piece from tapped option straight to its specific slot on the Quran board
+      Animated.timing(puzzleAnim, {
+        toValue: 1,
+        duration: 900,
+        useNativeDriver: true,
+      }),
+      // 2. Snapping effect on Board (Pulsing glow and Board scale jump)
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(boardScale, { toValue: 1.05, duration: 150, useNativeDriver: true }),
+          Animated.timing(boardScale, { toValue: 1, duration: 250, useNativeDriver: true }),
+        ]),
+        Animated.sequence([
+          Animated.timing(glowOpacity, { toValue: 0.9, duration: 150, useNativeDriver: true }),
+          Animated.timing(glowOpacity, { toValue: 0, duration: 450, useNativeDriver: true }),
+        ]),
+      ]),
+    ]).start(() => {
+      // 3. Formally reveal the verse inside the Quran Board slot
+      const newAssembled = [...assembledVerses];
+      newAssembled[currentIndex] = completedVerse;
+      setAssembledVerses(newAssembled);
+      setShowPuzzlePiece(false);
+    });
   };
 
   // Move to next question or show results
@@ -122,6 +144,8 @@ export default function MutashabihatScreen({ navigation }: any) {
     setSelectedAnswer('');
     setAnswered(false);
     setCorrectCount(0);
+    setAssembledVerses([null, null, null, null, null]);
+    setVerseCorrectStatus([false, false, false, false, false]);
   };
 
   const finalScore = useMemo(() => {
@@ -133,30 +157,31 @@ export default function MutashabihatScreen({ navigation }: any) {
     return correctCount * 10;
   }, [correctCount]);
 
-  // Interpolated values for flying puzzle piece
+  // Target Y coordinate for the active slot inside the Quran Board
+  // Slots are 55px tall, starting from top of Quran Board (roughly Y=150px)
+  const targetSlotY = useMemo(() => {
+    return 130 + currentIndex * 58;
+  }, [currentIndex]);
+
+  // Interpolated animation values for the flying puzzle piece block
   const puzzleX = puzzleAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [SCREEN_WIDTH / 2 - 18, 20],
+    outputRange: [20, 20], // Stays full-width aligned
   });
 
   const puzzleY = puzzleAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [SCREEN_HEIGHT / 2 + 50, 55],
+    outputRange: [tappedOptionY, targetSlotY], // Fly from tapped position to the Quran board slot
   });
 
   const puzzleScale = puzzleAnim.interpolate({
-    inputRange: [0, 0.85, 1],
-    outputRange: [1.7, 1.1, 0.45],
-  });
-
-  const puzzleRotate = puzzleAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '720deg'],
+    inputRange: [0, 0.8, 1],
+    outputRange: [1, 1.05, 0.98],
   });
 
   const puzzleOpacity = puzzleAnim.interpolate({
     inputRange: [0, 0.15, 0.85, 1],
-    outputRange: [0, 1, 1, 0],
+    outputRange: [0, 1, 1, 0.9],
   });
 
   return (
@@ -166,17 +191,6 @@ export default function MutashabihatScreen({ navigation }: any) {
         <TouchableOpacity style={styles.backBtn} onPress={() => screenState === 'lobby' ? navigation.goBack() : handleReset()}>
           <Text style={[styles.backBtnText, { color: colors.primary }]}>🔙</Text>
         </TouchableOpacity>
-
-        {/* Pulsing & Glowing Quran Book */}
-        {screenState === 'quiz' && (
-          <View style={styles.bookWrapper}>
-            <Animated.View style={[styles.glowRing, { opacity: glowOpacity, backgroundColor: colors.accent }]} />
-            <Animated.View style={{ transform: [{ scale: bookScale }] }}>
-              <QuranBookIcon color={colors.primary} />
-            </Animated.View>
-          </View>
-        )}
-
         <Text style={[styles.headerTitle, { color: colors.textPrimary, fontFamily: 'IBMPlexSansArabic-Bold' }]}>
           تحدي المتشابهات القرآني
         </Text>
@@ -237,91 +251,107 @@ export default function MutashabihatScreen({ navigation }: any) {
 
       {/* Quiz State */}
       {screenState === 'quiz' && currentQuestion && (
-        <ScrollView contentContainerStyle={styles.quizScroll}>
-          {/* Progress Bar */}
+        <View style={styles.quizWrapper}>
+          {/* Progress Tracker */}
           <View style={styles.progressRow}>
             <Text style={[styles.progressText, { color: colors.textSecondary }]}>
-              السؤال {currentIndex + 1} من {questions.length}
+              تجميع صفحة القرآن: السؤال {currentIndex + 1} من {questions.length}
             </Text>
-            <View style={[styles.progressBarBg, { backgroundColor: colors.border }]}>
-              <View
-                style={[
-                  styles.progressBarFill,
-                  {
-                    backgroundColor: colors.primary,
-                    width: `${((currentIndex + 1) / questions.length) * 100}%`
-                  }
-                ]}
-              />
-            </View>
           </View>
 
-          {/* Question Text Box */}
-          <View style={[styles.questionBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.ayahText, { color: colors.textPrimary }]}>
+          {/* FULL SCREEN PARCHMENT QURAN PAGE BOARD */}
+          <Animated.View
+            style={[
+              styles.quranBoard,
+              {
+                borderColor: colors.accent,
+                backgroundColor: colors.surface,
+                transform: [{ scale: boardScale }],
+              },
+            ]}
+          >
+            <Animated.View style={[styles.boardGlow, { opacity: glowOpacity, backgroundColor: colors.accent }]} />
+            
+            {/* The 5 Jigsaw Slots */}
+            {questions.map((q, idx) => {
+              const assembledText = assembledVerses[idx];
+              const isCurrent = idx === currentIndex;
+              const isCorrect = verseCorrectStatus[idx];
+
+              return (
+                <View
+                  key={idx}
+                  style={[
+                    styles.quranSlot,
+                    { borderColor: colors.border },
+                    isCurrent && styles.activeSlot,
+                    assembledText && (isCorrect ? styles.correctSlot : styles.wrongSlot)
+                  ]}
+                >
+                  <VerseMarker number={idx + 1} color={colors.primary} />
+                  
+                  {assembledText ? (
+                    <Text style={[styles.slotVerseText, { color: colors.textPrimary }]} numberOfLines={1}>
+                      {assembledText}
+                    </Text>
+                  ) : (
+                    <View style={styles.emptySlotRow}>
+                      <PuzzlePieceIcon color={isCurrent ? colors.accent : colors.textTertiary} size={18} />
+                      <Text style={[styles.slotPlaceholderText, { color: isCurrent ? colors.accent : colors.textTertiary }]}>
+                        {isCurrent ? 'بانتظار تركيب القطعة المناسبة للآية...' : 'موضع مغلق'}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+          </Animated.View>
+
+          {/* Quiz Question Prompter (Middle) */}
+          <View style={styles.prompterBox}>
+            <Text style={[styles.prompterText, { color: colors.textPrimary }]}>
               {currentQuestion.prompt}
             </Text>
           </View>
 
-          {/* Options List */}
-          <Text style={[styles.hintLabel, { color: colors.textSecondary }]}>اختر الكلمة أو التكملة الصحيحة:</Text>
-          {currentQuestion.options.map((option, idx) => {
-            const isCorrect = option === currentQuestion.answer;
-            const isSelected = option === selectedAnswer;
-
-            let cardBg = colors.surface;
-            let cardBorder = colors.border;
-            let textColor = colors.textPrimary;
-
-            if (answered) {
-              if (isCorrect) {
-                cardBg = '#EBF7F3';
-                cardBorder = '#2ECC71';
-                textColor = '#27AE60';
-              } else if (isSelected) {
-                cardBg = '#FDF2F2';
-                cardBorder = '#E74C3C';
-                textColor = '#C0392B';
-              } else {
-                cardBg = colors.surface;
-                cardBorder = colors.border;
-                textColor = colors.textSecondary;
-              }
-            }
-
-            return (
-              <TouchableOpacity
-                key={idx}
-                style={[styles.optionBtn, { backgroundColor: cardBg, borderColor: cardBorder }]}
-                onPress={() => handleSelectOption(option)}
-                disabled={answered}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.optionText, { color: textColor }]}>{option}</Text>
-              </TouchableOpacity>
-            );
-          })}
-
-          {/* Explanation & Next Card */}
-          {answered && (
-            <Animated.View style={[styles.explanationCard, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}>
-              <Text style={[styles.explanationHeader, { color: colors.primary }]}>
-                💡 توضيح متشابهة الآية:
-              </Text>
-              <Text style={[styles.explanationText, { color: colors.textPrimary }]}>
-                {currentQuestion.explanation}
-              </Text>
-              <TouchableOpacity
-                style={[styles.nextBtn, { backgroundColor: colors.primary }]}
-                onPress={handleNextQuestion}
-              >
-                <Text style={styles.nextBtnText}>
-                  {currentIndex === questions.length - 1 ? 'عرض النتيجة' : 'السؤال التالي'}
+          {/* Puzzle Option Choices */}
+          <ScrollView contentContainerStyle={styles.choicesScroll}>
+            {!answered ? (
+              currentQuestion.options.map((option, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  style={[styles.puzzleOption, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                  activeOpacity={0.8}
+                  onPress={(e) => handleSelectOption(option, e.nativeEvent.pageY)}
+                >
+                  {/* Left & Right Jigsaw notches */}
+                  <View style={[styles.notchOut, { backgroundColor: colors.surface, borderColor: colors.border }]} />
+                  <View style={[styles.notchIn, { backgroundColor: colors.background }]} />
+                  
+                  <Text style={[styles.optionText, { color: colors.textPrimary }]}>{option}</Text>
+                </TouchableOpacity>
+              ))
+            ) : (
+              /* Explanation & Next Card after snapping */
+              <Animated.View style={[styles.explanationCard, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}>
+                <Text style={[styles.explanationHeader, { color: colors.primary }]}>
+                  💡 توضيح متشابهة الآية:
                 </Text>
-              </TouchableOpacity>
-            </Animated.View>
-          )}
-        </ScrollView>
+                <Text style={[styles.explanationText, { color: colors.textPrimary }]}>
+                  {currentQuestion.explanation}
+                </Text>
+                <TouchableOpacity
+                  style={[styles.nextBtn, { backgroundColor: colors.primary }]}
+                  onPress={handleNextQuestion}
+                >
+                  <Text style={styles.nextBtnText}>
+                    {currentIndex === questions.length - 1 ? 'عرض النتيجة' : 'السؤال التالي'}
+                  </Text>
+                </TouchableOpacity>
+              </Animated.View>
+            )}
+          </ScrollView>
+        </View>
       )}
 
       {/* Results State */}
@@ -366,23 +396,27 @@ export default function MutashabihatScreen({ navigation }: any) {
         </ScrollView>
       )}
 
-      {/* Gamification Animation Overlay */}
+      {/* Gamification Animation Overlay - flying puzzle piece block */}
       {showPuzzlePiece && (
         <Animated.View
           style={[
-            styles.floatingPuzzle,
+            styles.puzzleOption,
+            styles.flyingPuzzlePiece,
             {
+              backgroundColor: colors.accentLight,
+              borderColor: colors.accent,
               transform: [
                 { translateX: puzzleX },
                 { translateY: puzzleY },
                 { scale: puzzleScale },
-                { rotate: puzzleRotate },
               ],
               opacity: puzzleOpacity,
             },
           ]}
         >
-          <PuzzlePieceIcon color={colors.accent} />
+          <View style={[styles.notchOut, { backgroundColor: colors.accentLight, borderColor: colors.accent }]} />
+          <View style={[styles.notchIn, { backgroundColor: colors.background }]} />
+          <Text style={[styles.optionText, { color: colors.accentDark }]}>{flyingText}</Text>
         </Animated.View>
       )}
     </View>
@@ -394,7 +428,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    height: 110,
+    height: 100,
     justifyContent: 'center',
     alignItems: 'center',
     borderBottomWidth: 1,
@@ -403,26 +437,11 @@ const styles = StyleSheet.create({
   backBtn: {
     position: 'absolute',
     right: 20,
-    top: 55,
+    top: 52,
     padding: 5,
   },
   backBtnText: {
     fontSize: 20,
-  },
-  bookWrapper: {
-    position: 'absolute',
-    left: 20,
-    top: 52,
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  glowRing: {
-    position: 'absolute',
-    width: 46,
-    height: 46,
-    borderRadius: 23,
   },
   headerTitle: {
     fontSize: 18,
@@ -482,88 +501,172 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     alignItems: 'center',
     marginTop: 25,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   startBtnText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
   },
-  quizScroll: {
+  quizWrapper: {
+    flex: 1,
     padding: 20,
   },
   progressRow: {
-    flexDirection: 'row-reverse',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 10,
+    alignItems: 'flex-end',
   },
   progressText: {
-    fontSize: 14,
+    fontSize: 13,
+    fontWeight: '600',
   },
-  progressBarBg: {
-    height: 8,
-    borderRadius: 4,
-    flex: 1,
-    marginRight: 15,
+  // QURAN PAGE BOARD
+  quranBoard: {
+    borderWidth: 3,
+    borderRadius: 15,
+    padding: 10,
+    minHeight: 295,
+    justifyContent: 'space-around',
+    marginBottom: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 4,
+    position: 'relative',
     overflow: 'hidden',
   },
-  progressBarFill: {
-    height: '100%',
-    borderRadius: 4,
+  boardGlow: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1,
   },
-  questionBox: {
-    borderWidth: 1,
-    borderRadius: 15,
-    padding: 24,
+  quranSlot: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    minHeight: 48,
+    marginBottom: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    zIndex: 2,
+  },
+  activeSlot: {
+    borderColor: '#F5B841',
+    backgroundColor: '#FEF9E7',
+    borderStyle: 'solid',
+  },
+  correctSlot: {
+    borderColor: '#2ECC71',
+    backgroundColor: '#EBF7F3',
+    borderStyle: 'solid',
+  },
+  wrongSlot: {
+    borderColor: '#E74C3C',
+    backgroundColor: '#FDF2F2',
+    borderStyle: 'solid',
+  },
+  emptySlotRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    flex: 1,
+  },
+  slotPlaceholderText: {
+    fontSize: 13,
+    marginRight: 8,
+  },
+  slotVerseText: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    textAlign: 'right',
+    flex: 1,
+    marginRight: 10,
+  },
+  markerContainer: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 25,
-    minHeight: 150,
+  },
+  markerText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  // QUESTION PROMPTER (MIDDLE)
+  prompterBox: {
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 15,
+  },
+  prompterText: {
+    fontSize: 17,
+    textAlign: 'center',
+    lineHeight: 28,
+    fontWeight: '600',
+  },
+  choicesScroll: {
+    paddingBottom: 20,
+  },
+  // JIGSAW PUZZLE OPTION CARDS
+  puzzleOption: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderRadius: 12,
+    paddingVertical: 14,
+    marginBottom: 12,
+    position: 'relative',
+    overflow: 'visible',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
-    elevation: 1,
-  },
-  ayahText: {
-    fontSize: 20,
-    textAlign: 'center',
-    lineHeight: 34,
-    fontWeight: '600',
-  },
-  hintLabel: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginBottom: 12,
-    textAlign: 'right',
-  },
-  optionBtn: {
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    marginBottom: 12,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 1,
-    elevation: 1,
+    elevation: 2,
   },
   optionText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  notchOut: {
+    position: 'absolute',
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    right: -7,
+    top: '50%',
+    marginTop: -7,
+    borderWidth: 1.5,
+  },
+  notchIn: {
+    position: 'absolute',
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    left: -7,
+    top: '50%',
+    marginTop: -7,
+  },
+  flyingPuzzlePiece: {
+    position: 'absolute',
+    width: SCREEN_WIDTH - 40,
+    zIndex: 9999,
   },
   explanationCard: {
     borderWidth: 1,
     borderRadius: 15,
     padding: 20,
-    marginTop: 20,
+    marginTop: 5,
     marginBottom: 30,
   },
   explanationHeader: {
@@ -639,13 +742,5 @@ const styles = StyleSheet.create({
   homeBtnText: {
     fontSize: 16,
     fontWeight: 'bold',
-  },
-  floatingPuzzle: {
-    position: 'absolute',
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 9999,
   },
 });

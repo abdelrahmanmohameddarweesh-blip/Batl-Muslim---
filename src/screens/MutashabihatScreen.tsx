@@ -7,38 +7,38 @@ import Svg, { Path, Rect, Circle, Defs, LinearGradient, Stop } from 'react-nativ
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-function PalaceGradients() {
-  return (
-    <Svg width="0" height="0" style={{ position: 'absolute' }}>
-      <Defs>
-        <LinearGradient id="marbleGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-          <Stop offset="0%" stopColor="#FFFFFF" />
-          <Stop offset="30%" stopColor="#F9F6F0" />
-          <Stop offset="100%" stopColor="#D9D4C7" />
-        </LinearGradient>
+// --- BULLETPROOF LOCAL GRADIENT DEFS ---
+// Injected into each SVG layer to resolve iOS referencing bugs across absolute trees
+const GradientDefs = () => (
+  <Defs>
+    <LinearGradient id="marbleGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <Stop offset="0%" stopColor="#FFFFFF" />
+      <Stop offset="30%" stopColor="#F9F6F0" />
+      <Stop offset="100%" stopColor="#D9D4C7" />
+    </LinearGradient>
 
-        <LinearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <Stop offset="0%" stopColor="#FFECA7" />
-          <Stop offset="40%" stopColor="#E2B842" />
-          <Stop offset="75%" stopColor="#C59B27" />
-          <Stop offset="100%" stopColor="#8A6611" />
-        </LinearGradient>
+    <LinearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <Stop offset="0%" stopColor="#FFECA7" />
+      <Stop offset="40%" stopColor="#E2B842" />
+      <Stop offset="75%" stopColor="#C59B27" />
+      <Stop offset="100%" stopColor="#8A6611" />
+    </LinearGradient>
 
-        <LinearGradient id="turquoiseGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-          <Stop offset="0%" stopColor="#5CEEE6" />
-          <Stop offset="40%" stopColor="#00A89F" />
-          <Stop offset="100%" stopColor="#006660" />
-        </LinearGradient>
+    <LinearGradient id="turquoiseGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <Stop offset="0%" stopColor="#5CEEE6" />
+      <Stop offset="40%" stopColor="#00A89F" />
+      <Stop offset="100%" stopColor="#006660" />
+    </LinearGradient>
 
-        <LinearGradient id="cloudGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-          <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="1" />
-          <Stop offset="50%" stopColor="#FFF2F6" stopOpacity="0.95" />
-          <Stop offset="100%" stopColor="#F8D3E9" stopOpacity="0.9" />
-        </LinearGradient>
-      </Defs>
-    </Svg>
-  );
-}
+    <LinearGradient id="cloudGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="1" />
+      <Stop offset="50%" stopColor="#FFF2F6" stopOpacity="0.95" />
+      <Stop offset="100%" stopColor="#F8D3E9" stopOpacity="0.9" />
+    </LinearGradient>
+  </Defs>
+);
+
+// --- HEAVENLY PALACE VECTOR SVG LAYERS ---
 
 function HeavenSunbeams() {
   return (
@@ -60,6 +60,7 @@ function HeavenSunbeams() {
 function HeavenCloudsBase() {
   return (
     <Svg width="250" height="50" viewBox="0 0 250 50" fill="none">
+      <GradientDefs />
       <Circle cx="30" cy="30" r="20" fill="url(#cloudGrad)" />
       <Circle cx="60" cy="22" r="24" fill="url(#cloudGrad)" />
       <Circle cx="100" cy="26" r="26" fill="url(#cloudGrad)" />
@@ -74,6 +75,7 @@ function HeavenCloudsBase() {
 function HeavenWallsLayer() {
   return (
     <Svg width="130" height="85" viewBox="0 0 130 85" fill="none">
+      <GradientDefs />
       <Rect width="124" height="75" x="3" y="5" rx="8" fill="url(#marbleGrad)" stroke="url(#goldGrad)" strokeWidth="1.8" />
       <Rect width="46" height="58" x="42" y="25" rx="5" fill="none" stroke="url(#goldGrad)" strokeWidth="1.2" strokeDasharray="3,3" />
       <Path d="M46 85V48c0-11 8-20 19-20s19 9 19 20v37H46z" fill="url(#marbleGrad)" stroke="url(#goldGrad)" strokeWidth="1.5" />
@@ -90,6 +92,7 @@ function HeavenWallsLayer() {
 function HeavenPillarsLayer() {
   return (
     <Svg width="150" height="85" viewBox="0 0 150 85" fill="none">
+      <GradientDefs />
       <Rect width="12" height="74" x="6" y="8" rx="3" fill="url(#marbleGrad)" stroke="url(#goldGrad)" strokeWidth="1" />
       <Path d="M10 8v74" stroke="#FFF" strokeWidth="0.8" />
       <Rect width="18" height="6" x="3" y="4" rx="1.5" fill="url(#goldGrad)" />
@@ -105,6 +108,7 @@ function HeavenPillarsLayer() {
 function HeavenTurretsLayer() {
   return (
     <Svg width="160" height="75" viewBox="0 0 160 75" fill="none">
+      <GradientDefs />
       <Path d="M0 60c0-18 10-25 18-25s18 7 18 25H0z" fill="url(#turquoiseGrad)" stroke="url(#goldGrad)" strokeWidth="1.2" />
       <Path d="M18 35V25" stroke="url(#goldGrad)" strokeWidth="1.5" />
       <Circle cx="18" cy="23" r="1.5" fill="url(#goldGrad)" />
@@ -118,6 +122,7 @@ function HeavenTurretsLayer() {
 function HeavenDomeLayer() {
   return (
     <Svg width="90" height="75" viewBox="0 0 90 75" fill="none">
+      <GradientDefs />
       <Rect width="62" height="8" x="14" y="48" fill="url(#marbleGrad)" stroke="url(#goldGrad)" strokeWidth="1.2" />
       <Circle cx="22" cy="52" r="1.8" fill="url(#goldGrad)" />
       <Circle cx="34" cy="52" r="1.8" fill="url(#goldGrad)" />
@@ -272,8 +277,6 @@ export default function MutashabihatScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <PalaceGradients />
-
       <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.surface }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => screenState === 'lobby' ? navigation.goBack() : handleReset()}>
           <Text style={[styles.backBtnText, { color: colors.primary }]}>🔙</Text>

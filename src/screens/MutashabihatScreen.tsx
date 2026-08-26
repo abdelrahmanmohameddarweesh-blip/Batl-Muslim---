@@ -1,275 +1,17 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Dimensions, PanResponder, Image as RNImage } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Dimensions, Image } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
 import { mutashabihatQuestions, type MutashabahQuestion } from '../data/mutashabihat';
-import Svg, { Path, Rect, Circle, G, Defs, ClipPath, Image as SvgImage } from 'react-native-svg';
+import { addSirajPoints, getCurrentUserProfile } from '../firebase/auth';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-
-// --- COMPONENT: HEAVEN SUNBEAMS ---
-const HeavenSunbeams = React.memo(() => (
-  <Svg width={SCREEN_WIDTH} height="280" viewBox={`0 0 ${SCREEN_WIDTH} 280`} style={styles.sunbeams}>
-    <Path d={`M${SCREEN_WIDTH/2} 0 L0 280 L80 280 Z`} fill="#FFF2A9" opacity="0.1" />
-    <Path d={`M${SCREEN_WIDTH/2} 0 L${SCREEN_WIDTH/3} 280 L${SCREEN_WIDTH/2} 280 Z`} fill="#FFF2A9" opacity="0.07" />
-    <Path d={`M${SCREEN_WIDTH/2} 0 L${SCREEN_WIDTH*0.6} 280 L${SCREEN_WIDTH*0.85} 280 Z`} fill="#FFF2A9" opacity="0.08" />
-    <Path d={`M${SCREEN_WIDTH/2} 0 L${SCREEN_WIDTH} 280 L${SCREEN_WIDTH-80} 280 Z`} fill="#FFF2A9" opacity="0.06" />
-  </Svg>
-));
-
-// --- COMPONENT: STARDUST PARTICLES ---
-interface SparkleProps {
-  delay: number;
-  left: number;
-  size: number;
-}
-const Sparkle = React.memo(({ delay, left, size }: SparkleProps) => {
-  const anim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    let active = true;
-    const run = () => {
-      if (!active) return;
-      anim.setValue(0);
-      Animated.sequence([
-        Animated.delay(delay),
-        Animated.timing(anim, {
-          toValue: 1,
-          duration: 4000 + Math.random() * 2000,
-          useNativeDriver: true,
-        })
-      ]).start(() => run());
-    };
-    run();
-    return () => { active = false; };
-  }, []);
-
-  const translateY = anim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [220, 20]
-  });
-
-  const opacity = anim.interpolate({
-    inputRange: [0, 0.2, 0.8, 1],
-    outputRange: [0, 1, 1, 0]
-  });
-
-  const scale = anim.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: [0.5, 1.3, 0.5]
-  });
-
-  return (
-    <Animated.View
-      style={[
-        styles.absoluteSparkle,
-        {
-          left,
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          transform: [{ translateY }, { scale }],
-          opacity,
-        }
-      ]}
-    />
-  );
-});
-
-// --- DEFINE THE HIGH-FIDELITY CLIPPINGS ---
-const PalaceClipDefs = () => (
-  <Defs>
-    {/* Clouds Base */}
-    <ClipPath id="clipClouds">
-      <Rect x="5" y="140" width="270" height="70" rx="15" />
-    </ClipPath>
-
-    {/* Main Walls */}
-    <ClipPath id="clipWalls">
-      <Rect x="78" y="85" width="124" height="75" rx="8" />
-    </ClipPath>
-
-    {/* Pillars */}
-    <ClipPath id="clipPillars">
-      <G>
-        <Rect x="52" y="80" width="25" height="85" rx="3" />
-        <Rect x="202" y="80" width="25" height="85" rx="3" />
-      </G>
-    </ClipPath>
-
-    {/* Turrets/Side Towers */}
-    <ClipPath id="clipTurrets">
-      <G>
-        <Rect x="10" y="85" width="45" height="75" rx="6" />
-        <Rect x="225" y="85" width="45" height="75" rx="6" />
-      </G>
-    </ClipPath>
-
-    {/* Main Golden Dome */}
-    <ClipPath id="clipDome">
-      <Path d="M80 85 C80 20 120 10 140 10 C160 10 200 20 200 85 Z" />
-    </ClipPath>
-  </Defs>
-);
-
-const resolvedPalaceAsset = RNImage.resolveAssetSource(require('../../assets/heaven_palace_render.jpg'));
-
-// --- COMPONENT: UNIFIED HIGH-QUALITY CLIP PALACE ---
-interface HeavenPalaceProps {
-  correctCount: number;
-  overlayCorrect: boolean;
-  isSnapped: boolean;
-  snapPopScale: Animated.Value | Animated.AnimatedInterpolation<number>;
-}
-
-const HeavenPalace = React.memo(({ correctCount, overlayCorrect, isSnapped, snapPopScale }: HeavenPalaceProps) => {
-  const showWalls = correctCount >= 1 && (correctCount > 1 || !overlayCorrect || isSnapped);
-  const showPillars = correctCount >= 2 && (correctCount > 2 || !overlayCorrect || isSnapped);
-  const showTurrets = correctCount >= 3 && (correctCount > 3 || !overlayCorrect || isSnapped);
-  const showDome = correctCount >= 4 && (correctCount > 4 || !overlayCorrect || isSnapped);
-
-  const showWallsPlaceholder = overlayCorrect && correctCount === 1 && !isSnapped;
-  const showPillarsPlaceholder = overlayCorrect && correctCount === 2 && !isSnapped;
-  const showTurretsPlaceholder = overlayCorrect && correctCount === 3 && !isSnapped;
-  const showDomePlaceholder = overlayCorrect && correctCount === 4 && !isSnapped;
-
-  return (
-    <Animated.View style={{ transform: [{ scale: snapPopScale }] }}>
-      <Svg width="280" height="210" viewBox="0 0 280 210" fill="none">
-        <PalaceClipDefs />
-
-        {/* 1. Underlying Blueprint */}
-        <SvgImage 
-          href={resolvedPalaceAsset}
-          width="280"
-          height="210"
-          opacity="0.18"
-        />
-
-        {/* 2. Clouds Base */}
-        <G id="cloudsLayer">
-          <SvgImage 
-            href={resolvedPalaceAsset}
-            width="280"
-            height="210"
-            clipPath="url(#clipClouds)"
-          />
-        </G>
-
-        {/* 3. Main Walls */}
-        {showWalls && (
-          <SvgImage 
-            href={resolvedPalaceAsset}
-            width="280"
-            height="210"
-            clipPath="url(#clipWalls)"
-          />
-        )}
-        {showWallsPlaceholder && (
-          <Rect x="78" y="85" width="124" height="75" rx="8" fill="none" stroke="#E5B942" strokeWidth="2.5" strokeDasharray="5,5" />
-        )}
-
-        {/* 4. Pillars */}
-        {showPillars && (
-          <SvgImage 
-            href={resolvedPalaceAsset}
-            width="280"
-            height="210"
-            clipPath="url(#clipPillars)"
-          />
-        )}
-        {showPillarsPlaceholder && (
-          <G>
-            <Rect x="52" y="80" width="25" height="85" rx="3" fill="none" stroke="#E5B942" strokeWidth="2.5" strokeDasharray="5,5" />
-            <Rect x="202" y="80" width="25" height="85" rx="3" fill="none" stroke="#E5B942" strokeWidth="2.5" strokeDasharray="5,5" />
-          </G>
-        )}
-
-        {/* 5. Turrets */}
-        {showTurrets && (
-          <SvgImage 
-            href={resolvedPalaceAsset}
-            width="280"
-            height="210"
-            clipPath="url(#clipTurrets)"
-          />
-        )}
-        {showTurretsPlaceholder && (
-          <G>
-            <Rect x="10" y="85" width="45" height="75" rx="6" fill="none" stroke="#E5B942" strokeWidth="2.5" strokeDasharray="5,5" />
-            <Rect x="225" y="85" width="45" height="75" rx="6" fill="none" stroke="#E5B942" strokeWidth="2.5" strokeDasharray="5,5" />
-          </G>
-        )}
-
-        {/* 6. Main Golden Dome */}
-        {showDome && (
-          <SvgImage 
-            href={resolvedPalaceAsset}
-            width="280"
-            height="210"
-            clipPath="url(#clipDome)"
-          />
-        )}
-        {showDomePlaceholder && (
-          <Path d="M80 85 C80 20 120 10 140 10 C160 10 200 20 200 85 Z" fill="none" stroke="#E5B942" strokeWidth="2.5" strokeDasharray="5,5" />
-        )}
-      </Svg>
-    </Animated.View>
-  );
-});
-
-// --- INDIVIDUAL TRAY PIECE PREVIEWS ---
-const WallsPreview = () => (
-  <Svg width="110" height="75" viewBox="50 50 180 130" fill="none">
-    <PalaceClipDefs />
-    <SvgImage 
-      href={resolvedPalaceAsset}
-      width="280"
-      height="210"
-      clipPath="url(#clipWalls)"
-    />
-  </Svg>
-);
-
-const PillarsPreview = () => (
-  <Svg width="110" height="75" viewBox="40 70 200 110" fill="none">
-    <PalaceClipDefs />
-    <SvgImage 
-      href={resolvedPalaceAsset}
-      width="280"
-      height="210"
-      clipPath="url(#clipPillars)"
-    />
-  </Svg>
-);
-
-const TurretsPreview = () => (
-  <Svg width="110" height="75" viewBox="0 70 280 110" fill="none">
-    <PalaceClipDefs />
-    <SvgImage 
-      href={resolvedPalaceAsset}
-      width="280"
-      height="210"
-      clipPath="url(#clipTurrets)"
-    />
-  </Svg>
-);
-
-const DomePreview = () => (
-  <Svg width="90" height="75" viewBox="60 0 160 110" fill="none">
-    <PalaceClipDefs />
-    <SvgImage 
-      href={resolvedPalaceAsset}
-      width="280"
-      height="210"
-      clipPath="url(#clipDome)"
-    />
-  </Svg>
-);
 
 export default function MutashabihatScreen({ navigation }: any) {
   const { colors } = useTheme();
   const { language } = useLanguage();
+  const { user, updateUserFields } = useAuth();
 
   const [screenState, setScreenState] = useState<'lobby' | 'quiz' | 'results'>('lobby');
   const [selectedDifficulty, setSelectedDifficulty] = useState<'easy' | 'medium' | 'hard' | 'expert'>('medium');
@@ -280,90 +22,33 @@ export default function MutashabihatScreen({ navigation }: any) {
   const [answered, setAnswered] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
 
-  const [showPalaceOverlay, setShowPalaceOverlay] = useState(false);
+  const [showRewardOverlay, setShowRewardOverlay] = useState(false);
   const [overlayCorrect, setOverlayCorrect] = useState(false);
-  const [unlockedSegment, setUnlockedSegment] = useState('');
-  const [isSnapped, setIsSnapped] = useState(false);
+  const [profile, setProfile] = useState<any>(null);
+  const [sirajIncrement, setSirajIncrement] = useState(0);
 
-  // Gesture animated values
-  const pan = useRef(new Animated.ValueXY()).current;
+  // Animated values for the flying Fanoos lantern
+  const lanternScale = useRef(new Animated.Value(0)).current;
+  const lanternPos = useRef(new Animated.ValueXY({ x: 0, y: 150 })).current;
+  const lanternOpacity = useRef(new Animated.Value(1)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
-  const pieceGlowAnim = useRef(new Animated.Value(0)).current;
-  const snapPopScale = useRef(new Animated.Value(1)).current;
-
-  // Ambient rotation for the gold halo ring
-  const rotateAnim = useRef(new Animated.Value(0)).current;
-
-  // Celestial key idle bobbing
-  const bobAnim = useRef(new Animated.Value(0)).current;
+  const walletScale = useRef(new Animated.Value(1)).current;
 
   const currentQuestion = questions[currentIndex];
 
-  // Run ambient animations
-  useEffect(() => {
-    if (showPalaceOverlay) {
-      // Celestial Ring rotation
-      Animated.loop(
-        Animated.timing(rotateAnim, {
-          toValue: 1,
-          duration: 25000,
-          useNativeDriver: false,
-        })
-      ).start();
-
-      // Key Bobbing loop
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(bobAnim, { toValue: 1, duration: 1400, useNativeDriver: false }),
-          Animated.timing(bobAnim, { toValue: 0, duration: 1400, useNativeDriver: false })
-        ])
-      ).start();
+  const loadProfile = async () => {
+    if (!user?.uid) return;
+    try {
+      const currentProfile = await getCurrentUserProfile(user.uid);
+      setProfile(currentProfile);
+    } catch (err) {
+      console.error(err);
     }
-  }, [showPalaceOverlay]);
+  };
 
-  // Decoupled PanResponder Gesture: uses JS driver layout tracking to prevent iOS native module errors
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => !isSnapped,
-      onMoveShouldSetPanResponder: () => !isSnapped,
-      onPanResponderGrant: () => {
-        pan.setOffset({
-          x: (pan.x as any)._value,
-          y: (pan.y as any)._value
-        });
-        pan.setValue({ x: 0, y: 0 });
-      },
-      onPanResponderMove: Animated.event(
-        [null, { dx: pan.x, dy: pan.y }],
-        { useNativeDriver: false } // panResponder tracking offset
-      ),
-      onPanResponderRelease: (e, gestureState) => {
-        pan.flattenOffset();
-        // Snaps magnetically if dragged above -80px threshold (very smooth and forgiving)
-        if (gestureState.dy < -80 && Math.abs(gestureState.dx) < 100) {
-          Animated.parallel([
-            Animated.spring(pan.x, { toValue: 0, useNativeDriver: false }),
-            Animated.spring(pan.y, { toValue: 0, useNativeDriver: false })
-          ]).start(() => {
-            setIsSnapped(true);
-            snapPopScale.setValue(1);
-            Animated.sequence([
-              Animated.timing(snapPopScale, { toValue: 1.3, duration: 120, useNativeDriver: false }),
-              Animated.timing(snapPopScale, { toValue: 1.0, duration: 120, useNativeDriver: false }),
-              Animated.timing(pieceGlowAnim, { toValue: 1, duration: 250, useNativeDriver: false }),
-              Animated.timing(pieceGlowAnim, { toValue: 0, duration: 250, useNativeDriver: false })
-            ]).start();
-          });
-        } else {
-          // Instant spring back using JS driver
-          Animated.spring(pan, {
-            toValue: { x: 0, y: 0 },
-            useNativeDriver: false,
-          }).start();
-        }
-      }
-    })
-  ).current;
+  useEffect(() => {
+    loadProfile();
+  }, [user?.uid]);
 
   const handleStartQuiz = () => {
     const filtered = mutashabihatQuestions.filter(q => q.difficulty === selectedDifficulty);
@@ -378,38 +63,86 @@ export default function MutashabihatScreen({ navigation }: any) {
     setScreenState('quiz');
   };
 
-  const handleSelectOption = (option: string) => {
+  const handleSelectOption = async (option: string) => {
     if (answered) return;
     setSelectedAnswer(option);
     setAnswered(true);
 
     const isCorrect = option === currentQuestion.answer;
     setOverlayCorrect(isCorrect);
-    setIsSnapped(false);
-    pan.setValue({ x: 0, y: 0 });
-
-    const segmentNames = [
-      'جدران المحراب الرخامية المكتملة',
-      'أعمدة الصرح المرخمة والتيجان الذهبية',
-      'الأبراج والقنوات الفيروزية الحامية',
-      'القبة الكبرى والهلال الذهبي المشع صرح النور'
-    ];
-    const activeSegment = segmentNames[correctCount] || 'ملحقات الزخرفة';
-    setUnlockedSegment(activeSegment);
+    
+    // Calculate Siraj points based on difficulty
+    const points = { easy: 5, medium: 10, hard: 15, expert: 20 }[selectedDifficulty];
+    setSirajIncrement(points);
 
     if (isCorrect) {
       setCorrectCount(prev => prev + 1);
     }
 
-    setShowPalaceOverlay(true);
+    setShowRewardOverlay(true);
     overlayOpacity.setValue(0);
-    pieceGlowAnim.setValue(0);
+    lanternScale.setValue(0);
+    lanternPos.setValue({ x: 0, y: 80 });
+    lanternOpacity.setValue(1);
 
+    // Fade in overlay background
     Animated.timing(overlayOpacity, {
       toValue: 1,
-      duration: 400,
+      duration: 300,
       useNativeDriver: false,
     }).start();
+
+    if (isCorrect) {
+      // 1. Spring bounce the Lantern in the center
+      Animated.spring(lanternScale, {
+        toValue: 1.5,
+        friction: 5,
+        useNativeDriver: false,
+      }).start(() => {
+        // 2. Wait 600ms, then fly to the top-right header wallet
+        Animated.delay(600).start(() => {
+          Animated.parallel([
+            Animated.timing(lanternPos.x, {
+              toValue: SCREEN_WIDTH / 2 - 45,
+              duration: 700,
+              useNativeDriver: false,
+            }),
+            Animated.timing(lanternPos.y, {
+              toValue: -280,
+              duration: 700,
+              useNativeDriver: false,
+            }),
+            Animated.timing(lanternScale, {
+              toValue: 0.3,
+              duration: 700,
+              useNativeDriver: false,
+            }),
+            Animated.timing(lanternOpacity, {
+              toValue: 0.2,
+              duration: 700,
+              useNativeDriver: false,
+            })
+          ]).start(async () => {
+            // Animate wallet bounce
+            Animated.sequence([
+              Animated.timing(walletScale, { toValue: 1.3, duration: 100, useNativeDriver: false }),
+              Animated.timing(walletScale, { toValue: 1.0, duration: 100, useNativeDriver: false })
+            ]).start();
+
+            // Save to database
+            if (user?.uid) {
+              try {
+                const updated = await addSirajPoints(user.uid, points);
+                setProfile(updated);
+                updateUserFields({ sirajBalance: updated.sirajBalance });
+              } catch (err) {
+                console.error('Error saving Siraj points:', err);
+              }
+            }
+          });
+        });
+      });
+    }
   };
 
   const handleNextQuestion = () => {
@@ -418,7 +151,7 @@ export default function MutashabihatScreen({ navigation }: any) {
       duration: 300,
       useNativeDriver: false,
     }).start(() => {
-      setShowPalaceOverlay(false);
+      setShowRewardOverlay(false);
       if (currentIndex < questions.length - 1) {
         setCurrentIndex(prev => prev + 1);
         setSelectedAnswer('');
@@ -436,6 +169,7 @@ export default function MutashabihatScreen({ navigation }: any) {
     setSelectedAnswer('');
     setAnswered(false);
     setCorrectCount(0);
+    loadProfile();
   };
 
   const finalScore = useMemo(() => {
@@ -443,65 +177,56 @@ export default function MutashabihatScreen({ navigation }: any) {
     return Math.round((correctCount / questions.length) * 100);
   }, [correctCount, questions]);
 
-  const earnedXP = useMemo(() => {
-    return correctCount * 10;
-  }, [correctCount]);
-
-  const renderActivePiecePreview = () => {
-    const targetIdx = overlayCorrect ? correctCount - 1 : correctCount;
-    if (targetIdx === 0) return <WallsPreview />;
-    if (targetIdx === 1) return <PillarsPreview />;
-    if (targetIdx === 2) return <TurretsPreview />;
-    if (targetIdx === 3) return <DomePreview />;
-    return null;
-  };
-
-  const resultsPalaceScale = useRef(new Animated.Value(1)).current;
-
-  // Spin rotation for rotating celestial halo ring
-  const spinRotation = rotateAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg']
-  });
-
-  // Bob translation for idle key
-  const keyBobY = bobAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -8]
-  });
+  const earnedSiraj = useMemo(() => {
+    const pointsPerQuestion = { easy: 5, medium: 10, hard: 15, expert: 20 }[selectedDifficulty];
+    return correctCount * pointsPerQuestion;
+  }, [correctCount, selectedDifficulty]);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* HEADER SECTION */}
       <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.surface }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => screenState === 'lobby' ? navigation.goBack() : handleReset()}>
-          <Text style={[styles.backBtnText, { color: colors.primary }]}>🔙</Text>
+          <Text style={{ fontSize: 20, color: colors.primary }}>🔙</Text>
         </TouchableOpacity>
+        
         <Text style={[styles.headerTitle, { color: colors.textPrimary, fontFamily: 'IBMPlexSansArabic-Bold' }]}>
           تحدي المتشابهات القرآني
         </Text>
+
+        {/* Global Wallet Display with Bounce Animation */}
+        <Animated.View style={[styles.walletBadge, { backgroundColor: colors.primaryLight, transform: [{ scale: walletScale }] }]}>
+          <Text style={{ fontSize: 16, marginRight: 4 }}>🕯️</Text>
+          <Text style={[styles.walletText, { color: colors.primary, fontFamily: 'IBMPlexSansArabic-Bold' }]}>
+            {profile?.sirajBalance ?? 50}
+          </Text>
+        </Animated.View>
       </View>
 
+      {/* LOBBY STATE */}
       {screenState === 'lobby' && (
         <ScrollView contentContainerStyle={styles.lobbyScroll}>
           <View style={[styles.infoBox, { backgroundColor: colors.primaryLight }]}>
-            <Text style={{ fontSize: 38, marginBottom: 10 }}>🕌</Text>
-            <Text style={[styles.infoTitle, { color: colors.primary }]}>
-              تحدي بناء قصر المتشابهات
+            <Text style={{ fontSize: 44, marginBottom: 12 }}>🕯️</Text>
+            <Text style={[styles.infoTitle, { color: colors.primary, fontFamily: 'IBMPlexSansArabic-Bold' }]}>
+              أنوار السراج للمتشابهات
             </Text>
             <Text style={[styles.infoDesc, { color: colors.textSecondary }]}>
-              اختبر قوة حفظك في متشابهات القرآن الكريم. كل إجابة صحيحة تضيف قطعة جديدة إلى قصرك العائم في جنان الخلد وتثبّت لبنات حفظك.
+              اختبر قوة حفظك لمواضع متشابهات القرآن الكريم. كل إجابة صحيحة تضيء سراجاً جديداً في محفظتك لتستبدله بألقاب وسمات رائعة من المتجر!
             </Text>
           </View>
 
-          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>اختر مستوى الصعوبة:</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary, fontFamily: 'IBMPlexSansArabic-Bold' }]}>
+            اختر مستوى الصعوبة:
+          </Text>
 
           {(['easy', 'medium', 'hard', 'expert'] as const).map(diff => {
             const isSelected = selectedDifficulty === diff;
             const diffMeta = {
-              easy: { title: 'سهل (Easy)', desc: 'مواضع متشابهة يسيرة في السور القصيرة.', color: '#EBF7F3', border: '#B2E5D4' },
-              medium: { title: 'متوسط (Medium)', desc: 'تداخلات الألفاظ الشائعة والتقديم والتأخير.', color: '#FFF8E6', border: '#FAD7A0' },
-              hard: { title: 'صعب (Hard)', desc: 'مواضع الجار والمجرور ودقائق الحروف.', color: '#F7EBEB', border: '#F1948A' },
-              expert: { title: 'خبير (Expert)', desc: 'مواضع التشابه الكبرى في السور الطوال.', color: '#F7EBF7', border: '#D7BDE2' }
+              easy: { title: 'سهل (Easy)', desc: 'مواضع متشابهة يسيرة في السور القصيرة (+5 سرج)', color: '#EBF7F3', border: '#B2E5D4' },
+              medium: { title: 'متوسط (Medium)', desc: 'تداخلات الألفاظ الشائعة والتقديم والتأخير (+10 سرج)', color: '#FFF8E6', border: '#FAD7A0' },
+              hard: { title: 'صعب (Hard)', desc: 'مواضع الجار والمجرور ودقائق الحروف (+15 سرج)', color: '#F7EBEB', border: '#F1948A' },
+              expert: { title: 'خبير (Expert)', desc: 'مواضع التشابه الكبرى في السور الطوال (+20 سراجاً)', color: '#F7EBF7', border: '#D7BDE2' }
             }[diff];
 
             return (
@@ -515,7 +240,7 @@ export default function MutashabihatScreen({ navigation }: any) {
                 activeOpacity={0.8}
               >
                 <View style={styles.diffHeader}>
-                  <Text style={[styles.diffTitle, { color: '#2C3E50' }]}>{diffMeta.title}</Text>
+                  <Text style={[styles.diffTitle, { color: '#2C3E50', fontFamily: 'IBMPlexSansArabic-Bold' }]}>{diffMeta.title}</Text>
                   {isSelected && <Text style={{ color: colors.primary, fontSize: 18 }}>✓</Text>}
                 </View>
                 <Text style={[styles.diffDesc, { color: '#5D6D7E' }]}>{diffMeta.desc}</Text>
@@ -527,11 +252,12 @@ export default function MutashabihatScreen({ navigation }: any) {
             style={[styles.startBtn, { backgroundColor: colors.primary }]}
             onPress={handleStartQuiz}
           >
-            <Text style={styles.startBtnText}>ابدأ التشييد الآن</Text>
+            <Text style={styles.startBtnText}>ابدأ التحدي الآن</Text>
           </TouchableOpacity>
         </ScrollView>
       )}
 
+      {/* QUIZ PLAYING STATE */}
       {screenState === 'quiz' && currentQuestion && (
         <ScrollView contentContainerStyle={styles.quizScroll}>
           <View style={styles.progressRow}>
@@ -572,18 +298,18 @@ export default function MutashabihatScreen({ navigation }: any) {
         </ScrollView>
       )}
 
+      {/* RESULTS DISPLAY STATE */}
       {screenState === 'results' && (
         <ScrollView contentContainerStyle={styles.resultsScroll}>
-          <View style={styles.showcaseBox}>
-            <View style={styles.palaceContainer}>
-              <HeavenPalace 
-                correctCount={correctCount} 
-                overlayCorrect={false} 
-                isSnapped={true} 
-                snapPopScale={resultsPalaceScale} 
-              />
-            </View>
-            <Text style={styles.showcaseLabel}>لقد اكتمل تجميع صرح النور العائم الخاص بك!</Text>
+          <View style={styles.trophyContainer}>
+            <Text style={{ fontSize: 80, marginBottom: 15 }}>🏺</Text>
+            <Text style={[styles.resultTitle, { color: colors.textPrimary, fontFamily: 'IBMPlexSansArabic-Bold' }]}>
+              {finalScore === 100 
+                ? 'ما شاء الله! حفظك متقن ومثالي.' 
+                : finalScore >= 70 
+                  ? 'أداء رائع ولديك علم واسع بالمتشابهات.' 
+                  : 'أداء جيد، استمر في المراجعة لتثبيت مواضع التشابه.'}
+            </Text>
           </View>
 
           <View style={[styles.scoreCircle, { borderColor: colors.primary }]}>
@@ -591,125 +317,83 @@ export default function MutashabihatScreen({ navigation }: any) {
               {finalScore}%
             </Text>
             <Text style={[styles.scoreLabel, { color: colors.textSecondary }]}>
-              نسبة اكتمال البناء
+              إجابات صحيحة
             </Text>
           </View>
 
-          <Text style={[styles.resultTitle, { color: colors.textPrimary }]}>
-            {finalScore === 100 
-              ? 'ما شاء الله! قصرك متكامل وحفظك متقن للمتشابهات.' 
-              : finalScore >= 70 
-                ? 'أداء رائع! قصر شبه مكتمل ولديك علم واسع.' 
-                : 'أداء جيد، راجع مواضع الفروق لتكتمل أركان قصرك.'}
-          </Text>
-
           <View style={[styles.xpCard, { backgroundColor: colors.primaryLight }]}>
-            <Text style={[styles.xpText, { color: colors.primary }]}>
-              🎉 لقد حصلت على +{earnedXP} نقطة خبرة (XP)
+            <Text style={[styles.xpText, { color: colors.primary, fontFamily: 'IBMPlexSansArabic-Bold' }]}>
+              🎉 لقد حصلت على +{earnedSiraj} سراج أضيفت لمحفظتك
             </Text>
           </View>
 
           <TouchableOpacity
-            style={[styles.startBtn, { backgroundColor: colors.primary }]}
-            onPress={handleReset}
+            style={[styles.startBtn, { backgroundColor: colors.primary, width: '100%' }]}
+            onPress={() => navigation.navigate('Shop')}
           >
-            <Text style={styles.startBtnText}>شيد قصراً جديداً</Text>
+            <Text style={styles.startBtnText}>زيارة متجر الفوانيس 🕯️</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.homeBtn, { borderColor: colors.primary }]}
-            onPress={() => navigation.goBack()}
+            style={[styles.homeBtn, { borderColor: colors.primary, width: '100%', marginTop: 12 }]}
+            onPress={handleReset}
           >
-            <Text style={[styles.homeBtnText, { color: colors.primary }]}>العودة للرئيسية</Text>
+            <Text style={[styles.homeBtnText, { color: colors.primary }]}>تحدي جديد</Text>
           </TouchableOpacity>
         </ScrollView>
       )}
 
-      {showPalaceOverlay && (
+      {/* FLYING LANTERN REWARD CELEBRATION OVERLAY */}
+      {showRewardOverlay && (
         <Animated.View style={[styles.overlayContainer, { opacity: overlayOpacity }]}>
-          <View style={styles.skyBackground}>
-            <HeavenSunbeams />
-            <View style={styles.sunriseSun} />
-            
-            {/* Drifting Sparkles Loops */}
-            <Sparkle left={30} size={6} delay={0} />
-            <Sparkle left={80} size={4} delay={1200} />
-            <Sparkle left={130} size={8} delay={500} />
-            <Sparkle left={190} size={5} delay={2000} />
-            <Sparkle left={60} size={7} delay={2800} />
-            <Sparkle left={160} size={4} delay={1500} />
-            <Sparkle left={210} size={6} delay={800} />
-            <Sparkle left={110} size={5} delay={3500} />
-          </View>
+          <View style={styles.backdropShadow} />
 
-          <Text style={styles.overlayHeader}>قصر المتشابهات في الجنان</Text>
-          
-          <View style={styles.palaceStage}>
-            {/* Ambient Rotating Gold Ring */}
-            <Animated.View style={[styles.palaceRotateRing, { transform: [{ rotate: spinRotation }] }]} />
-
-            {/* Glowing Aura Backplate */}
-            <View style={styles.palaceAuraGlow} />
-
-            <HeavenPalace 
-              correctCount={correctCount} 
-              overlayCorrect={overlayCorrect} 
-              isSnapped={isSnapped} 
-              snapPopScale={snapPopScale} 
-            />
-          </View>
-
-          {/* Interactive Drag & Drop Game Zone */}
           {overlayCorrect ? (
-            isSnapped ? (
-              <View style={styles.statusBox}>
-                <Text style={styles.statusTitle}>✨ تم التشييد والتركيب بنجاح!</Text>
-                <Text style={styles.statusSubtitle}>تمت إضافة: {unlockedSegment} (+10 XP)</Text>
+            <View style={styles.animationStage}>
+              {/* Flying Fanoos */}
+              <Animated.View
+                style={[
+                  styles.flyingFanoos,
+                  {
+                    transform: [
+                      { translateX: lanternPos.x },
+                      { translateY: lanternPos.y },
+                      { scale: lanternScale }
+                    ],
+                    opacity: lanternOpacity
+                  }
+                ]}
+              >
+                <Text style={{ fontSize: 56 }}>🕯️</Text>
+                <Text style={styles.glowingBeacon}>✨</Text>
+              </Animated.View>
+
+              <View style={styles.successMessageBox}>
+                <Text style={styles.overlayCelebrationText}>✨ أحسنت! إجابة صحيحة</Text>
+                <Text style={styles.rewardSubtext}>أضاء سراج جديد (+{sirajIncrement} سراج)</Text>
               </View>
-            ) : (
-              <View style={[styles.dragArea, { borderColor: colors.primary }]}>
-                <Text style={styles.dragInstructions}>👇 اسحب القطعة اللؤلؤية وضعها في هيكل القصر بالأعلى:</Text>
-                <View style={styles.cushionContainer}>
-                  <Animated.View 
-                    style={[
-                      styles.draggableItemCard, 
-                      {
-                        transform: [
-                          { translateX: pan.x },
-                          { translateY: Animated.add(pan.y, keyBobY) }
-                        ]
-                      }
-                    ]}
-                    {...panResponder.panHandlers}
-                  >
-                    {renderActivePiecePreview()}
-                  </Animated.View>
-                </View>
-              </View>
-            )
+            </View>
           ) : (
-            <View style={[styles.statusBox, { backgroundColor: '#FDF2F2', borderColor: '#EF4444' }]}>
-              <Text style={[styles.statusTitle, { color: '#E74C3C' }]}>❌ إجابة خاطئة</Text>
-              <Text style={[styles.statusSubtitle, { color: '#C0392B' }]}>فشل تركيب القطعة، راجع التوضيح بالأسفل لتشييدها لاحقاً.</Text>
+            <View style={styles.animationStage}>
+              <Text style={{ fontSize: 64, marginBottom: 15 }}>💡</Text>
+              <Text style={[styles.overlayCelebrationText, { color: '#E74C3C' }]}>❌ إجابة خاطئة</Text>
+              <Text style={[styles.rewardSubtext, { color: '#7F8C8D' }]}>راجع التوضيح أدناه لتثبيت الآية</Text>
             </View>
           )}
 
-          {(isSnapped || !overlayCorrect) ? (
-            <ScrollView style={styles.explanationScroll} contentContainerStyle={{ paddingBottom: 30 }} showsVerticalScrollIndicator={false}>
-              <View style={styles.overlayExplanationCard}>
-                <Text style={styles.overlayExplanationHeader}>💡 توضيح متشابهة الآية:</Text>
-                <Text style={styles.overlayExplanationText}>{currentQuestion.explanation}</Text>
-              </View>
+          {/* Ayat Explanation Scroll Card */}
+          <ScrollView style={styles.explanationScroll} contentContainerStyle={{ paddingBottom: 30 }} showsVerticalScrollIndicator={false}>
+            <View style={styles.parchmentScrollCard}>
+              <Text style={styles.parchmentHeader}>💡 توضيح متشابهة الآية:</Text>
+              <Text style={styles.parchmentText}>{currentQuestion?.explanation}</Text>
+            </View>
 
-              <TouchableOpacity style={styles.overlayNextBtn} onPress={handleNextQuestion}>
-                <Text style={styles.overlayNextBtnText}>
-                  {currentIndex === questions.length - 1 ? 'متابعة وعرض النتيجة النهائية' : 'متابعة التحدي'}
-                </Text>
-              </TouchableOpacity>
-            </ScrollView>
-          ) : (
-            <View style={styles.bottomSpacer} />
-          )}
+            <TouchableOpacity style={[styles.overlayNextBtn, { backgroundColor: colors.primary }]} onPress={handleNextQuestion}>
+              <Text style={styles.overlayNextBtnText}>
+                {currentIndex === questions.length - 1 ? 'عرض النتيجة النهائية' : 'متابعة التحدي'}
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
         </Animated.View>
       )}
     </View>
@@ -719,7 +403,6 @@ export default function MutashabihatScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAF9F6',
   },
   header: {
     flexDirection: 'row-reverse',
@@ -733,11 +416,19 @@ const styles = StyleSheet.create({
   backBtn: {
     padding: 5,
   },
-  backBtnText: {
-    fontSize: 20,
-  },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  walletBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 15,
+  },
+  walletText: {
+    fontSize: 14,
     fontWeight: 'bold',
   },
   lobbyScroll: {
@@ -766,7 +457,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 'bold',
     marginBottom: 15,
     textAlign: 'right',
@@ -788,7 +479,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   diffTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 'bold',
   },
   diffDesc: {
@@ -878,60 +569,41 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 60,
+    paddingTop: 40,
   },
-  showcaseBox: {
-    width: '100%',
+  trophyContainer: {
     alignItems: 'center',
-    marginBottom: 35,
+    marginBottom: 20,
   },
-  showcaseLabel: {
-    fontSize: 14,
-    color: '#8E8070',
+  resultTitle: {
+    fontSize: 16,
     fontWeight: 'bold',
-    marginTop: 15,
     textAlign: 'center',
-  },
-  resultsPalaceImage: {
-    width: 240,
-    height: 200,
-    borderRadius: 18,
-    borderWidth: 2.5,
-    borderColor: '#E5B942',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
+    paddingHorizontal: 20,
+    lineHeight: 24,
   },
   scoreCircle: {
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    borderWidth: 8,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    borderWidth: 6,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 30,
+    marginBottom: 25,
   },
   scorePercent: {
-    fontSize: 36,
+    fontSize: 32,
     fontWeight: 'bold',
   },
   scoreLabel: {
-    fontSize: 14,
+    fontSize: 12,
     marginTop: 4,
-  },
-  resultTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 15,
-    paddingHorizontal: 20,
   },
   xpCard: {
     borderRadius: 10,
     paddingVertical: 12,
     paddingHorizontal: 20,
-    marginBottom: 40,
+    marginBottom: 30,
   },
   xpText: {
     fontSize: 14,
@@ -942,8 +614,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 15,
     alignItems: 'center',
-    width: '100%',
-    marginTop: 12,
   },
   homeBtnText: {
     fontSize: 16,
@@ -951,207 +621,92 @@ const styles = StyleSheet.create({
   },
   overlayContainer: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#0F081C',
     zIndex: 99999,
-    paddingTop: 60,
+    paddingTop: 80,
     paddingHorizontal: 20,
   },
-  skyBackground: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: SCREEN_HEIGHT * 0.48,
-    backgroundColor: '#0F0926',
-    overflow: 'hidden',
+  backdropShadow: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
   },
-  sunbeams: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 240,
-  },
-  sunriseSun: {
-    position: 'absolute',
-    bottom: -150,
-    left: SCREEN_WIDTH / 2 - 160,
-    width: 320,
-    height: 320,
-    borderRadius: 160,
-    backgroundColor: '#2A1A54',
-    opacity: 0.8,
-  },
-  absoluteSparkle: {
-    position: 'absolute',
-    backgroundColor: '#FFF2A9',
-    zIndex: 1,
-    shadowColor: '#FFF2A9',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  overlayHeader: {
-    color: '#E5B942',
-    fontSize: 18,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 20,
-    textShadowColor: 'rgba(0,0,0,0.6)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-  palaceStage: {
-    width: 240,
-    height: 200,
-    alignSelf: 'center',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-    marginBottom: 20,
-  },
-  palaceAuraGlow: {
-    position: 'absolute',
-    width: 220,
+  animationStage: {
     height: 220,
-    borderRadius: 110,
-    backgroundColor: '#FFF2CC',
-    opacity: 0.12,
-    zIndex: -1,
-  },
-  palaceRotateRing: {
-    position: 'absolute',
-    width: 236,
-    height: 236,
-    borderRadius: 118,
-    borderWidth: 2,
-    borderColor: 'rgba(229, 185, 66, 0.25)',
-    borderStyle: 'dashed',
-    zIndex: -1,
-  },
-  palaceContainer: {
-    width: 240,
-    height: 200,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
     position: 'relative',
   },
-  statusBox: {
-    backgroundColor: '#EBF7F3',
-    borderWidth: 1.5,
-    borderColor: '#2ECC71',
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 15,
-    alignItems: 'center',
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-  },
-  statusTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#27AE60',
-    marginBottom: 4,
-  },
-  statusSubtitle: {
-    fontSize: 13,
-    color: '#2E7D32',
-    textAlign: 'center',
-  },
-  dragArea: {
-    borderWidth: 2.5,
-    borderColor: '#E5B942',
-    borderStyle: 'dashed',
-    borderRadius: 18,
-    padding: 16,
+  flyingFanoos: {
+    position: 'absolute',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(15, 9, 38, 0.45)',
-    minHeight: 150,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
   },
-  dragInstructions: {
-    fontSize: 14,
-    color: '#E5B942',
+  glowingBeacon: {
+    position: 'absolute',
+    fontSize: 24,
+    top: -12,
+    right: -12,
+  },
+  successMessageBox: {
+    marginTop: 130,
+    alignItems: 'center',
+  },
+  overlayCelebrationText: {
+    color: '#F5D061',
+    fontSize: 20,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: 15,
   },
-  cushionContainer: {
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 90,
-  },
-  draggableItemCard: {
-    width: 130,
-    height: 80,
-    borderRadius: 15,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderColor: 'rgba(229, 185, 66, 0.3)',
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  draggableItemText: {
-    color: '#876106',
-    fontWeight: 'bold',
+  rewardSubtext: {
+    color: '#FFF',
     fontSize: 14,
+    fontWeight: '600',
+    marginTop: 6,
+    textAlign: 'center',
   },
   explanationScroll: {
     flex: 1,
+    marginTop: 20,
   },
-  overlayExplanationCard: {
-    backgroundColor: '#FFFFFF',
+  parchmentScrollCard: {
+    backgroundColor: '#FFFDF9',
+    borderColor: '#E5C158',
     borderWidth: 1.5,
-    borderColor: '#E5E7EB',
-    borderRadius: 15,
+    borderRadius: 16,
     padding: 20,
     marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
   },
-  overlayExplanationHeader: {
+  parchmentHeader: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: '#D4AF37',
-    marginBottom: 8,
+    color: '#B8860B',
+    marginBottom: 10,
     textAlign: 'right',
   },
-  overlayExplanationText: {
-    fontSize: 14,
-    color: '#374151',
+  parchmentText: {
+    fontSize: 15,
+    color: '#4A3B32',
     textAlign: 'right',
-    lineHeight: 22,
+    lineHeight: 24,
+    fontFamily: 'IBMPlexSansArabic-Medium',
   },
   overlayNextBtn: {
-    backgroundColor: '#F59E0B',
     borderRadius: 12,
-    paddingVertical: 15,
+    paddingVertical: 16,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 5,
-    elevation: 5,
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 3,
   },
   overlayNextBtnText: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: 'bold',
-  },
-  bottomSpacer: {
-    height: 120,
   },
 });

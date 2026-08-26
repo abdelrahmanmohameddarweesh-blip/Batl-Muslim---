@@ -176,6 +176,17 @@ export default function HomeScreen({ navigation }: any) {
           </View>
           
           <View style={styles.headerRightActions}>
+            <TouchableOpacity 
+              style={[styles.sirajHeaderBadge, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}
+              onPress={() => navigation.navigate('Shop')}
+              activeOpacity={0.75}
+            >
+              <Text style={{ fontSize: 15, marginRight: 4 }}>🕯️</Text>
+              <Text style={[styles.sirajHeaderValue, { color: colors.primary, fontFamily: 'IBMPlexSansArabic-Bold' }]}>
+                {profile?.sirajBalance ?? 50}
+              </Text>
+            </TouchableOpacity>
+
             <TouchableOpacity style={[styles.headerBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} activeOpacity={0.75}>
               <Svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={colors.textSecondary} strokeWidth="2">
                 <Path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6z" />
@@ -569,6 +580,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+  },
+  sirajHeaderBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 15,
+    borderWidth: 1,
+  },
+  sirajHeaderValue: {
+    fontSize: 13,
+    fontWeight: 'bold',
   },
   headerBtn: {
     width: 40,

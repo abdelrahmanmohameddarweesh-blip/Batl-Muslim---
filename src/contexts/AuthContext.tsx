@@ -9,6 +9,8 @@ type AuthUser = {
   country?: string;
   age?: number;
   photoUri?: string;
+  sirajBalance?: number;
+  unlockedItems?: string[];
 };
 
 type AuthContextValue = {
@@ -45,6 +47,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         age: age || undefined,
         photoUri: photoUri || undefined,
         score: 0,
+        sirajBalance: 50,
+        unlockedItems: [],
       };
       setUser(fallbackUser);
       Alert.alert('تنبيه', 'تم تسجيل الدخول محلياً، وقد تكون هناك مشكلة مؤقتة في التخزين.');

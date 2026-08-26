@@ -12,6 +12,8 @@ export type AppUser = {
   photoUri?: string;
   championshipScore?: number;
   championshipTime?: number;
+  sirajBalance?: number;
+  unlockedItems?: string[];
 };
 
 export const auth = null;
@@ -66,6 +68,8 @@ export async function signInAnonymous(displayName: string, phone: string, countr
     country: country.trim() || undefined,
     age: age || undefined,
     photoUri: photoUri || undefined,
+    sirajBalance: players[uid]?.sirajBalance ?? existingUser?.sirajBalance ?? 50,
+    unlockedItems: players[uid]?.unlockedItems ?? existingUser?.unlockedItems ?? [],
   };
 
   players[uid] = user;
@@ -91,6 +95,7 @@ export async function saveUserScore(uid: string, score: number) {
   const players = await readPlayers();
   const existing = players[uid];
   const nextUser: AppUser = {
+    ...existing,
     uid,
     displayName: existing?.displayName || 'ضيف',
     score,
@@ -186,5 +191,48 @@ export async function updateUserAge(uid: string, age: number) {
   if (currentUser && currentUser.uid === uid) {
     await AsyncStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updatedUser));
   }
+}
+
+export async function addSirajPoints(uid: string, amount: number): Promise<AppUser> {
+  const players = await readPlayers();
+  const existing = players[uid];
+  if (!existing) {
+    throw new Error('User not found');
+  }
+
+  const updatedUser: AppUser = {
+    ...existing,
+    sirajBalance: (existing.sirajBalance ?? 50) + amount,
+  };
+
+  players[uid] = updatedUser;
+  await writePlayers(players);
+  await AsyncStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updatedUser));
+  return updatedUser;
+}
+
+export async function unlockShopItem(uid: string, itemId: string, cost: number): Promise<AppUser> {
+  const players = await readPlayers();
+  const existing = players[uid];
+  if (!existing) {
+    throw new Error('User not found');
+  }
+
+  const currentBalance = existing.sirajBalance ?? 50;
+  if (currentBalance < cost) {
+    throw new Error('Insufficient Siraj balance');
+  }
+
+  const unlocked = existing.unlockedItems ?? [];
+  const updatedUser: AppUser = {
+    ...existing,
+    sirajBalance: currentBalance - cost,
+    unlockedItems: [...unlocked, itemId],
+  };
+
+  players[uid] = updatedUser;
+  await writePlayers(players);
+  await AsyncStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updatedUser));
+  return updatedUser;
 }
 

@@ -28,6 +28,7 @@ import CommunityFeedScreen from './screens/CommunityFeedScreen';
 import SirahQuestScreen from './screens/SirahQuestScreen';
 import ArenaHubScreen from './screens/ArenaHubScreen';
 import MutashabihatScreen from './screens/MutashabihatScreen';
+import ShopScreen from './screens/ShopScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -241,6 +242,11 @@ function NavigationWrapper() {
         <Stack.Screen
           name="Mutashabihat"
           component={MutashabihatScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Shop"
+          component={ShopScreen}
           options={{ headerShown: false }}
         />
       </Stack.Navigator>

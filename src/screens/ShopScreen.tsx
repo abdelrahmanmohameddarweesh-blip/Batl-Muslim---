@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Dimensions, Modal } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { getCurrentUserProfile, unlockShopItem } from '../firebase/auth';
+import { WebView } from 'react-native-webview';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // Define Shop Item Interface
 interface ShopItem {
@@ -15,12 +16,91 @@ interface ShopItem {
   descAr: string;
   descEn: string;
   cost: number;
-  category: 'titles' | 'themes' | 'audio';
+  category: 'artifacts' | 'titles' | 'themes';
   badge: string;
+  youtubeVideoId?: string; // Optional for non-artifacts
 }
 
 const SHOP_ITEMS: ShopItem[] = [
-  // Quranic Titles
+  // 1. Muslim History Legendary Artifacts
+  {
+    id: 'art_zulfiqar',
+    titleAr: 'سيف "ذو الفقار" الشريف',
+    titleEn: 'Ali\'s Zulfiqar Sword',
+    descAr: 'السيف الأسطوري ذو الرأسين للإمام علي بن أبي طالب رضي الله عنه، رمز الشجاعة والإيمان.',
+    descEn: 'The legendary double-pointed sword of Imam Ali, a symbol of bravery and faith.',
+    cost: 250,
+    category: 'artifacts',
+    badge: '⚔️',
+    youtubeVideoId: 'q2vP164x65A',
+  },
+  {
+    id: 'art_khalid',
+    titleAr: 'سيف "خالد بن الوليد"',
+    titleEn: 'Sword of Khalid ibn al-Walid',
+    descAr: 'سيف القائد المظفر "سيف الله المسلول" الذي خاض به فتوحات الإسلام الكبرى.',
+    descEn: 'The sword of the legendary commander, "The Drawn Sword of Allah".',
+    cost: 200,
+    category: 'artifacts',
+    badge: '🗡️',
+    youtubeVideoId: 'E5yN5rR_qgU',
+  },
+  {
+    id: 'art_hamzah',
+    titleAr: 'درع "حمزة بن عبد المطلب"',
+    titleEn: 'Shield of Hamzah',
+    descAr: 'درع "أسد الله وسيد الشهداء" الذي خاض به بدر وأحد مدافعاً عن النبي ﷺ.',
+    descEn: 'The battle shield of Hamzah, the "Lion of Allah", who defended the Prophet (ﷺ) at Badr and Uhud.',
+    cost: 180,
+    category: 'artifacts',
+    badge: '🛡️',
+    youtubeVideoId: 'gW3zJbM-tG4',
+  },
+  {
+    id: 'art_saad',
+    titleAr: 'قوس "سعد بن أبي وقاص"',
+    titleEn: 'Bow of Sa\'d ibn Abi Waqqas',
+    descAr: 'قوس أول من رمى بسهم في سبيل الله، الصحابي الذي فداه النبي بأبويه يوم أحد.',
+    descEn: 'The bow of the first companion to shoot an arrow in the way of Allah.',
+    cost: 150,
+    category: 'artifacts',
+    badge: '🏹',
+    youtubeVideoId: 'yvP6K1K92oA',
+  },
+  {
+    id: 'art_alparslan',
+    titleAr: 'خوذة السلطان "ألب أرسلان"',
+    titleEn: 'Helmet of Alp Arslan',
+    descAr: 'خوذة بطل معركة ملاذكرد الخالدة الذي حمى ديار الإسلام من الزوال.',
+    descEn: 'The helmet of Alp Arslan, hero of the Battle of Manzikert who defended the Islamic world.',
+    cost: 180,
+    category: 'artifacts',
+    badge: '🪖',
+    youtubeVideoId: 'U1B9a4X_3L0',
+  },
+  {
+    id: 'art_uqab',
+    titleAr: 'الراية النبوية "العُقاب"',
+    titleEn: 'Al-Uqab Banner of the Prophet',
+    descAr: 'الراية السوداء الرسمية للنبي محمد ﷺ في الغزوات وصدر الإسلام.',
+    descEn: 'The official black banner of the Prophet Muhammad (ﷺ) during battles.',
+    cost: 300,
+    category: 'artifacts',
+    badge: '🏴',
+    youtubeVideoId: 'jP5Vb_x4O3w',
+  },
+  {
+    id: 'art_ring',
+    titleAr: 'خاتم "الرسول ﷺ" الشريف',
+    titleEn: 'Signet Ring of the Prophet',
+    descAr: 'خاتم الفضة المنقوش عليه "محمد رسول الله" الذي استخدمه لختم رسائل دعوة الملوك للإسلام.',
+    descEn: 'The Prophet’s (ﷺ) silver signet ring used to seal the letters calling kings to Islam.',
+    cost: 220,
+    category: 'artifacts',
+    badge: '💍',
+    youtubeVideoId: 't2VbX4k92OA',
+  },
+  // 2. Quranic Titles
   {
     id: 'title_hafidh',
     titleAr: 'الحافظ المتقن',
@@ -61,7 +141,7 @@ const SHOP_ITEMS: ShopItem[] = [
     category: 'titles',
     badge: '👑',
   },
-  // Background Themes
+  // 3. Background Themes
   {
     id: 'theme_nabawi',
     titleAr: 'محراب المسجد النبوي',
@@ -92,27 +172,6 @@ const SHOP_ITEMS: ShopItem[] = [
     category: 'themes',
     badge: '🔵',
   },
-  // Audio Reciters / المقام
-  {
-    id: 'audio_warsh',
-    titleAr: 'رواية ورش عن نافع',
-    titleEn: 'Warsh Recitation Guide',
-    descAr: 'حزمة تعليمية كاملة لأصول وقواعد رواية ورش.',
-    descEn: 'Unlock full resources and audio guides for Warsh recitation.',
-    cost: 100,
-    category: 'audio',
-    badge: '📖',
-  },
-  {
-    id: 'audio_nahawand',
-    titleAr: 'مقام النهاوند الصوتي',
-    titleEn: 'Maqam Nahawand Pack',
-    descAr: 'أدلة صوتية وتمارين عملية لترتيل القرآن بمقام النهاوند العذب.',
-    descEn: 'Guides and exercises for reciting in the beautiful Nahawand maqam.',
-    cost: 120,
-    category: 'audio',
-    badge: '🎵',
-  },
 ];
 
 export default function ShopScreen({ navigation }: any) {
@@ -120,10 +179,13 @@ export default function ShopScreen({ navigation }: any) {
   const { language } = useLanguage();
   const { user, updateUserFields } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'titles' | 'themes' | 'audio'>('titles');
+  const [activeTab, setActiveTab] = useState<'artifacts' | 'titles' | 'themes'>('artifacts');
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [buyingId, setBuyingId] = useState<string | null>(null);
+
+  // Modal Interactive Card State
+  const [selectedArtifact, setSelectedArtifact] = useState<ShopItem | null>(null);
 
   const loadProfile = async () => {
     if (!user?.uid) return;
@@ -149,10 +211,14 @@ export default function ShopScreen({ navigation }: any) {
     const unlocked = profile?.unlockedItems ?? [];
 
     if (unlocked.includes(item.id)) {
-      Alert.alert(
-        language === 'ar' ? 'تنبيه' : 'Alert',
-        language === 'ar' ? 'لقد قمت بشراء هذا العنصر بالفعل!' : 'You already own this item!'
-      );
+      if (item.category === 'artifacts') {
+        setSelectedArtifact(item);
+      } else {
+        Alert.alert(
+          language === 'ar' ? 'تنبيه' : 'Alert',
+          language === 'ar' ? 'لقد قمت بشراء هذا العنصر بالفعل!' : 'You already own this item!'
+        );
+      }
       return;
     }
 
@@ -219,12 +285,12 @@ export default function ShopScreen({ navigation }: any) {
 
       {/* TABS SELECTOR */}
       <View style={styles.tabContainer}>
-        {(['titles', 'themes', 'audio'] as const).map(tab => {
+        {(['artifacts', 'titles', 'themes'] as const).map(tab => {
           const isActive = activeTab === tab;
           const tabLabel = {
+            artifacts: language === 'ar' ? 'مقتنيات التاريخ' : 'History Vault',
             titles: language === 'ar' ? 'الألقاب الشريفة' : 'Titles',
-            themes: language === 'ar' ? 'سمات الصرح' : 'Themes',
-            audio: language === 'ar' ? 'أدلة المقامات' : 'Audio'
+            themes: language === 'ar' ? 'سمات الصرح' : 'Themes'
           }[tab];
 
           return (
@@ -255,7 +321,7 @@ export default function ShopScreen({ navigation }: any) {
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.listContent}>
+        <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
           {filteredItems.map(item => {
             const isUnlocked = profile?.unlockedItems?.includes(item.id);
             const isBuying = buyingId === item.id;
@@ -287,11 +353,22 @@ export default function ShopScreen({ navigation }: any) {
 
                 <View style={styles.cardFooter}>
                   {isUnlocked ? (
-                    <View style={[styles.unlockedTag, { backgroundColor: colors.primaryLight }]}>
-                      <Text style={[styles.unlockedText, { color: colors.primary, fontFamily: 'IBMPlexSansArabic-Bold' }]}>
-                        {language === 'ar' ? '✓ تم التفعيل' : '✓ Unlocked'}
-                      </Text>
-                    </View>
+                    item.category === 'artifacts' ? (
+                      <TouchableOpacity
+                        style={[styles.actionBtn, { backgroundColor: colors.primary }]}
+                        onPress={() => setSelectedArtifact(item)}
+                      >
+                        <Text style={styles.actionBtnText}>
+                          {language === 'ar' ? '📖 استعراض قصة المقتنى والفيلم' : '📖 View Story & Video'}
+                        </Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <View style={[styles.unlockedTag, { backgroundColor: colors.primaryLight }]}>
+                        <Text style={[styles.unlockedText, { color: colors.primary, fontFamily: 'IBMPlexSansArabic-Bold' }]}>
+                          {language === 'ar' ? '✓ تم التفعيل' : '✓ Unlocked'}
+                        </Text>
+                      </View>
+                    )
                   ) : (
                     <TouchableOpacity
                       style={[styles.buyBtn, { backgroundColor: colors.primary }]}
@@ -315,6 +392,75 @@ export default function ShopScreen({ navigation }: any) {
             );
           })}
         </ScrollView>
+      )}
+
+      {/* INTERACTIVE MULTIMEDIA CARD OVERLAY MODAL */}
+      {selectedArtifact && (
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={!!selectedArtifact}
+          onRequestClose={() => setSelectedArtifact(null)}
+        >
+          <View style={styles.modalCenteredView}>
+            <View style={[styles.modalView, { backgroundColor: colors.surface }]}>
+              {/* Top Row */}
+              <View style={styles.modalHeader}>
+                <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setSelectedArtifact(null)}>
+                  <Text style={{ fontSize: 24, color: colors.textPrimary }}>✕</Text>
+                </TouchableOpacity>
+                <Text style={[styles.modalHeaderTitle, { color: colors.textPrimary, fontFamily: 'IBMPlexSansArabic-Bold' }]}>
+                  {selectedArtifact.badge} {language === 'ar' ? selectedArtifact.titleAr : selectedArtifact.titleEn}
+                </Text>
+              </View>
+
+              {/* YouTube Native WebPlayer */}
+              {selectedArtifact.youtubeVideoId && (
+                <View style={styles.playerContainer}>
+                  <WebView
+                    style={styles.youtubePlayer}
+                    javaScriptEnabled={true}
+                    domStorageEnabled={true}
+                    allowsFullscreenVideo={true}
+                    scrollEnabled={false}
+                    source={{ uri: `https://www.youtube.com/embed/${selectedArtifact.youtubeVideoId}?rel=0&autoplay=0&showinfo=0&controls=1` }}
+                  />
+                </View>
+              )}
+
+              {/* Scrollable Story Content */}
+              <ScrollView style={styles.storyScroll} contentContainerStyle={styles.storyContent} showsVerticalScrollIndicator={false}>
+                <View style={styles.scrollDesignCard}>
+                  <Text style={styles.scrollHeader}>📖 القصة التاريخية والدينية للمقتنى:</Text>
+                  <Text style={styles.storyTextAr}>{selectedArtifact.descAr}</Text>
+                  
+                  {/* Detailed educational extra text block */}
+                  <Text style={styles.extraHistoryText}>
+                    {selectedArtifact.id === 'art_zulfiqar' && 
+                      'كان هذا السيف مهدى للإمام علي رضي الله عنه من النبي ﷺ في غزوة أحد بعد أن تكسر سيفه، وجاء في الأثر دفاعه المستميت وبطولته التي نصرت جيش المسلمين وثبتت أركان المعركة.'}
+                    {selectedArtifact.id === 'art_khalid' && 
+                      'يعتبر سيف خالد رمزاً للعبقرية العسكرية الإسلامية الفريدة، حيث لم يهزم خالد في جاهلية ولا إسلام وقاد فتوحات الشام والعراق بمهارة خارقة مخلصاً نيته لله تعالى.'}
+                    {selectedArtifact.id === 'art_hamzah' && 
+                      'كان حمزة بن عبد المطلب رضي الله عنه يقاتل بسيفين ويرتدي ريشة النعامة على صدره كعلامة للشجاعة، وبذل روحه ودرعه فداءً لدعوة الحق وحماية لرسول الله.'}
+                    {selectedArtifact.id === 'art_saad' && 
+                      'سعد بن أبي وقاص رضي الله عنه هو أحد العشرة المبشرين بالجنة، وصاحب الدعوة المستجابة التي دعا له بها النبي ﷺ، وكان قوسه الحارس الأمين في أحد.'}
+                    {selectedArtifact.id === 'art_alparslan' && 
+                      'معركة ملاذكرد في عام 1071م غيرت مجرى التاريخ الإسلامي، حيث كسر السلطان السلجوقي الطوق عن الأمة الإسلامية وفتح ألب أرسلان أبواب الأناضول للإسلام.'}
+                    {selectedArtifact.id === 'art_uqab' && 
+                      'كانت راية العقاب تخفق بالتوحيد في كل موطن، وهي رمز العزة والتمكين في صدر الإسلام وتوضح اجتماع كلمة المسلمين تحت راية واحدة تعلي كلمة الله.'}
+                    {selectedArtifact.id === 'art_ring' && 
+                      'خاتم الفضة النبوي الشريف يعكس الدقة الإدارية والتنظيمية في عهد النبوة، حيث استخدم لتوثيق المراسلات الرسمية للملوك مثل هرقل والمقوقس وكسرى ودعوتهم للتوحيد.'}
+                  </Text>
+
+                  <View style={styles.englishDivider} />
+                  
+                  <Text style={styles.scrollHeaderEn}>English Narrative:</Text>
+                  <Text style={styles.storyTextEn}>{selectedArtifact.descEn}</Text>
+                </View>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
       )}
     </View>
   );
@@ -449,5 +595,118 @@ const styles = StyleSheet.create({
   unlockedText: {
     fontSize: 12,
     fontWeight: 'bold',
+  },
+  actionBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionBtnText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  modalCenteredView: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+  },
+  modalView: {
+    width: SCREEN_WIDTH * 0.92,
+    height: SCREEN_HEIGHT * 0.85,
+    borderRadius: 24,
+    paddingTop: 15,
+    paddingHorizontal: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  modalHeader: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEEEEE',
+  },
+  modalCloseBtn: {
+    padding: 5,
+  },
+  modalHeaderTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  playerContainer: {
+    height: 190,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#000',
+    marginVertical: 15,
+    borderWidth: 1.5,
+    borderColor: '#E5B942',
+  },
+  youtubePlayer: {
+    flex: 1,
+  },
+  storyScroll: {
+    flex: 1,
+  },
+  storyContent: {
+    paddingBottom: 30,
+  },
+  scrollDesignCard: {
+    backgroundColor: '#FFFDF9',
+    borderColor: '#E5C158',
+    borderWidth: 1.5,
+    borderRadius: 16,
+    padding: 16,
+  },
+  scrollHeader: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#B8860B',
+    marginBottom: 8,
+    textAlign: 'right',
+  },
+  storyTextAr: {
+    fontSize: 14,
+    color: '#4A3B32',
+    lineHeight: 22,
+    textAlign: 'right',
+    fontFamily: 'IBMPlexSansArabic-Medium',
+  },
+  extraHistoryText: {
+    fontSize: 13,
+    color: '#605045',
+    lineHeight: 20,
+    textAlign: 'right',
+    marginTop: 10,
+    fontStyle: 'italic',
+    fontFamily: 'IBMPlexSansArabic-Regular',
+  },
+  englishDivider: {
+    height: 1,
+    backgroundColor: '#E5C158',
+    marginVertical: 15,
+    opacity: 0.4,
+  },
+  scrollHeaderEn: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#B8860B',
+    marginBottom: 8,
+    textAlign: 'left',
+  },
+  storyTextEn: {
+    fontSize: 13,
+    color: '#4A3B32',
+    lineHeight: 20,
+    textAlign: 'left',
   },
 });

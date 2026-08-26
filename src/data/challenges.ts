@@ -11,26 +11,6 @@ export type Challenge = {
 
 export const challenges: Challenge[] = [
   {
-    id: 'prayer-tracker',
-    title: 'الصلوات الخمس',
-    description: 'تتبع صلواتك المفروضة خلال اليوم وحافظ على جماعتك.',
-    emoji: '🕌',
-    route: 'PrayerTracker',
-    color: '#EBF7F3',
-    difficulty: 'سهل',
-    points: 15,
-  },
-  {
-    id: 'fajr-challenge',
-    title: 'تحدي الفجر',
-    description: 'تأكيد أداء صلاة الفجر في وقتها لتحقيق انطلاقة مباركة ليومك.',
-    emoji: '🌅',
-    route: 'FajrChallenge',
-    color: '#FFF8E6',
-    difficulty: 'متوسط',
-    points: 20,
-  },
-  {
     id: 'voice-challenge',
     title: 'تحدي الصوت والتقليد',
     description: 'اختر قارئك المفضل، رتل الآية، واكتشف نسبة محاكاتك لصوته.',
@@ -59,16 +39,6 @@ export const challenges: Challenge[] = [
     color: '#F7EBEB',
     difficulty: 'متقدم',
     points: 20,
-  },
-  {
-    id: 'adhkar',
-    title: 'أذكار اليوم والمساء',
-    description: 'حافظ على حصنك اليومي من الأذكار المسنونة في الصباح والمساء.',
-    emoji: '📿',
-    route: 'Adhkar',
-    color: '#EDF7EB',
-    difficulty: 'سهل',
-    points: 10,
   },
   {
     id: 'hadith',

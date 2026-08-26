@@ -163,7 +163,8 @@ const prayersCatalog = [
 
 const deedsCatalog = [
   { key: 'quran', labelAr: 'قراءة الورد القرآني 📖', labelEn: 'Quran Daily Reading 📖' },
-  { key: 'adhkar', labelAr: 'أذكار الصباح والمساء 📿', labelEn: 'Morning & Evening Adhkar 📿' },
+  { key: 'morning_adhkar', labelAr: 'أذكار الصباح 🌅', labelEn: 'Morning Adhkar 🌅' },
+  { key: 'evening_adhkar', labelAr: 'أذكار المساء 🌇', labelEn: 'Evening Adhkar 🌇' },
   { key: 'charity', labelAr: 'الصدقة أو صلة الرحم 🤝', labelEn: 'Charity or Family Bond 🤝' },
   { key: 'tongue', labelAr: 'حفظ اللسان وغض البصر 👁️', labelEn: 'Guarding Tongue & Gaze 👁️' },
   { key: 'knowledge', labelAr: 'طلب العلم النافع 📚', labelEn: 'Seeking Useful Knowledge 📚' },
@@ -229,13 +230,14 @@ export default function ProfileScreen({ navigation }: any) {
   });
   const [deeds, setDeeds] = useState<Record<string, boolean>>({
     quran: false,
-    adhkar: false,
+    morning_adhkar: false,
+    evening_adhkar: false,
     charity: false,
     tongue: false,
     knowledge: false,
   });
   const [pledged, setPledged] = useState(false);
-  const [weeklyHistory, setWeeklyHistory] = useState<{ dateStr: string, completedCount: number }[]>([]);
+  const [weeklyHistory, setWeeklyHistory] = useState<any[]>([]);
   const [selectedArtifact, setSelectedArtifact] = useState<HistoricalArtifact | null>(null);
 
   const loadProfile = async () => {
@@ -275,19 +277,127 @@ export default function ProfileScreen({ navigation }: any) {
         const dStr = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
         const log = await AsyncStorage.getItem(`accountability-log-${dStr}`);
         let completed = 0;
+        let pLogs = {};
+        let dLogs = {};
         if (log) {
           const parsedLog = JSON.parse(log);
-          const pCompleted = Object.values(parsedLog.prayers || {}).filter(val => val === 'congregation' || val === 'individual').length;
-          const dCompleted = Object.values(parsedLog.deeds || {}).filter(Boolean).length;
+          pLogs = parsedLog.prayers || {};
+          dLogs = parsedLog.deeds || {};
+          const pCompleted = Object.values(pLogs).filter(val => val === 'congregation' || val === 'individual').length;
+          const dCompleted = Object.values(dLogs).filter(Boolean).length;
           completed = pCompleted + dCompleted;
         }
-        history.push({ dateStr: dStr, completedCount: completed });
+        history.push({ 
+          dateStr: dStr, 
+          completedCount: completed,
+          prayers: pLogs,
+          deeds: dLogs
+        });
       }
       setWeeklyHistory(history);
     } catch (err) {
       console.error(err);
     }
   };
+
+  const weeklyAnalytics = useMemo(() => {
+    let congregationCount = 0;
+    let individualCount = 0;
+    let missedCount = 0;
+    let totalPrayersLogged = 0;
+    
+    let fajrOnTimeCount = 0;
+    let morningAzkarCount = 0;
+    let eveningAzkarCount = 0;
+    let totalDaysWithLogs = 0;
+
+    weeklyHistory.forEach(day => {
+      let dayHasLogs = false;
+      // Prayers check
+      if (day.prayers) {
+        Object.keys(day.prayers).forEach(key => {
+          const status = day.prayers[key];
+          if (status) {
+            dayHasLogs = true;
+            totalPrayersLogged++;
+            if (status === 'congregation') congregationCount++;
+            else if (status === 'individual') individualCount++;
+            else if (status === 'missed') missedCount++;
+
+            // Fajr challenge check
+            if (key === 'fajr' && status === 'congregation') {
+              fajrOnTimeCount++;
+            }
+          }
+        });
+      }
+
+      // Deeds check
+      if (day.deeds) {
+        if (day.deeds.morning_adhkar) {
+          dayHasLogs = true;
+          morningAzkarCount++;
+        }
+        if (day.deeds.evening_adhkar) {
+          dayHasLogs = true;
+          eveningAzkarCount++;
+        }
+      }
+
+      if (dayHasLogs) {
+        totalDaysWithLogs++;
+      }
+    });
+
+    // Compute ratio percentages
+    const totalCount = congregationCount + individualCount + missedCount;
+    const congregationPct = totalCount > 0 ? (congregationCount / totalCount) : 0;
+    const individualPct = totalCount > 0 ? (individualCount / totalCount) : 0;
+    const missedPct = totalCount > 0 ? (missedCount / totalCount) : 0;
+
+    // Build assessment text
+    let assessmentAr = 'سجل صلواتك وطاعاتك يومياً لتبدأ في مراجعة التقرير الأسبوعي.';
+    let assessmentEn = 'Log your prayers and habits daily to view your weekly performance review.';
+    let alertColor = '#F2F2F2'; // default neutral
+    let textThemeColor = '#2C3E50';
+
+    if (totalDaysWithLogs > 0) {
+      if (missedCount > 4) {
+        assessmentAr = '⚠️ تنبيه: لقد فاتتك بعض الصلوات المفروضة هذا الأسبوع. الصلاة عماد الدين، حاول إعطاءها الأولوية وضبط التنبيهات اللازمة لتأديتها في وقتها.';
+        assessmentEn = '⚠️ Warning: You missed some obligatory prayers this week. Prayer is the pillar of faith. Prioritize it and set alarms to offer them on time.';
+        alertColor = '#FCE8E6'; // red
+        textThemeColor = '#C5221F';
+      } else if (congregationCount > 15) {
+        assessmentAr = '🎉 ممتاز! ما شاء الله على حرصك العالي والتزامك بصلاة الجماعة في المسجد. أداء إيماني متميز ومبارك، استمر على هذا الدرب العظيم.';
+        assessmentEn = '🎉 Excellent! Masha\'Allah on your high commitment to praying in congregation. Outstanding spiritual dedication. Keep on this blessed path.';
+        alertColor = '#E6F4EA'; // green
+        textThemeColor = '#137333';
+      } else {
+        assessmentAr = '👍 أداء طيب ومتوازن هذا الأسبوع. استمر في مجاهدة نفسك لزيادة صلوات الجماعة والمحافظة الدائمة على الأذكار لتزيد يومك بركة ونوراً.';
+        assessmentEn = '👍 Balanced spiritual performance this week. Keep striving to increase congregation prayers and maintain daily Azkar for more blessings.';
+        alertColor = '#FFF8E6'; // orange
+        textThemeColor = '#B8860B';
+      }
+    }
+
+    return {
+      congregationCount,
+      individualCount,
+      missedCount,
+      totalPrayersLogged,
+      fajrOnTimeCount,
+      morningAzkarCount,
+      eveningAzkarCount,
+      totalDaysWithLogs,
+      congregationPct,
+      individualPct,
+      missedPct,
+      assessmentAr,
+      assessmentEn,
+      alertColor,
+      textThemeColor
+    };
+  }, [weeklyHistory]);
 
   useEffect(() => {
     loadProfile();
@@ -970,19 +1080,104 @@ export default function ProfileScreen({ navigation }: any) {
               </TouchableOpacity>
             </View>
 
-            {/* WEEKLY CHART */}
+            {/* WEEKLY CHART & DETAILED REPORT */}
             <View style={[styles.logCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.logCardTitle, { color: colors.textPrimary }]}>
-                {language === 'ar' ? '📈 التقرير الأسبوعي' : '📈 Weekly Progress'}
+              <Text style={[styles.logCardTitle, { color: colors.textPrimary, fontFamily: 'IBMPlexSansArabic-Bold' }]}>
+                {language === 'ar' ? '📈 التقرير الأسبوعي المفصل' : '📈 Detailed Weekly Performance'}
               </Text>
               <Text style={[styles.logCardSubtitle, { color: colors.textSecondary }]}>
-                {language === 'ar' ? 'مجموع الطاعات والصلوات المكتملة آخر ٧ أيام:' : 'Total completed actions in the past 7 days:'}
+                {language === 'ar' ? 'إحصائيات الصلوات والعبادات خلال الـ ٧ أيام الماضية:' : 'Prayer & habit insights for the past 7 days:'}
               </Text>
 
+              {/* Dynamic Assessment Notification Box */}
+              <View style={[styles.weeklyAssessmentBox, { backgroundColor: weeklyAnalytics.alertColor }]}>
+                <Text style={[styles.weeklyAssessmentText, { color: weeklyAnalytics.textThemeColor, fontFamily: 'IBMPlexSansArabic-Medium' }]}>
+                  {language === 'ar' ? weeklyAnalytics.assessmentAr : weeklyAnalytics.assessmentEn}
+                </Text>
+              </View>
+
+              {/* Segmented Ratio Bar for Prayers */}
+              <View style={styles.ratioCard}>
+                <Text style={[styles.ratioTitle, { color: colors.textPrimary, fontFamily: 'IBMPlexSansArabic-Bold' }]}>
+                  {language === 'ar' ? '📊 توزيع أداء الصلوات' : '📊 Prayer Distribution Ratio'}
+                </Text>
+                
+                {weeklyAnalytics.totalPrayersLogged > 0 ? (
+                  <View style={styles.segmentedBar}>
+                    {weeklyAnalytics.congregationCount > 0 && (
+                      <View style={[styles.segmentedSegment, { flex: weeklyAnalytics.congregationPct, backgroundColor: '#10B981' }]} />
+                    )}
+                    {weeklyAnalytics.individualCount > 0 && (
+                      <View style={[styles.segmentedSegment, { flex: weeklyAnalytics.individualPct, backgroundColor: '#F5B841' }]} />
+                    )}
+                    {weeklyAnalytics.missedCount > 0 && (
+                      <View style={[styles.segmentedSegment, { flex: weeklyAnalytics.missedPct, backgroundColor: '#E7000B' }]} />
+                    )}
+                  </View>
+                ) : (
+                  <View style={[styles.segmentedBar, { backgroundColor: colors.border }]} />
+                )}
+
+                <View style={styles.ratioLabelsRow}>
+                  <View style={styles.ratioLabelItem}>
+                    <View style={[styles.ratioColorDot, { backgroundColor: '#10B981' }]} />
+                    <Text style={[styles.ratioLabelText, { color: colors.textSecondary }]}>
+                      {language === 'ar' ? `جماعة: ${weeklyAnalytics.congregationCount}` : `Congr: ${weeklyAnalytics.congregationCount}`}
+                    </Text>
+                  </View>
+                  <View style={styles.ratioLabelItem}>
+                    <View style={[styles.ratioColorDot, { backgroundColor: '#F5B841' }]} />
+                    <Text style={[styles.ratioLabelText, { color: colors.textSecondary }]}>
+                      {language === 'ar' ? `منفرداً: ${weeklyAnalytics.individualCount}` : `Indiv: ${weeklyAnalytics.individualCount}`}
+                    </Text>
+                  </View>
+                  <View style={styles.ratioLabelItem}>
+                    <View style={[styles.ratioColorDot, { backgroundColor: '#E7000B' }]} />
+                    <Text style={[styles.ratioLabelText, { color: colors.textSecondary }]}>
+                      {language === 'ar' ? `فاتتني: ${weeklyAnalytics.missedCount}` : `Missed: ${weeklyAnalytics.missedCount}`}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Challenge Milestones Status */}
+              <View style={styles.challengeSummaryCard}>
+                <View style={[styles.challengeStatItem, { borderBottomColor: colors.border }]}>
+                  <Text style={[styles.challengeStatVal, { color: colors.primaryDeep }]}>
+                    {weeklyAnalytics.fajrOnTimeCount} / {weeklyAnalytics.totalDaysWithLogs} {language === 'ar' ? 'أيام' : 'days'}
+                  </Text>
+                  <Text style={[styles.challengeStatLabel, { color: colors.textPrimary }]}>
+                    🌅 {language === 'ar' ? 'تحدي الفجر (في الجماعة)' : 'Fajr Challenge (in Congregation)'}
+                  </Text>
+                </View>
+                
+                <View style={[styles.challengeStatItem, { borderBottomColor: colors.border }]}>
+                  <Text style={[styles.challengeStatVal, { color: colors.primaryDeep }]}>
+                    {weeklyAnalytics.morningAzkarCount} / {weeklyAnalytics.totalDaysWithLogs} {language === 'ar' ? 'أيام' : 'days'}
+                  </Text>
+                  <Text style={[styles.challengeStatLabel, { color: colors.textPrimary }]}>
+                    📿 {language === 'ar' ? 'أذكار الصباح المسجلة' : 'Morning Adhkar Completed'}
+                  </Text>
+                </View>
+
+                <View style={styles.challengeStatItem}>
+                  <Text style={[styles.challengeStatVal, { color: colors.primaryDeep }]}>
+                    {weeklyAnalytics.eveningAzkarCount} / {weeklyAnalytics.totalDaysWithLogs} {language === 'ar' ? 'أيام' : 'days'}
+                  </Text>
+                  <Text style={[styles.challengeStatLabel, { color: colors.textPrimary }]}>
+                    📿 {language === 'ar' ? 'أذكار المساء المسجلة' : 'Evening Adhkar Completed'}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Weekly Activity Bar Chart */}
+              <Text style={[styles.chartTitleText, { color: colors.textPrimary, fontFamily: 'IBMPlexSansArabic-Bold', marginTop: 20 }]}>
+                {language === 'ar' ? '📊 رسم بياني للنشاط اليومي' : '📊 Daily Completed Actions Chart'}
+              </Text>
               <View style={styles.chartContainer}>
                 {weeklyHistory.map((day, index) => {
-                  // Max completed count is 5 prayers + 5 deeds = 10 total
-                  const barHeight = Math.max(10, (day.completedCount / 10) * 120);
+                  // Max completed count is 5 prayers + 6 deeds = 11 total
+                  const barHeight = Math.max(10, (day.completedCount / 11) * 120);
                   const isCurrent = day.dateStr === todayStr;
 
                   return (
@@ -1871,5 +2066,92 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 12,
     fontWeight: 'bold',
+  },
+  weeklyAssessmentBox: {
+    borderRadius: 12,
+    padding: 14,
+    marginVertical: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
+  },
+  weeklyAssessmentText: {
+    fontSize: 13,
+    lineHeight: 18,
+    textAlign: 'right',
+  },
+  ratioCard: {
+    marginVertical: 12,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0,0,0,0.01)',
+  },
+  ratioTitle: {
+    fontSize: 13.5,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    textAlign: 'right',
+  },
+  segmentedBar: {
+    height: 14,
+    borderRadius: 7,
+    flexDirection: 'row',
+    overflow: 'hidden',
+    marginBottom: 12,
+    width: '100%',
+  },
+  segmentedSegment: {
+    height: '100%',
+  },
+  ratioLabelsRow: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  ratioLabelItem: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 4,
+  },
+  ratioColorDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  ratioLabelText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  challengeSummaryCard: {
+    marginTop: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
+    backgroundColor: 'rgba(0,0,0,0.01)',
+    overflow: 'hidden',
+  },
+  challengeStatItem: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+  },
+  challengeStatVal: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+  challengeStatLabel: {
+    fontSize: 13.5,
+    fontWeight: '600',
+    fontFamily: 'IBMPlexSansArabic-Medium',
+  },
+  chartTitleText: {
+    fontSize: 13.5,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    textAlign: 'right',
   },
 });

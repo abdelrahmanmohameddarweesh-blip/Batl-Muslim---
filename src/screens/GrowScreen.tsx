@@ -94,35 +94,26 @@ export default function GrowScreen({ navigation, route }: any) {
   const { language } = useLanguage();
   const { colors } = useTheme();
 
-  // Active filter tab: 'all' | 'worship' | 'quran' | 'knowledge'
-  const [activeTab, setActiveTab] = useState<'all' | 'worship' | 'quran' | 'knowledge'>('all');
+  // Active filter tab: 'all' | 'quran' | 'knowledge'
+  const [activeTab, setActiveTab] = useState<'all' | 'quran' | 'knowledge'>('all');
 
   React.useEffect(() => {
     if (route?.params?.initialCategory) {
-      setActiveTab(route.params.initialCategory);
+      setActiveTab(route.params.initialCategory === 'worship' ? 'all' : route.params.initialCategory);
     }
   }, [route?.params?.initialCategory]);
 
   // Challenge groups mapping
-  const worshipRoutes = ['PrayerTracker', 'FajrChallenge', 'Adhkar'];
   const quranRoutes = ['Voice', 'Memorization', 'ReadingChallenge', 'QuranAssessment'];
   const knowledgeRoutes = ['SirahQuest', 'HadithChallenge', 'Trivia'];
 
-  const getCategoryOfChallenge = (challenge: Challenge): 'worship' | 'quran' | 'knowledge' => {
-    if (worshipRoutes.includes(challenge.route)) return 'worship';
+  const getCategoryOfChallenge = (challenge: Challenge): 'quran' | 'knowledge' => {
     if (quranRoutes.includes(challenge.route)) return 'quran';
     return 'knowledge';
   };
 
   // Sections config
   const sections = [
-    {
-      key: 'worship',
-      titleAr: 'أركان العبادة',
-      titleEn: 'Worship Essentials',
-      color: '#10B981',
-      list: challenges.filter(c => getCategoryOfChallenge(c) === 'worship'),
-    },
     {
       key: 'quran',
       titleAr: 'محراب القرآن الكريم',
@@ -181,7 +172,6 @@ export default function GrowScreen({ navigation, route }: any) {
         <View style={styles.tabsRow}>
           {[
             { key: 'all', ar: 'الكل', en: 'All' },
-            { key: 'worship', ar: 'العبادة', en: 'Worship' },
             { key: 'quran', ar: 'القرآن', en: 'Quran' },
             { key: 'knowledge', ar: 'المعرفة', en: 'Knowledge' },
           ].map(tab => {

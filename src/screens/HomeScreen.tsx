@@ -7,6 +7,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getCurrentUserProfile } from '../firebase/auth';
 import AdBanner from '../components/AdBanner';
+import OnboardingStories from '../components/OnboardingStories';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH * 0.78;
@@ -34,6 +35,7 @@ export default function HomeScreen({ navigation }: any) {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>('الكل');
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const todayStr = useMemo(() => {
     const today = new Date();
@@ -55,6 +57,20 @@ export default function HomeScreen({ navigation }: any) {
 
   useEffect(() => {
     loadData();
+
+    // Check if onboarding needs to be shown (first time launch)
+    const checkOnboarding = async () => {
+      try {
+        const seen = await AsyncStorage.getItem('user-has-seen-onboarding');
+        if (seen !== 'true') {
+          setShowOnboarding(true);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    checkOnboarding();
+
     const unsubscribe = navigation.addListener('focus', () => {
       loadData();
     });
@@ -539,6 +555,7 @@ export default function HomeScreen({ navigation }: any) {
 
         <AdBanner />
       </View>
+      <OnboardingStories visible={showOnboarding} onClose={() => setShowOnboarding(false)} />
     </ScrollView>
   );
 }

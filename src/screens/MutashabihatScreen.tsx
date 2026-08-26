@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Dimensions, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Dimensions } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -22,16 +22,13 @@ export default function MutashabihatScreen({ navigation }: any) {
   const [answered, setAnswered] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
 
-  const [showRewardOverlay, setShowRewardOverlay] = useState(false);
-  const [overlayCorrect, setOverlayCorrect] = useState(false);
   const [profile, setProfile] = useState<any>(null);
-  const [sirajIncrement, setSirajIncrement] = useState(0);
+  const [isFlying, setIsFlying] = useState(false);
 
-  // Animated values for the flying Fanoos lantern
+  // Animated values for the flying Fanoos lantern on the same screen
   const lanternScale = useRef(new Animated.Value(0)).current;
   const lanternPos = useRef(new Animated.ValueXY({ x: 0, y: 150 })).current;
   const lanternOpacity = useRef(new Animated.Value(1)).current;
-  const overlayOpacity = useRef(new Animated.Value(0)).current;
   const walletScale = useRef(new Animated.Value(1)).current;
 
   const currentQuestion = questions[currentIndex];
@@ -69,38 +66,25 @@ export default function MutashabihatScreen({ navigation }: any) {
     setAnswered(true);
 
     const isCorrect = option === currentQuestion.answer;
-    setOverlayCorrect(isCorrect);
-    
-    // Calculate Siraj points based on difficulty
     const points = { easy: 5, medium: 10, hard: 15, expert: 20 }[selectedDifficulty];
-    setSirajIncrement(points);
 
     if (isCorrect) {
       setCorrectCount(prev => prev + 1);
-    }
 
-    setShowRewardOverlay(true);
-    overlayOpacity.setValue(0);
-    lanternScale.setValue(0);
-    lanternPos.setValue({ x: 0, y: 80 });
-    lanternOpacity.setValue(1);
+      // Start the flying animation on the same screen
+      setIsFlying(true);
+      lanternScale.setValue(0);
+      lanternPos.setValue({ x: 0, y: 120 });
+      lanternOpacity.setValue(1);
 
-    // Fade in overlay background
-    Animated.timing(overlayOpacity, {
-      toValue: 1,
-      duration: 300,
-      useNativeDriver: false,
-    }).start();
-
-    if (isCorrect) {
-      // 1. Spring bounce the Lantern in the center
+      // 1. Pop scale in center
       Animated.spring(lanternScale, {
         toValue: 1.5,
         friction: 5,
         useNativeDriver: false,
       }).start(() => {
-        // 2. Wait 600ms, then fly to the top-right header wallet
-        Animated.delay(600).start(() => {
+        // 2. Fly to top right wallet
+        Animated.delay(400).start(() => {
           Animated.parallel([
             Animated.timing(lanternPos.x, {
               toValue: SCREEN_WIDTH / 2 - 45,
@@ -108,7 +92,7 @@ export default function MutashabihatScreen({ navigation }: any) {
               useNativeDriver: false,
             }),
             Animated.timing(lanternPos.y, {
-              toValue: -280,
+              toValue: -SCREEN_HEIGHT / 2 + 100, // align with wallet y
               duration: 700,
               useNativeDriver: false,
             }),
@@ -118,25 +102,27 @@ export default function MutashabihatScreen({ navigation }: any) {
               useNativeDriver: false,
             }),
             Animated.timing(lanternOpacity, {
-              toValue: 0.2,
+              toValue: 0,
               duration: 700,
               useNativeDriver: false,
             })
           ]).start(async () => {
-            // Animate wallet bounce
+            setIsFlying(false);
+            
+            // Bounce wallet
             Animated.sequence([
               Animated.timing(walletScale, { toValue: 1.3, duration: 100, useNativeDriver: false }),
               Animated.timing(walletScale, { toValue: 1.0, duration: 100, useNativeDriver: false })
             ]).start();
 
-            // Save to database
+            // Save to DB
             if (user?.uid) {
               try {
                 const updated = await addSirajPoints(user.uid, points);
                 setProfile(updated);
                 updateUserFields({ sirajBalance: updated.sirajBalance });
               } catch (err) {
-                console.error('Error saving Siraj points:', err);
+                console.error(err);
               }
             }
           });
@@ -146,20 +132,13 @@ export default function MutashabihatScreen({ navigation }: any) {
   };
 
   const handleNextQuestion = () => {
-    Animated.timing(overlayOpacity, {
-      toValue: 0,
-      duration: 300,
-      useNativeDriver: false,
-    }).start(() => {
-      setShowRewardOverlay(false);
-      if (currentIndex < questions.length - 1) {
-        setCurrentIndex(prev => prev + 1);
-        setSelectedAnswer('');
-        setAnswered(false);
-      } else {
-        setScreenState('results');
-      }
-    });
+    if (currentIndex < questions.length - 1) {
+      setCurrentIndex(prev => prev + 1);
+      setSelectedAnswer('');
+      setAnswered(false);
+    } else {
+      setScreenState('results');
+    }
   };
 
   const handleReset = () => {
@@ -205,7 +184,7 @@ export default function MutashabihatScreen({ navigation }: any) {
 
       {/* LOBBY STATE */}
       {screenState === 'lobby' && (
-        <ScrollView contentContainerStyle={styles.lobbyScroll}>
+        <ScrollView contentContainerStyle={styles.lobbyScroll} showsVerticalScrollIndicator={false}>
           <View style={[styles.infoBox, { backgroundColor: colors.primaryLight }]}>
             <Text style={{ fontSize: 44, marginBottom: 12 }}>🕯️</Text>
             <Text style={[styles.infoTitle, { color: colors.primary, fontFamily: 'IBMPlexSansArabic-Bold' }]}>
@@ -259,7 +238,7 @@ export default function MutashabihatScreen({ navigation }: any) {
 
       {/* QUIZ PLAYING STATE */}
       {screenState === 'quiz' && currentQuestion && (
-        <ScrollView contentContainerStyle={styles.quizScroll}>
+        <ScrollView contentContainerStyle={styles.quizScroll} showsVerticalScrollIndicator={false}>
           <View style={styles.progressRow}>
             <Text style={[styles.progressText, { color: colors.textSecondary }]}>
               السؤال {currentIndex + 1} من {questions.length}
@@ -284,23 +263,70 @@ export default function MutashabihatScreen({ navigation }: any) {
           </View>
 
           <Text style={[styles.hintLabel, { color: colors.textSecondary }]}>اختر الكلمة أو التكملة الصحيحة:</Text>
-          {currentQuestion.options.map((option, idx) => (
-            <TouchableOpacity
-              key={idx}
-              style={[styles.optionBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
-              onPress={() => handleSelectOption(option)}
-              disabled={answered}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.optionText, { color: colors.textPrimary }]}>{option}</Text>
-            </TouchableOpacity>
-          ))}
+          
+          {currentQuestion.options.map((option, idx) => {
+            const isCorrectAnswer = option === currentQuestion.answer;
+            const isSelectedAnswer = option === selectedAnswer;
+
+            // Compute dynamic color styling once answered
+            let btnStyle = { backgroundColor: colors.surface, borderColor: colors.border };
+            let textStyle = { color: colors.textPrimary };
+
+            if (answered) {
+              if (isCorrectAnswer) {
+                // Color correct green
+                btnStyle = { backgroundColor: '#E6F4EA', borderColor: '#137333' };
+                textStyle = { color: '#137333' };
+              } else if (isSelectedAnswer) {
+                // Color incorrect red
+                btnStyle = { backgroundColor: '#FCE8E6', borderColor: '#C5221F' };
+                textStyle = { color: '#C5221F' };
+              } else {
+                // Dim other options
+                btnStyle = { backgroundColor: colors.surface, borderColor: colors.border };
+                textStyle = { color: colors.textSecondary };
+              }
+            }
+
+            return (
+              <TouchableOpacity
+                key={idx}
+                style={[styles.optionBtn, btnStyle]}
+                onPress={() => handleSelectOption(option)}
+                disabled={answered}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.optionText, textStyle, answered && isCorrectAnswer && { fontFamily: 'IBMPlexSansArabic-Bold' }]}>
+                  {option} {answered && isCorrectAnswer && '✓'} {answered && isSelectedAnswer && !isCorrectAnswer && '❌'}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+
+          {/* INLINE EXPLANATION & NEXT BUTTON ONCE ANSWERED */}
+          {answered && (
+            <View style={{ marginTop: 20 }}>
+              <View style={styles.parchmentScrollCard}>
+                <Text style={styles.parchmentHeader}>💡 توضيح متشابهة الآية:</Text>
+                <Text style={styles.parchmentText}>{currentQuestion.explanation}</Text>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.startBtn, { backgroundColor: colors.primary, marginTop: 10 }]}
+                onPress={handleNextQuestion}
+              >
+                <Text style={styles.startBtnText}>
+                  {currentIndex === questions.length - 1 ? 'عرض النتيجة النهائية' : 'السؤال التالي'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </ScrollView>
       )}
 
       {/* RESULTS DISPLAY STATE */}
       {screenState === 'results' && (
-        <ScrollView contentContainerStyle={styles.resultsScroll}>
+        <ScrollView contentContainerStyle={styles.resultsScroll} showsVerticalScrollIndicator={false}>
           <View style={styles.trophyContainer}>
             <Text style={{ fontSize: 80, marginBottom: 15 }}>🏺</Text>
             <Text style={[styles.resultTitle, { color: colors.textPrimary, fontFamily: 'IBMPlexSansArabic-Bold' }]}>
@@ -343,58 +369,26 @@ export default function MutashabihatScreen({ navigation }: any) {
         </ScrollView>
       )}
 
-      {/* FLYING LANTERN REWARD CELEBRATION OVERLAY */}
-      {showRewardOverlay && (
-        <Animated.View style={[styles.overlayContainer, { opacity: overlayOpacity }]}>
-          <View style={styles.backdropShadow} />
-
-          {overlayCorrect ? (
-            <View style={styles.animationStage}>
-              {/* Flying Fanoos */}
-              <Animated.View
-                style={[
-                  styles.flyingFanoos,
-                  {
-                    transform: [
-                      { translateX: lanternPos.x },
-                      { translateY: lanternPos.y },
-                      { scale: lanternScale }
-                    ],
-                    opacity: lanternOpacity
-                  }
-                ]}
-              >
-                <Text style={{ fontSize: 56 }}>🕯️</Text>
-                <Text style={styles.glowingBeacon}>✨</Text>
-              </Animated.View>
-
-              <View style={styles.successMessageBox}>
-                <Text style={styles.overlayCelebrationText}>✨ أحسنت! إجابة صحيحة</Text>
-                <Text style={styles.rewardSubtext}>أضاء سراج جديد (+{sirajIncrement} سراج)</Text>
-              </View>
-            </View>
-          ) : (
-            <View style={styles.animationStage}>
-              <Text style={{ fontSize: 64, marginBottom: 15 }}>💡</Text>
-              <Text style={[styles.overlayCelebrationText, { color: '#E74C3C' }]}>❌ إجابة خاطئة</Text>
-              <Text style={[styles.rewardSubtext, { color: '#7F8C8D' }]}>راجع التوضيح أدناه لتثبيت الآية</Text>
-            </View>
-          )}
-
-          {/* Ayat Explanation Scroll Card */}
-          <ScrollView style={styles.explanationScroll} contentContainerStyle={{ paddingBottom: 30 }} showsVerticalScrollIndicator={false}>
-            <View style={styles.parchmentScrollCard}>
-              <Text style={styles.parchmentHeader}>💡 توضيح متشابهة الآية:</Text>
-              <Text style={styles.parchmentText}>{currentQuestion?.explanation}</Text>
-            </View>
-
-            <TouchableOpacity style={[styles.overlayNextBtn, { backgroundColor: colors.primary }]} onPress={handleNextQuestion}>
-              <Text style={styles.overlayNextBtnText}>
-                {currentIndex === questions.length - 1 ? 'عرض النتيجة النهائية' : 'متابعة التحدي'}
-              </Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </Animated.View>
+      {/* FLYING LANTERN REWARD CELEBRATION (IN-SCREEN ABSOLUTE OVERLAY) */}
+      {isFlying && (
+        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+          <Animated.View
+            style={[
+              styles.flyingFanoosAbsolute,
+              {
+                transform: [
+                  { translateX: lanternPos.x },
+                  { translateY: lanternPos.y },
+                  { scale: lanternScale }
+                ],
+                opacity: lanternOpacity
+              }
+            ]}
+          >
+            <Text style={{ fontSize: 48 }}>🕯️</Text>
+            <Text style={styles.glowingBeacon}>✨</Text>
+          </Animated.View>
+        </View>
       )}
     </View>
   );
@@ -549,7 +543,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   optionBtn: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 20,
@@ -619,54 +613,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  overlayContainer: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#0F081C',
-    zIndex: 99999,
-    paddingTop: 80,
-    paddingHorizontal: 20,
-  },
-  backdropShadow: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  animationStage: {
-    height: 220,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  flyingFanoos: {
+  flyingFanoosAbsolute: {
     position: 'absolute',
+    left: SCREEN_WIDTH / 2 - 24,
+    top: SCREEN_HEIGHT / 2 - 24,
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 9999,
   },
   glowingBeacon: {
     position: 'absolute',
-    fontSize: 24,
-    top: -12,
-    right: -12,
-  },
-  successMessageBox: {
-    marginTop: 130,
-    alignItems: 'center',
-  },
-  overlayCelebrationText: {
-    color: '#F5D061',
     fontSize: 20,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  rewardSubtext: {
-    color: '#FFF',
-    fontSize: 14,
-    fontWeight: '600',
-    marginTop: 6,
-    textAlign: 'center',
-  },
-  explanationScroll: {
-    flex: 1,
-    marginTop: 20,
+    top: -8,
+    right: -8,
   },
   parchmentScrollCard: {
     backgroundColor: '#FFFDF9',
@@ -674,7 +633,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderRadius: 16,
     padding: 20,
-    marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -693,20 +651,5 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     lineHeight: 24,
     fontFamily: 'IBMPlexSansArabic-Medium',
-  },
-  overlayNextBtn: {
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  overlayNextBtnText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
   },
 });

@@ -14,6 +14,11 @@ export type AppUser = {
   championshipTime?: number;
   sirajBalance?: number;
   unlockedItems?: string[];
+  mutashabihatCorrectCount?: number;
+  quranCorrectCount?: number;
+  triviaCorrectCount?: number;
+  unlockedTitles?: string[];
+  activeTitle?: string;
 };
 
 export const auth = null;
@@ -70,6 +75,11 @@ export async function signInAnonymous(displayName: string, phone: string, countr
     photoUri: photoUri || undefined,
     sirajBalance: players[uid]?.sirajBalance ?? existingUser?.sirajBalance ?? 50,
     unlockedItems: players[uid]?.unlockedItems ?? existingUser?.unlockedItems ?? [],
+    mutashabihatCorrectCount: players[uid]?.mutashabihatCorrectCount ?? existingUser?.mutashabihatCorrectCount ?? 0,
+    quranCorrectCount: players[uid]?.quranCorrectCount ?? existingUser?.quranCorrectCount ?? 0,
+    triviaCorrectCount: players[uid]?.triviaCorrectCount ?? existingUser?.triviaCorrectCount ?? 0,
+    unlockedTitles: players[uid]?.unlockedTitles ?? existingUser?.unlockedTitles ?? [],
+    activeTitle: players[uid]?.activeTitle ?? existingUser?.activeTitle ?? '',
   };
 
   players[uid] = user;
@@ -235,4 +245,76 @@ export async function unlockShopItem(uid: string, itemId: string, cost: number):
   await AsyncStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updatedUser));
   return updatedUser;
 }
+
+export async function incrementCorrectAnswers(uid: string, testType: 'mutashabihat' | 'quran' | 'trivia', amount: number): Promise<AppUser> {
+  if (!uid) {
+    throw new Error('User UID is required');
+  }
+  const players = await readPlayers();
+  const existing = players[uid];
+  if (!existing) {
+    throw new Error('User not found');
+  }
+
+  const field = testType === 'mutashabihat' 
+    ? 'mutashabihatCorrectCount' 
+    : testType === 'quran' 
+      ? 'quranCorrectCount' 
+      : 'triviaCorrectCount';
+
+  const currentCount = (existing[field] ?? 0) + amount;
+  const unlockedTitles = [...(existing.unlockedTitles ?? [])];
+
+  // Title Unlocks:
+  // 1. فارس المتشابهات: 30 correct answers in mutashabihat
+  if (testType === 'mutashabihat' && currentCount >= 30 && !unlockedTitles.includes('title_knight')) {
+    unlockedTitles.push('title_knight');
+  }
+  // 2. الحافظ المتقن: 50 correct answers in quran
+  if (testType === 'quran' && currentCount >= 50 && !unlockedTitles.includes('title_hafidh')) {
+    unlockedTitles.push('title_hafidh');
+  }
+  // 3. سراج المنبر: 40 correct answers in trivia
+  if (testType === 'trivia' && currentCount >= 40 && !unlockedTitles.includes('title_pulpit')) {
+    unlockedTitles.push('title_pulpit');
+  }
+  // 4. قارئ الجنان: 100 total correct answers across any test
+  const totalCorrect = (testType === 'mutashabihat' ? currentCount : (existing.mutashabihatCorrectCount ?? 0))
+    + (testType === 'quran' ? currentCount : (existing.quranCorrectCount ?? 0))
+    + (testType === 'trivia' ? currentCount : (existing.triviaCorrectCount ?? 0));
+
+  if (totalCorrect >= 100 && !unlockedTitles.includes('title_heavens')) {
+    unlockedTitles.push('title_heavens');
+  }
+
+  const updatedUser: AppUser = {
+    ...existing,
+    [field]: currentCount,
+    unlockedTitles,
+  };
+
+  players[uid] = updatedUser;
+  await writePlayers(players);
+  await AsyncStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updatedUser));
+  return updatedUser;
+}
+
+export async function equipUserTitle(uid: string, titleId: string): Promise<AppUser> {
+  const players = await readPlayers();
+  const existing = players[uid];
+  if (!existing) {
+    throw new Error('User not found');
+  }
+
+  const updatedUser: AppUser = {
+    ...existing,
+    activeTitle: titleId,
+  };
+
+  players[uid] = updatedUser;
+  await writePlayers(players);
+  await AsyncStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updatedUser));
+  return updatedUser;
+}
+
 

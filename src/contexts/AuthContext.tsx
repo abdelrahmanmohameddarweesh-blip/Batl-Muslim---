@@ -11,6 +11,11 @@ type AuthUser = {
   photoUri?: string;
   sirajBalance?: number;
   unlockedItems?: string[];
+  mutashabihatCorrectCount?: number;
+  quranCorrectCount?: number;
+  triviaCorrectCount?: number;
+  unlockedTitles?: string[];
+  activeTitle?: string;
 };
 
 type AuthContextValue = {
@@ -49,6 +54,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         score: 0,
         sirajBalance: 50,
         unlockedItems: [],
+        mutashabihatCorrectCount: 0,
+        quranCorrectCount: 0,
+        triviaCorrectCount: 0,
+        unlockedTitles: [],
+        activeTitle: '',
       };
       setUser(fallbackUser);
       Alert.alert('تنبيه', 'تم تسجيل الدخول محلياً، وقد تكون هناك مشكلة مؤقتة في التخزين.');

@@ -16,7 +16,7 @@ interface ShopItem {
   descAr: string;
   descEn: string;
   cost: number;
-  category: 'artifacts' | 'titles' | 'themes';
+  category: 'artifacts' | 'themes';
   badge: string;
   youtubeVideoId?: string; // Optional for non-artifacts
 }
@@ -100,48 +100,7 @@ const SHOP_ITEMS: ShopItem[] = [
     badge: '💍',
     youtubeVideoId: 't2VbX4k92OA',
   },
-  // 2. Quranic Titles
-  {
-    id: 'title_hafidh',
-    titleAr: 'الحافظ المتقن',
-    titleEn: 'Precise Memorizer',
-    descAr: 'لقب شريف يعكس دقة وضبط حفظك للمتشابهات.',
-    descEn: 'A noble title reflecting the precision of your Quranic memorization.',
-    cost: 50,
-    category: 'titles',
-    badge: '🏆',
-  },
-  {
-    id: 'title_knight',
-    titleAr: 'فارس المتشابهات',
-    titleEn: 'Knight of Mutashabihat',
-    descAr: 'لقب خاص بفرسان متشابهات التنزيل الكريم.',
-    descEn: 'A title reserved for champions of Quranic parallels.',
-    cost: 100,
-    category: 'titles',
-    badge: '🛡️',
-  },
-  {
-    id: 'title_pulpit',
-    titleAr: 'سراج المنبر',
-    titleEn: 'Lantern of the Pulpit',
-    descAr: 'لقب يعكس ضياء علمك وتألقك في القراءة.',
-    descEn: 'Reflects the light of your recitation and learning.',
-    cost: 150,
-    category: 'titles',
-    badge: '🕯️',
-  },
-  {
-    id: 'title_heavens',
-    titleAr: 'قارئ الجنان',
-    titleEn: 'Reciter of Heavens',
-    descAr: 'اللقب الأسمى لمن يرتقون بالقرآن درجات في الجنة.',
-    descEn: 'The highest honor for those ascending levels of Paradise.',
-    cost: 200,
-    category: 'titles',
-    badge: '👑',
-  },
-  // 3. Background Themes
+  // 2. Background Themes
   {
     id: 'theme_nabawi',
     titleAr: 'محراب المسجد النبوي',
@@ -179,7 +138,7 @@ export default function ShopScreen({ navigation }: any) {
   const { language } = useLanguage();
   const { user, updateUserFields } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'artifacts' | 'titles' | 'themes'>('artifacts');
+  const [activeTab, setActiveTab] = useState<'artifacts' | 'themes'>('artifacts');
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [buyingId, setBuyingId] = useState<string | null>(null);
@@ -285,11 +244,10 @@ export default function ShopScreen({ navigation }: any) {
 
       {/* TABS SELECTOR */}
       <View style={styles.tabContainer}>
-        {(['artifacts', 'titles', 'themes'] as const).map(tab => {
+        {(['artifacts', 'themes'] as const).map(tab => {
           const isActive = activeTab === tab;
           const tabLabel = {
             artifacts: language === 'ar' ? 'مقتنيات التاريخ' : 'History Vault',
-            titles: language === 'ar' ? 'الألقاب الشريفة' : 'Titles',
             themes: language === 'ar' ? 'سمات الصرح' : 'Themes'
           }[tab];
 

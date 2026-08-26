@@ -7,7 +7,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { getCurrentUserProfile, updateUserCountry, saveUserScore, updateUserPhoto } from '../firebase/auth';
+import { getCurrentUserProfile, updateUserCountry, saveUserScore, updateUserPhoto, equipUserTitle } from '../firebase/auth';
 import { badgesCatalog, checkUnlockedBadges } from '../data/badges';
 import AdBanner from '../components/AdBanner';
 
@@ -96,6 +96,60 @@ const HISTORICAL_ARTIFACTS: HistoricalArtifact[] = [
     descEn: 'The Prophet’s (ﷺ) silver signet ring used to seal the letters calling kings to Islam.',
     badge: '💍',
     youtubeVideoId: 't2VbX4k92OA',
+  },
+];
+
+interface QuranicTitle {
+  id: string;
+  titleAr: string;
+  titleEn: string;
+  descAr: string;
+  descEn: string;
+  emoji: string;
+  targetTest: 'mutashabihat' | 'quran' | 'trivia' | 'total';
+  targetValue: number;
+}
+
+const QURANIC_TITLES: QuranicTitle[] = [
+  {
+    id: 'title_knight',
+    titleAr: 'فارس المتشابهات',
+    titleEn: 'Knight of Mutashabihat',
+    descAr: 'أكمل ٣٠ إجابة صحيحة في اختبار المتشابهات لتنال هذا اللقب.',
+    descEn: 'Achieve 30 correct answers in Mutashabihat test.',
+    emoji: '🛡️',
+    targetTest: 'mutashabihat',
+    targetValue: 30,
+  },
+  {
+    id: 'title_hafidh',
+    titleAr: 'الحافظ المتقن',
+    titleEn: 'Precise Memorizer',
+    descAr: 'أكمل ٥٠ إجابة صحيحة في تقييم الحفظ لتنال هذا اللقب.',
+    descEn: 'Achieve 50 correct answers in Quran Assessment.',
+    emoji: '🏆',
+    targetTest: 'quran',
+    targetValue: 50,
+  },
+  {
+    id: 'title_pulpit',
+    titleAr: 'سراج المنبر',
+    titleEn: 'Lantern of the Pulpit',
+    descAr: 'أكمل ٤٠ إجابة صحيحة في تحدي المعلومات والحديث لتنال هذا اللقب.',
+    descEn: 'Achieve 40 correct answers in Trivia/Hadith challenge.',
+    emoji: '🕯️',
+    targetTest: 'trivia',
+    targetValue: 40,
+  },
+  {
+    id: 'title_heavens',
+    titleAr: 'قارئ الجنان',
+    titleEn: 'Reciter of Heavens',
+    descAr: 'أكمل ١٠٠ إجابة صحيحة إجمالاً في جميع الاختبارات لتنال اللقب الأسمى.',
+    descEn: 'Achieve 100 total correct answers across all quizzes.',
+    emoji: '👑',
+    targetTest: 'total',
+    targetValue: 100,
   },
 ];
 
@@ -328,6 +382,21 @@ export default function ProfileScreen({ navigation }: any) {
     );
   };
 
+  const handleEquipTitle = async (titleId: string) => {
+    if (!user?.uid) return;
+    try {
+      const updated = await equipUserTitle(user.uid, titleId);
+      setProfile(updated);
+      updateUserFields({ activeTitle: updated.activeTitle });
+      Alert.alert(
+        language === 'ar' ? 'تم بنجاح!' : 'Success!',
+        language === 'ar' ? 'تم تجهيز لقبك الجديد بنجاح.' : 'Equipped your new title successfully.'
+      );
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const currentScore = profile?.score ?? 0;
 
   const levelName = useMemo(() => {
@@ -409,6 +478,13 @@ export default function ProfileScreen({ navigation }: any) {
               <Text style={[styles.profileName, { color: colors.textPrimary }]}>
                 {user?.displayName || (language === 'ar' ? 'ضيف' : 'Guest')}
               </Text>
+              {profile?.activeTitle ? (
+                <Text style={[styles.activeTitleTextSub, { color: colors.primary, fontFamily: 'IBMPlexSansArabic-Bold', marginBottom: 6 }]}>
+                  ⚔️ {
+                    QURANIC_TITLES.find(t => t.id === profile.activeTitle)?.[language === 'ar' ? 'titleAr' : 'titleEn']
+                  }
+                </Text>
+              ) : null}
               <View style={[styles.levelBadge, { backgroundColor: colors.accentTint, borderColor: colors.accentTintBorder }]}>
                 <Text style={[styles.levelBadgeText, { color: colors.accentOnTint }]}>🏆 {levelName}</Text>
               </View>
@@ -455,6 +531,95 @@ export default function ProfileScreen({ navigation }: any) {
                     <Text style={[styles.badgeDesc, { color: colors.textSecondary }, !isUnlocked && styles.badgeDescLocked]}>
                       {language === 'ar' ? badge.descAr : badge.descEn}
                     </Text>
+                  </View>
+                );
+              })}
+            </View>
+
+            {/* Quranic Titles Section */}
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+              {language === 'ar' ? '👑 الألقاب القرآنية المكتسبة' : '👑 Earned Quranic Titles'}
+            </Text>
+            <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
+              {language === 'ar' 
+                ? 'حقق مستهدفات الاختبارات لفتح الألقاب الشريفة وتجهيزها في حسابك' 
+                : 'Complete quiz milestones to unlock and equip noble titles'}
+            </Text>
+
+            <View style={styles.titlesContainer}>
+              {QURANIC_TITLES.map(title => {
+                const isUnlocked = profile?.unlockedTitles?.includes(title.id);
+                const isActive = profile?.activeTitle === title.id;
+
+                // Get current value towards target
+                const currentValue = title.targetTest === 'mutashabihat'
+                  ? (profile?.mutashabihatCorrectCount ?? 0)
+                  : title.targetTest === 'quran'
+                    ? (profile?.quranCorrectCount ?? 0)
+                    : title.targetTest === 'trivia'
+                      ? (profile?.triviaCorrectCount ?? 0)
+                      : ((profile?.mutashabihatCorrectCount ?? 0) + (profile?.quranCorrectCount ?? 0) + (profile?.triviaCorrectCount ?? 0));
+
+                const progress = Math.min(1, currentValue / title.targetValue);
+
+                return (
+                  <View
+                    key={title.id}
+                    style={[
+                      styles.titleCard,
+                      { backgroundColor: colors.surface, borderColor: isActive ? colors.primary : colors.border }
+                    ]}
+                  >
+                    <View style={styles.titleCardHeader}>
+                      <View style={[styles.titleEmojiBg, { backgroundColor: colors.border }]}>
+                        <Text style={{ fontSize: 24 }}>{title.emoji}</Text>
+                      </View>
+                      
+                      <View style={styles.titleMeta}>
+                        <Text style={[styles.titleName, { color: colors.textPrimary, fontFamily: 'IBMPlexSansArabic-Bold' }]}>
+                          {language === 'ar' ? title.titleAr : title.titleEn}
+                        </Text>
+                        <Text style={[styles.titleDesc, { color: colors.textSecondary }]}>
+                          {language === 'ar' ? title.descAr : title.descEn}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Progress Bar (Only show if locked) */}
+                    {!isUnlocked ? (
+                      <View style={styles.titleProgressContainer}>
+                        <View style={styles.titleProgressLabels}>
+                          <Text style={{ fontSize: 10, color: colors.textSecondary }}>
+                            {language === 'ar' ? `المستهدف: ${title.targetValue} إجابة` : `Target: ${title.targetValue} answers`}
+                          </Text>
+                          <Text style={{ fontSize: 10, color: colors.textPrimary, fontWeight: '700' }}>
+                            {currentValue} / {title.targetValue}
+                          </Text>
+                        </View>
+                        <View style={[styles.titleProgressBarBg, { backgroundColor: colors.border }]}>
+                          <View style={[styles.titleProgressBarFill, { width: `${progress * 100}%`, backgroundColor: colors.primary }]} />
+                        </View>
+                      </View>
+                    ) : (
+                      <View style={styles.titleActionRow}>
+                        {isActive ? (
+                          <View style={[styles.activeTitleBadge, { backgroundColor: colors.primaryLight }]}>
+                            <Text style={[styles.activeTitleText, { color: colors.primary, fontFamily: 'IBMPlexSansArabic-Bold' }]}>
+                              {language === 'ar' ? '✓ مجهز حالياً' : '✓ Active'}
+                            </Text>
+                          </View>
+                        ) : (
+                          <TouchableOpacity
+                            style={[styles.equipBtn, { backgroundColor: colors.primary }]}
+                            onPress={() => handleEquipTitle(title.id)}
+                          >
+                            <Text style={styles.equipBtnText}>
+                              {language === 'ar' ? 'تجهيز اللقب' : 'Equip Title'}
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    )}
                   </View>
                 );
               })}
@@ -1622,5 +1787,89 @@ const styles = StyleSheet.create({
     color: '#4A3B32',
     lineHeight: 20,
     textAlign: 'left',
+  },
+  activeTitleTextSub: {
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  titlesContainer: {
+    marginVertical: 15,
+    gap: 12,
+  },
+  titleCard: {
+    borderRadius: 16,
+    borderWidth: 1.5,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  titleCardHeader: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+  },
+  titleEmojiBg: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  titleMeta: {
+    flex: 1,
+    marginRight: 12,
+    alignItems: 'flex-end',
+  },
+  titleName: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  titleDesc: {
+    fontSize: 11,
+    lineHeight: 16,
+    textAlign: 'right',
+  },
+  titleProgressContainer: {
+    marginTop: 12,
+  },
+  titleProgressLabels: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  titleProgressBarBg: {
+    height: 6,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  titleProgressBarFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  titleActionRow: {
+    marginTop: 12,
+    alignItems: 'flex-start',
+  },
+  activeTitleBadge: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+  },
+  activeTitleText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  equipBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+  },
+  equipBtnText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });

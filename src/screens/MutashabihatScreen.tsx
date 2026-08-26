@@ -4,7 +4,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { mutashabihatQuestions, type MutashabahQuestion } from '../data/mutashabihat';
-import { addSirajPoints, getCurrentUserProfile } from '../firebase/auth';
+import { addSirajPoints, getCurrentUserProfile, incrementCorrectAnswers } from '../firebase/auth';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -118,9 +118,17 @@ export default function MutashabihatScreen({ navigation }: any) {
             // Save to DB
             if (user?.uid) {
               try {
+                // Increment total correct answers count for Mutashabihat and check title unlocks
+                await incrementCorrectAnswers(user.uid, 'mutashabihat', 1);
+                
+                // Add Siraj points
                 const updated = await addSirajPoints(user.uid, points);
                 setProfile(updated);
-                updateUserFields({ sirajBalance: updated.sirajBalance });
+                updateUserFields({ 
+                  sirajBalance: updated.sirajBalance,
+                  unlockedTitles: updated.unlockedTitles,
+                  mutashabihatCorrectCount: updated.mutashabihatCorrectCount,
+                });
               } catch (err) {
                 console.error(err);
               }

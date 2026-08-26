@@ -8,6 +8,8 @@ import Svg, { Path, Circle } from 'react-native-svg';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import OnboardingStories from '../components/OnboardingStories';
 
 const countriesList = [
   { code: 'EG', nameAr: 'مصر 🇪🇬', nameEn: 'Egypt', ext: '+20' },
@@ -55,7 +57,22 @@ export default function LoginScreen({ navigation }: any) {
   const [showCountryModal, setShowCountryModal] = useState(false);
   const [selectedCountryObj, setSelectedCountryObj] = useState(countriesList[0]);
 
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
   useEffect(() => {
+    // Check if onboarding needs to be shown (first time launch)
+    const checkOnboarding = async () => {
+      try {
+        const seen = await AsyncStorage.getItem('user-has-seen-onboarding');
+        if (seen !== 'true') {
+          setShowOnboarding(true);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    checkOnboarding();
+
     if (user) {
       navigation.replace('HomeTabs');
     }
@@ -334,6 +351,7 @@ export default function LoginScreen({ navigation }: any) {
           </View>
         </TouchableOpacity>
       </Modal>
+      <OnboardingStories visible={showOnboarding} onClose={() => setShowOnboarding(false)} />
     </KeyboardAvoidingView>
   );
 }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Animated, Modal } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Animated, Modal, Pressable } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -54,16 +54,30 @@ export default function OnboardingStories({ visible, onClose }: OnboardingStorie
   const progressAnim = useRef(new Animated.Value(0)).current;
   const slideCount = ONBOARDING_SLIDES.length;
 
+  // Trackers for holding down the screen to pause
+  const pressStartTime = useRef<number>(0);
+  const pausedValue = useRef<number>(0);
+  const isPaused = useRef<boolean>(false);
+  const activeAnimation = useRef<Animated.CompositeAnimation | null>(null);
+
   const currentSlide = ONBOARDING_SLIDES[currentSlideIndex];
 
   // Auto-progress animation controller
-  const startProgress = () => {
-    progressAnim.setValue(0);
-    Animated.timing(progressAnim, {
+  const startProgress = (fromValue = 0, duration = STORY_DURATION) => {
+    progressAnim.setValue(fromValue);
+    
+    // Stop any running animations first
+    if (activeAnimation.current) {
+      activeAnimation.current.stop();
+    }
+
+    activeAnimation.current = Animated.timing(progressAnim, {
       toValue: 1,
-      duration: STORY_DURATION,
+      duration: duration,
       useNativeDriver: false,
-    }).start(({ finished }) => {
+    });
+
+    activeAnimation.current.start(({ finished }) => {
       if (finished) {
         handleNextSlide();
       }
@@ -83,7 +97,7 @@ export default function OnboardingStories({ visible, onClose }: OnboardingStorie
       setCurrentSlideIndex(prev => prev - 1);
     } else {
       // Re-start current slide if first slide
-      startProgress();
+      startProgress(0, STORY_DURATION);
     }
   };
 
@@ -98,20 +112,44 @@ export default function OnboardingStories({ visible, onClose }: OnboardingStorie
 
   useEffect(() => {
     if (visible) {
-      startProgress();
+      startProgress(0, STORY_DURATION);
     } else {
       progressAnim.setValue(0);
     }
-    return () => progressAnim.stopAnimation();
+    return () => {
+      if (activeAnimation.current) {
+        activeAnimation.current.stop();
+      }
+    };
   }, [currentSlideIndex, visible]);
 
-  // Handle taps on screen halves
-  const handleTap = (evt: any) => {
-    const x = evt.nativeEvent.locationX;
-    if (x < SCREEN_WIDTH * 0.35) {
-      handlePrevSlide();
+  // Touch handlers to support Hold to Pause
+  const handlePressIn = () => {
+    pressStartTime.current = Date.now();
+    isPaused.current = true;
+    
+    // Stop animation and save paused value
+    progressAnim.stopAnimation((value) => {
+      pausedValue.current = value;
+    });
+  };
+
+  const handlePressOut = (evt: any) => {
+    const elapsed = Date.now() - pressStartTime.current;
+    isPaused.current = false;
+
+    if (elapsed < 200) {
+      // It was a short tap: perform slide navigation
+      const x = evt.nativeEvent.locationX;
+      if (x < SCREEN_WIDTH * 0.35) {
+        handlePrevSlide();
+      } else {
+        handleNextSlide();
+      }
     } else {
-      handleNextSlide();
+      // It was a long press hold: resume animation from exact paused value
+      const remainingTime = STORY_DURATION * (1 - pausedValue.current);
+      startProgress(pausedValue.current, remainingTime);
     }
   };
 
@@ -119,9 +157,9 @@ export default function OnboardingStories({ visible, onClose }: OnboardingStorie
 
   return (
     <Modal visible={visible} transparent={false} animationType="fade">
-      <TouchableOpacity 
-        activeOpacity={1} 
-        onPress={handleTap} 
+      <Pressable
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
         style={styles.container}
       >
         <LinearGradient 
@@ -156,7 +194,7 @@ export default function OnboardingStories({ visible, onClose }: OnboardingStorie
           </View>
 
           {/* Main Story Content Card */}
-          <View style={styles.cardContainer}>
+          <View style={styles.cardContainer} pointerEvents="none">
             <Text style={styles.emojiText}>{currentSlide.emoji}</Text>
             
             <Text style={styles.titleText}>
@@ -179,12 +217,12 @@ export default function OnboardingStories({ visible, onClose }: OnboardingStorie
             </TouchableOpacity>
           ) : (
             <View style={styles.swipeHintRow}>
-              <Text style={styles.swipeHintText}>اضغط على اليمين للمتابعة ←</Text>
+              <Text style={styles.swipeHintText}>اضغط مطولاً للإيقاف المؤقت • اضغط على اليمين للمتابعة ←</Text>
             </View>
           )}
 
         </LinearGradient>
-      </TouchableOpacity>
+      </Pressable>
     </Modal>
   );
 }
@@ -284,7 +322,7 @@ const styles = StyleSheet.create({
   },
   swipeHintText: {
     color: 'rgba(255,255,255,0.6)',
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: 'IBMPlexSansArabic-Medium',
   },
 });

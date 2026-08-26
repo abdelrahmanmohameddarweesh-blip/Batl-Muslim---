@@ -58,18 +58,7 @@ export default function HomeScreen({ navigation }: any) {
   useEffect(() => {
     loadData();
 
-    // Check if onboarding needs to be shown (first time launch)
-    const checkOnboarding = async () => {
-      try {
-        const seen = await AsyncStorage.getItem('user-has-seen-onboarding');
-        if (seen !== 'true') {
-          setShowOnboarding(true);
-        }
-      } catch (err) {
-        console.error(err);
-      }
-    };
-    checkOnboarding();
+
 
     const unsubscribe = navigation.addListener('focus', () => {
       loadData();
@@ -289,6 +278,30 @@ export default function HomeScreen({ navigation }: any) {
             </View>
           </View>
         </View>
+
+        {/* HOW APP WORKS / VALUE ONBOARDING BANNER */}
+        <TouchableOpacity
+          style={[styles.onboardingBanner, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}
+          onPress={() => setShowOnboarding(true)}
+          activeOpacity={0.85}
+        >
+          <View style={styles.onboardingBannerContent}>
+            <View style={[styles.onboardingIconBg, { backgroundColor: colors.surface }]}>
+              <Text style={{ fontSize: 24 }}>💡</Text>
+            </View>
+            <View style={styles.onboardingTextCol}>
+              <Text style={[styles.onboardingTitleText, { color: colors.primary, fontFamily: 'IBMPlexSansArabic-Bold' }]}>
+                {language === 'ar' ? 'كيف يعمل تطبيق بطل مسلم؟ 🤔' : 'How does Batl Muslim work? 🤔'}
+              </Text>
+              <Text style={[styles.onboardingDescText, { color: colors.textSecondary }]}>
+                {language === 'ar' 
+                  ? 'شاهد الدليل السريع لتحقيق أقصى استفادة والارتقاء في الحفظ!' 
+                  : 'Watch the quick guide to get the most value & boost your memorization!'}
+              </Text>
+            </View>
+          </View>
+          <Text style={{ fontSize: 16, color: colors.primary, marginLeft: 4 }}>←</Text>
+        </TouchableOpacity>
 
         {/* YESTERDAY'S DAILY PODIUM (WINNER CARDS) */}
         <View style={styles.sectionHeaderRow}>
@@ -572,6 +585,52 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 56,
     gap: 18,
+  },
+  onboardingBanner: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    marginVertical: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  onboardingBannerContent: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    flex: 1,
+  },
+  onboardingIconBg: {
+    width: 46,
+    height: 46,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  onboardingTextCol: {
+    flex: 1,
+    marginRight: 12,
+    alignItems: 'flex-end',
+  },
+  onboardingTitleText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  onboardingDescText: {
+    fontSize: 11.5,
+    lineHeight: 16,
+    textAlign: 'right',
   },
   topHeaderRow: {
     flexDirection: 'row-reverse',

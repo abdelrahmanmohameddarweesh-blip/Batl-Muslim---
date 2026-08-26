@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Dimensions, Modal, Alert } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { mutashabihatQuestions, type MutashabahQuestion } from '../data/mutashabihat';
-import { addSirajPoints, getCurrentUserProfile, incrementCorrectAnswers } from '../firebase/auth';
+import { addSirajPoints, getCurrentUserProfile, incrementCorrectAnswers, equipUserTitle } from '../firebase/auth';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -24,6 +24,10 @@ export default function MutashabihatScreen({ navigation }: any) {
 
   const [profile, setProfile] = useState<any>(null);
   const [isFlying, setIsFlying] = useState(false);
+
+  // Snapshot trackers for newly unlocked titles pop-up
+  const [initialTitles, setInitialTitles] = useState<string[]>([]);
+  const [showUnlockModal, setShowUnlockModal] = useState(false);
 
   // Animated values for the flying Fanoos lantern on the same screen
   const lanternScale = useRef(new Animated.Value(0)).current;
@@ -51,6 +55,10 @@ export default function MutashabihatScreen({ navigation }: any) {
     const filtered = mutashabihatQuestions.filter(q => q.difficulty === selectedDifficulty);
     const shuffled = [...filtered].sort(() => Math.random() - 0.5);
     const selected = shuffled.slice(0, 5);
+
+    // Save snapshot of currently unlocked titles before starting
+    setInitialTitles(profile?.unlockedTitles || []);
+    setShowUnlockModal(false);
 
     setQuestions(selected);
     setCurrentIndex(0);
@@ -168,6 +176,48 @@ export default function MutashabihatScreen({ navigation }: any) {
     const pointsPerQuestion = { easy: 5, medium: 10, hard: 15, expert: 20 }[selectedDifficulty];
     return correctCount * pointsPerQuestion;
   }, [correctCount, selectedDifficulty]);
+
+  // Check if any new title got unlocked during this test run
+  const newlyUnlocked = useMemo(() => {
+    const unlockedNow = profile?.unlockedTitles?.filter((t: string) => !initialTitles.includes(t)) || [];
+    return unlockedNow;
+  }, [profile?.unlockedTitles, initialTitles]);
+
+  useEffect(() => {
+    if (screenState === 'results' && newlyUnlocked.length > 0) {
+      setShowUnlockModal(true);
+    }
+  }, [screenState, newlyUnlocked]);
+
+  // Metadata of the unlocked titles for the popup display
+  const titleInfo = useMemo(() => {
+    if (newlyUnlocked.length === 0) return null;
+    const firstUnlockedId = newlyUnlocked[0];
+    const catalog = {
+      title_knight: { title: 'فارس المتشابهات', desc: 'لقاء إتمام ٣٠ إجابة صحيحة في اختبار المتشابهات', emoji: '🛡️' },
+      title_hafidh: { title: 'الحافظ المتقن', desc: 'لقاء إتمام ٥٠ إجابة صحيحة في تقييم الحفظ', emoji: '🏆' },
+      title_pulpit: { title: 'سراج المنبر', desc: 'لقاء إتمام ٤٠ إجابة صحيحة في تحدي المعلومات والحديث', emoji: '🕯️' },
+      title_heavens: { title: 'قارئ الجنان', desc: 'لقاء إتمام ١٠٠ إجابة صحيحة إجمالاً في جميع الاختبارات', emoji: '👑' },
+    };
+    return (catalog as any)[firstUnlockedId] || { title: firstUnlockedId, desc: '', emoji: '🎉' };
+  }, [newlyUnlocked]);
+
+  const handleAddTitleToProfile = async () => {
+    if (!user?.uid || newlyUnlocked.length === 0) return;
+    const titleId = newlyUnlocked[0];
+    try {
+      const updated = await equipUserTitle(user.uid, titleId);
+      setProfile(updated);
+      updateUserFields({ activeTitle: updated.activeTitle });
+      Alert.alert(
+        language === 'ar' ? 'تهانينا! 🎉' : 'Congratulations! 🎉',
+        language === 'ar' ? 'تم تجهيز لقبك الجديد وإضافته لملفك الشخصي بنجاح!' : 'Your new title has been equipped and added to your profile!'
+      );
+      setShowUnlockModal(false);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -397,6 +447,54 @@ export default function MutashabihatScreen({ navigation }: any) {
             <Text style={styles.glowingBeacon}>✨</Text>
           </Animated.View>
         </View>
+      )}
+
+      {/* NEWLY UNLOCKED TITLE CONGRATULATIONS MODAL */}
+      {showUnlockModal && titleInfo && (
+        <Modal
+          animationType="fade"
+          transparent={true}
+          visible={showUnlockModal}
+          onRequestClose={() => setShowUnlockModal(false)}
+        >
+          <View style={styles.congratsCenteredView}>
+            <View style={[styles.unlockModalCard, { backgroundColor: '#FFFDF9', borderColor: '#E5C158' }]}>
+              <Text style={styles.starsEmitter}>✨ 🎉 ✨</Text>
+              
+              <Text style={styles.unlockModalCongrats}>
+                إنجاز عظيم جديد!
+              </Text>
+              <Text style={styles.unlockModalSubtitle}>
+                لقد تميز حفظك ونلت لقباً قرآنياً شريفاً:
+              </Text>
+
+              <View style={styles.unlockedTitleBadgeBig}>
+                <Text style={{ fontSize: 44, marginBottom: 8 }}>{titleInfo.emoji}</Text>
+                <Text style={styles.unlockedTitleNameBig}>{titleInfo.title}</Text>
+              </View>
+
+              <Text style={styles.unlockedTitleDescBig}>
+                {titleInfo.desc}
+              </Text>
+
+              <TouchableOpacity
+                style={styles.addProfileBtn}
+                onPress={handleAddTitleToProfile}
+              >
+                <Text style={styles.addProfileBtnText}>
+                  تجهيز وإضافة اللقب لملفي الشخصي 🛡️
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.dismissUnlockBtn}
+                onPress={() => setShowUnlockModal(false)}
+              >
+                <Text style={styles.dismissUnlockBtnText}>إغلاق</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       )}
     </View>
   );
@@ -658,6 +756,97 @@ const styles = StyleSheet.create({
     color: '#4A3B32',
     textAlign: 'right',
     lineHeight: 24,
+    fontFamily: 'IBMPlexSansArabic-Medium',
+  },
+  congratsCenteredView: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.7)',
+  },
+  unlockModalCard: {
+    width: SCREEN_WIDTH * 0.88,
+    borderRadius: 24,
+    borderWidth: 2,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  starsEmitter: {
+    fontSize: 32,
+    marginBottom: 8,
+  },
+  unlockModalCongrats: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#B8860B',
+    textAlign: 'center',
+    marginBottom: 8,
+    fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+  unlockModalSubtitle: {
+    fontSize: 14,
+    color: '#4A3B32',
+    textAlign: 'center',
+    marginBottom: 20,
+    fontFamily: 'IBMPlexSansArabic-Medium',
+  },
+  unlockedTitleBadgeBig: {
+    backgroundColor: '#FFF8E6',
+    borderColor: '#FAD7A0',
+    borderWidth: 1.5,
+    borderRadius: 20,
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    marginBottom: 16,
+  },
+  unlockedTitleNameBig: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#137333',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+  unlockedTitleDescBig: {
+    fontSize: 13,
+    color: '#605045',
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 25,
+    fontFamily: 'IBMPlexSansArabic-Regular',
+  },
+  addProfileBtn: {
+    backgroundColor: '#10B981',
+    borderRadius: 12,
+    paddingVertical: 14,
+    width: '100%',
+    alignItems: 'center',
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  addProfileBtnText: {
+    color: '#FFF',
+    fontSize: 15,
+    fontWeight: 'bold',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+  dismissUnlockBtn: {
+    marginTop: 14,
+    padding: 6,
+  },
+  dismissUnlockBtnText: {
+    color: '#7F8C8D',
+    fontSize: 14,
+    fontWeight: '600',
     fontFamily: 'IBMPlexSansArabic-Medium',
   },
 });

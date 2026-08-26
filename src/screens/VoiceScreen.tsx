@@ -268,6 +268,9 @@ export default function VoiceScreen({ navigation }: any) {
 
         while (attempts < maxAttempts && !apiSuccess) {
           try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 6000); // 6 seconds timeout
+
             const hfResponse = await fetch(
               'https://api-inference.huggingface.co/models/tarteel-ai/whisper-base-ar-quran',
               {
@@ -276,9 +279,11 @@ export default function VoiceScreen({ navigation }: any) {
                   'Content-Type': 'audio/m4a',
                 },
                 body: audioBlob,
+                signal: controller.signal,
               }
             );
 
+            clearTimeout(timeoutId);
             const data = await hfResponse.json();
 
             if (data?.text) {
@@ -319,15 +324,20 @@ export default function VoiceScreen({ navigation }: any) {
         formData.append('ayah', currentAyah.id);
         formData.append('style', recitationStyle);
 
-        const serverIp = '192.168.240.112';
+        const serverIp = '192.168.100.24';
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4000); // 4 seconds timeout
+
         const dspResponse = await fetch(`http://${serverIp}:5001/analyze`, {
           method: 'POST',
           body: formData,
           headers: {
             'Content-Type': 'multipart/form-data',
           },
+          signal: controller.signal,
         });
         
+        clearTimeout(timeoutId);
         const dspData = await dspResponse.json();
         if (dspData && !dspData.error) {
           dspResults = dspData;

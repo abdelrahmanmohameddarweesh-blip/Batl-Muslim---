@@ -386,14 +386,21 @@ export default function VoiceScreen({ navigation }: any) {
         };
       }
     } else {
-      // Offline fallback: Show acoustic grades (Tone, Rhythm, Tajweed) but award 0 XP to prevent cheating
+      // Offline fallback: Show acoustic grades (Tone, Rhythm, Tajweed, Pronunciation) but award 0 XP to prevent cheating
       setTranscribedText('');
       setTextMatchDetails(null);
       setIsTranscriptionSuccess(false);
 
-      const offlineOverall = Math.round((results.tone * 0.40) + (results.rhythm * 0.35) + (((results as any).tajweed || 0) * 0.25));
+      const fallbackPronunciation = results.pronunciation || 80;
+      const offlineOverall = Math.round(
+        (fallbackPronunciation * 0.35) + 
+        (results.tone * 0.30) + 
+        (results.rhythm * 0.20) + 
+        (((results as any).tajweed || 0) * 0.15)
+      );
+
       finalResults = {
-        pronunciation: 0,
+        pronunciation: fallbackPronunciation,
         tone: results.tone,
         rhythm: results.rhythm,
         tajweed: (results as any).tajweed || 0,

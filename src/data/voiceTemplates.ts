@@ -108,6 +108,30 @@ const readerModifiers: Record<string, ReaderModifier> = {
     maddEmphasisWeight: 0.8,
     dynamicsProfile: 'soothing-fluid',
   },
+  dosary: {
+    readerId: 'dosary',
+    speedModifier: 0.9,
+    transformEnvelope: (val) => Math.min(1.0, Math.pow(val, 1.25) * 1.1),
+    rhythmStrictness: 1.1,
+    maddEmphasisWeight: 1.1,
+    dynamicsProfile: 'fast-energetic',
+  },
+  banna: {
+    readerId: 'banna',
+    speedModifier: 1.15,
+    transformEnvelope: (val) => Math.max(0.12, Math.pow(val, 0.9) * 0.9),
+    rhythmStrictness: 1.3,
+    maddEmphasisWeight: 0.92,
+    dynamicsProfile: 'soft-steady',
+  },
+  ajamy: {
+    readerId: 'ajamy',
+    speedModifier: 0.88,
+    transformEnvelope: (val) => Math.min(1.0, Math.pow(val, 1.3) * 1.15),
+    rhythmStrictness: 1.0,
+    maddEmphasisWeight: 0.85,
+    dynamicsProfile: 'soothing-fluid',
+  },
 };
 
 export function generateReferenceProfile(

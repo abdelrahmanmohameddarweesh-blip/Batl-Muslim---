@@ -324,7 +324,7 @@ export default function VoiceScreen({ navigation }: any) {
         formData.append('ayah', currentAyah.id);
         formData.append('style', recitationStyle);
 
-        const serverIp = '192.168.100.24';
+        const serverIp = '172.20.10.2';
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 4000); // 4 seconds timeout
 

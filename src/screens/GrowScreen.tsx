@@ -104,7 +104,7 @@ export default function GrowScreen({ navigation, route }: any) {
   }, [route?.params?.initialCategory]);
 
   // Challenge groups mapping
-  const quranRoutes = ['Voice', 'Memorization', 'ReadingChallenge', 'QuranAssessment'];
+  const quranRoutes = ['Voice', 'ReadingChallenge', 'QuranAssessment'];
   const knowledgeRoutes = ['SirahQuest', 'HadithChallenge', 'Trivia'];
 
   const getCategoryOfChallenge = (challenge: Challenge): 'quran' | 'knowledge' => {

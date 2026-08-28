@@ -30,16 +30,7 @@ export const challenges: Challenge[] = [
     difficulty: 'سهل',
     points: 10,
   },
-  {
-    id: 'memorization',
-    title: 'تحدي حفظ الآيات',
-    description: 'اختبر حفظك من خلال إكمال الكلمات الناقصة في الآيات الكريمة.',
-    emoji: '🧠',
-    route: 'Memorization',
-    color: '#F7EBEB',
-    difficulty: 'متقدم',
-    points: 20,
-  },
+
   {
     id: 'hadith',
     title: 'تحدي الحديث الشريف',

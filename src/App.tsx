@@ -20,7 +20,6 @@ import VoiceScreen from './screens/VoiceScreen';
 import PrayerTrackerScreen from './screens/PrayerTrackerScreen';
 import FajrChallengeScreen from './screens/FajrChallengeScreen';
 import ReadingChallengeScreen from './screens/ReadingChallengeScreen';
-import MemorizationScreen from './screens/MemorizationScreen';
 import QuranAssessmentScreen from './screens/QuranAssessmentScreen';
 import AdhkarScreen from './screens/AdhkarScreen';
 import HadithChallengeScreen from './screens/HadithChallengeScreen';
@@ -225,11 +224,7 @@ function NavigationWrapper() {
           component={ReadingChallengeScreen}
           options={{ title: language === 'ar' ? 'تحدي القراءة والفهم' : 'Reading Challenge' }}
         />
-        <Stack.Screen
-          name="Memorization"
-          component={MemorizationScreen}
-          options={{ title: language === 'ar' ? 'تحدي حفظ الآيات' : 'Ayah Memorization' }}
-        />
+
         <Stack.Screen
           name="QuranAssessment"
           component={QuranAssessmentScreen}

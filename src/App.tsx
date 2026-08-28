@@ -8,6 +8,7 @@ import { useFonts } from 'expo-font';
 import { AuthProvider } from './contexts/AuthContext';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+import * as Linking from 'expo-linking';
 
 import LoginScreen from './screens/LoginScreen';
 import HomeScreen from './screens/HomeScreen';
@@ -29,6 +30,12 @@ import SirahQuestScreen from './screens/SirahQuestScreen';
 import ArenaHubScreen from './screens/ArenaHubScreen';
 import MutashabihatScreen from './screens/MutashabihatScreen';
 import ShopScreen from './screens/ShopScreen';
+
+// Group Quiz Screens
+import GroupQuizLobbyScreen from './screens/GroupQuizLobbyScreen';
+import GroupQuizWaitingScreen from './screens/GroupQuizWaitingScreen';
+import GroupQuizActiveScreen from './screens/GroupQuizActiveScreen';
+import GroupQuizResultsScreen from './screens/GroupQuizResultsScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -154,8 +161,27 @@ function NavigationWrapper() {
   const { language } = useLanguage();
   const styles = getStyles(colors);
 
+  const prefix = Linking.createURL('/');
+  const linking: any = {
+    prefixes: [prefix, 'batlmuslim://', 'https://batlmuslim.app'],
+    config: {
+      screens: {
+        HomeTabs: {
+          screens: {
+            Home: 'home',
+            Grow: 'grow',
+            ArenaHub: 'arena',
+            CommunityFeed: 'community',
+            Profile: 'profile',
+          }
+        },
+        GroupQuizWaiting: 'join-room',
+      }
+    }
+  };
+
   return (
-    <NavigationContainer>
+    <NavigationContainer linking={linking}>
       <Stack.Navigator
         initialRouteName="Login"
         screenOptions={{
@@ -247,6 +273,28 @@ function NavigationWrapper() {
         <Stack.Screen
           name="Shop"
           component={ShopScreen}
+          options={{ headerShown: false }}
+        />
+
+        {/* Group Quiz Screens */}
+        <Stack.Screen
+          name="GroupQuizLobby"
+          component={GroupQuizLobbyScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="GroupQuizWaiting"
+          component={GroupQuizWaitingScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="GroupQuizActive"
+          component={GroupQuizActiveScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="GroupQuizResults"
+          component={GroupQuizResultsScreen}
           options={{ headerShown: false }}
         />
       </Stack.Navigator>

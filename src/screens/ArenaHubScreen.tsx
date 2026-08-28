@@ -66,6 +66,28 @@ export default function ArenaHubScreen({ navigation }: any) {
           </View>
           <Text style={styles.arrow}>➔</Text>
         </TouchableOpacity>
+
+        {/* Box 3: Group Quizzes */}
+        <TouchableOpacity
+          style={styles.card}
+          onPress={() => navigation.navigate('GroupQuizLobby')}
+          activeOpacity={0.85}
+        >
+          <View style={[styles.iconWrapper, { backgroundColor: '#E0F2FE' }]}>
+            <Text style={styles.cardIcon}>👥</Text>
+          </View>
+          <View style={styles.cardInfo}>
+            <Text style={styles.cardTitle}>
+              {language === 'ar' ? 'المسابقات الجماعية' : 'Group Quizzes'}
+            </Text>
+            <Text style={styles.cardDesc}>
+              {language === 'ar'
+                ? 'أنشئ غرفة اختبار جماعية مخصصة، ادعُ أصدقاءك، ونافسهم مباشرة!'
+                : 'Create a custom group quiz room, invite friends, and compete live!'}
+            </Text>
+          </View>
+          <Text style={styles.arrow}>➔</Text>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );

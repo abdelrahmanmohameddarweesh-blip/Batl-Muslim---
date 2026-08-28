@@ -11,6 +11,7 @@ import {
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { questionBank, Question } from '../data/questions';
+import { Audio } from 'expo-av';
 
 const { width } = Dimensions.get('window');
 
@@ -51,6 +52,52 @@ export default function GroupQuizActiveScreen({ route, navigation }: any) {
   // Floating emojis list
   const [floatingEmojis, setFloatingEmojis] = useState<{ id: string; emoji: string; playerId: string; xOffset: number }[]>([]);
   const emojiIdCounter = useRef(0);
+
+  // Countdown Overlay states
+  const [countdown, setCountdown] = useState<number | string | null>(3);
+  const countdownScale = useRef(new Animated.Value(0)).current;
+
+  // Sound play helper
+  const playBeepSound = async () => {
+    try {
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: 'https://assets.mixkit.co/active_storage/sfx/2568/2568-84.wav' }
+      );
+      await sound.playAsync();
+    } catch (e) {
+      console.warn('Audio play failed', e);
+    }
+  };
+
+  useEffect(() => {
+    if (countdown !== null) {
+      // Play beep sound
+      playBeepSound();
+
+      // Trigger scale animation (pop effect)
+      countdownScale.setValue(0);
+      Animated.spring(countdownScale, {
+        toValue: 2.2,
+        tension: 80,
+        friction: 6,
+        useNativeDriver: true,
+      }).start();
+
+      const timer = setTimeout(() => {
+        if (countdown === 3) {
+          setCountdown(2);
+        } else if (countdown === 2) {
+          setCountdown(1);
+        } else if (countdown === 1) {
+          setCountdown(language === 'ar' ? 'انطلق! ⚡' : 'GO! ⚡');
+        } else {
+          setCountdown(null);
+        }
+      }, 1000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [countdown]);
 
   // 1. Initial configuration: Load questions & initialize player scores
   useEffect(() => {
@@ -102,7 +149,7 @@ export default function GroupQuizActiveScreen({ route, navigation }: any) {
 
   // 2. Start timer & Bot answers simulation loop
   useEffect(() => {
-    if (questions.length > 0 && currentIdx < questions.length) {
+    if (questions.length > 0 && currentIdx < questions.length && countdown === null) {
       // Reset state for new question
       setTimeLeft(15);
       setSelectedOption(null);
@@ -412,6 +459,22 @@ export default function GroupQuizActiveScreen({ route, navigation }: any) {
             })}
         </ScrollView>
       </View>
+
+      {/* Full-screen Countdown Overlay */}
+      {countdown !== null && (
+        <View style={styles.countdownOverlay}>
+          <Animated.View
+            style={[
+              styles.countdownBox,
+              {
+                transform: [{ scale: countdownScale }],
+              },
+            ]}
+          >
+            <Text style={styles.countdownNumberText}>{countdown}</Text>
+          </Animated.View>
+        </View>
+      )}
     </View>
   );
 }
@@ -693,5 +756,25 @@ const getStyles = (colors: any) => StyleSheet.create({
     top: 4,
     left: 4,
     fontSize: 10,
+  },
+  countdownOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(17, 24, 39, 0.88)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  countdownBox: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  countdownNumberText: {
+    fontSize: 48,
+    fontWeight: '900',
+    color: '#F59E0B',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+    textShadowColor: 'rgba(245, 158, 11, 0.4)',
+    textShadowOffset: { width: 0, height: 4 },
+    textShadowRadius: 15,
   },
 });

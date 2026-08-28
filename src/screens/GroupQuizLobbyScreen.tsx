@@ -190,18 +190,38 @@ export default function GroupQuizLobbyScreen({ navigation }: any) {
 
             {/* Max players capacity selection */}
             <Text style={styles.label}>{language === 'ar' ? 'السعة القصوى للمشاركين' : 'Max Players Capacity'}</Text>
-            <View style={styles.optionGrid}>
-              {[2, 4, 8, 16, 32].map(cap => (
-                <TouchableOpacity
-                  key={cap}
-                  onPress={() => setSettings(prev => ({ ...prev, maxPlayers: cap }))}
-                  style={[styles.optionBadge, settings.maxPlayers === cap && styles.optionBadgeActive]}
-                >
-                  <Text style={[styles.optionText, settings.maxPlayers === cap && styles.optionTextActive]}>
-                    {cap} {language === 'ar' ? 'أبطال' : 'players'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+            <View style={styles.stepperContainer}>
+              <TouchableOpacity
+                onPress={() => setSettings(prev => ({ ...prev, maxPlayers: Math.max(2, prev.maxPlayers - 1) }))}
+                style={styles.stepperBtn}
+              >
+                <Text style={styles.stepperBtnText}>-</Text>
+              </TouchableOpacity>
+              
+              <TextInput
+                style={styles.stepperInput}
+                keyboardType="numeric"
+                value={String(settings.maxPlayers)}
+                onChangeText={(val) => {
+                  const num = parseInt(val, 10);
+                  if (!isNaN(num)) {
+                    setSettings(prev => ({ ...prev, maxPlayers: Math.max(2, Math.min(100, num)) }));
+                  } else if (val === '') {
+                    setSettings(prev => ({ ...prev, maxPlayers: 2 }));
+                  }
+                }}
+              />
+
+              <TouchableOpacity
+                onPress={() => setSettings(prev => ({ ...prev, maxPlayers: Math.min(100, prev.maxPlayers + 1) }))}
+                style={styles.stepperBtn}
+              >
+                <Text style={styles.stepperBtnText}>+</Text>
+              </TouchableOpacity>
+              
+              <Text style={styles.stepperSuffix}>
+                {language === 'ar' ? 'أبطال' : 'players'}
+              </Text>
             </View>
 
             {/* Room Privacy selection */}
@@ -497,5 +517,44 @@ const getStyles = (colors: any) => StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
     fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+  stepperContainer: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 8,
+  },
+  stepperBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#E5E7EB',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+  },
+  stepperBtnText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#374151',
+  },
+  stepperInput: {
+    width: 60,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#D1D5DB',
+    textAlign: 'center',
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  stepperSuffix: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#4B5563',
+    fontFamily: 'IBMPlexSansArabic-Medium',
+    marginRight: 8,
   },
 });

@@ -25,8 +25,8 @@ export default function QuranAssessmentScreen({ navigation }: any) {
   const { colors } = useTheme();
   const { language, formatNumber } = useLanguage();
 
-  // Screen State: 'lobby' | 'introduction' | 'assessment' | 'results'
   const [screenState, setScreenState] = useState<'lobby' | 'introduction' | 'assessment' | 'results'>('lobby');
+  const [wrongAnswers, setWrongAnswers] = useState<{ question: string; selected: string; correct: string }[]>([]);
 
   // Lobby Configuration Choices
   const [filterMode, setFilterMode] = useState<'juz' | 'surah'>('juz');
@@ -139,7 +139,6 @@ export default function QuranAssessmentScreen({ navigation }: any) {
     setBuiltWords(prev => prev.filter(w => w.id !== word.id));
     setWordPool(prev => [...prev, word]);
   };
-
   const handleSubmitBuilder = () => {
     const constructed = builtWords.map(w => w.text).join(' ').trim();
     const correct = currentQuestion.answer.trim();
@@ -166,9 +165,13 @@ export default function QuranAssessmentScreen({ navigation }: any) {
           ? 'الترتيب غير صحيح. يرجى مراجعة الترتيب الصحيح للآية أدناه:'
           : 'Incorrect word order. Please review the correct order below:'
       );
+      setWrongAnswers(prev => [...prev, {
+        question: currentQuestion.prompt,
+        selected: constructed || (language === 'ar' ? 'فارغ' : 'Empty'),
+        correct: correct
+      }]);
     }
   };
-
   // Advanced Quran Question Generator Engine (Eliminates text overlap clues completely)
   const compileQuestionsFromVerses = (versesSource: QuranVerse[]): DynamicQuestion[] => {
     // Helper to generate precision endings distractors (Mutashabihat style)
@@ -622,8 +625,7 @@ export default function QuranAssessmentScreen({ navigation }: any) {
     setAnswered(false);
     setCorrectCount(0);
     setFeedback('');
-    
-
+    setWrongAnswers([]);
 
     // Show Test Introduction Screen
     setScreenState('introduction');
@@ -646,6 +648,11 @@ export default function QuranAssessmentScreen({ navigation }: any) {
       setFeedback(language === 'ar' ? 'إجابة صحيحة! أحسنت وحفظك مبارك 🌟' : 'Correct answer! Excellent memorization 🌟');
     } else {
       setFeedback(language === 'ar' ? 'إجابة غير صحيحة. الإجابة الصحيحة هي:' : 'Incorrect answer. The correct answer is:');
+      setWrongAnswers(prev => [...prev, {
+        question: currentQuestion.prompt,
+        selected: selectedAnswer,
+        correct: currentQuestion.answer
+      }]);
     }
   };
 
@@ -1154,6 +1161,34 @@ export default function QuranAssessmentScreen({ navigation }: any) {
                 </Text>
               </View>
             </View>
+
+            {/* Wrong Answers Report Card */}
+            {wrongAnswers.length > 0 && (
+              <View style={styles.wrongAnswersBlock}>
+                <Text style={styles.wrongAnswersBlockTitle}>
+                  {language === 'ar' ? '📋 تقرير الأخطاء التي تحتاج لتثبيت ومراجعة:' : '📋 Incorrect Answers Review:'}
+                </Text>
+                {wrongAnswers.map((item, idx) => (
+                  <View key={idx} style={styles.wrongAnswerCard}>
+                    <Text style={styles.wrongAnswerQuestion}>{item.question}</Text>
+                    
+                    <View style={styles.wrongAnswerRow}>
+                      <Text style={styles.wrongAnswerLabel}>{language === 'ar' ? 'إجابتك:' : 'Your Answer:'}</Text>
+                      <View style={styles.answerTextCardWrong}>
+                        <Text style={styles.answerTextWrong}>{item.selected} ❌</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.wrongAnswerRow}>
+                      <Text style={styles.wrongAnswerLabel}>{language === 'ar' ? 'الإجابة الصحيحة:' : 'Correct Answer:'}</Text>
+                      <View style={styles.answerTextCardCorrect}>
+                        <Text style={styles.answerTextCorrect}>{item.correct} ✅</Text>
+                      </View>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
 
             {/* Share Log Call-to-action */}
             <TouchableOpacity style={styles.shareReportBtn} onPress={handleShareResults} activeOpacity={0.85}>
@@ -1795,6 +1830,79 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+  wrongAnswersBlock: {
+    width: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginVertical: 16,
+  },
+  wrongAnswersBlockTitle: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#1F2937',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+    textAlign: 'right',
+    marginBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+    paddingBottom: 8,
+  },
+  wrongAnswerCard: {
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  wrongAnswerQuestion: {
+    fontSize: 13,
+    color: '#374151',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+    textAlign: 'right',
+    lineHeight: 20,
+    marginBottom: 10,
+  },
+  wrongAnswerRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  wrongAnswerLabel: {
+    fontSize: 11.5,
+    color: '#6B7280',
+    fontFamily: 'IBMPlexSansArabic-Medium',
+  },
+  answerTextCardWrong: {
+    backgroundColor: '#FCE8E6',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FAD2CF',
+  },
+  answerTextWrong: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#C5221F',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+  answerTextCardCorrect: {
+    backgroundColor: '#E6F4EA',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#C3E6CB',
+  },
+  answerTextCorrect: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#137333',
     fontFamily: 'IBMPlexSansArabic-Bold',
   },
 });

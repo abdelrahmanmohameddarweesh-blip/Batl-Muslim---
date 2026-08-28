@@ -25,6 +25,8 @@ export default function MutashabihatScreen({ navigation }: any) {
   const [profile, setProfile] = useState<any>(null);
   const [isFlying, setIsFlying] = useState(false);
 
+  const [wrongAnswers, setWrongAnswers] = useState<{ question: string; selected: string; correct: string }[]>([]);
+
   // Snapshot trackers for newly unlocked titles pop-up
   const [initialTitles, setInitialTitles] = useState<string[]>([]);
   const [showUnlockModal, setShowUnlockModal] = useState(false);
@@ -65,6 +67,7 @@ export default function MutashabihatScreen({ navigation }: any) {
     setSelectedAnswer('');
     setAnswered(false);
     setCorrectCount(0);
+    setWrongAnswers([]);
     setScreenState('quiz');
   };
 
@@ -144,6 +147,12 @@ export default function MutashabihatScreen({ navigation }: any) {
           });
         });
       });
+    } else {
+      setWrongAnswers(prev => [...prev, {
+        question: currentQuestion.prompt,
+        selected: option,
+        correct: currentQuestion.answer
+      }]);
     }
   };
 
@@ -164,6 +173,7 @@ export default function MutashabihatScreen({ navigation }: any) {
     setSelectedAnswer('');
     setAnswered(false);
     setCorrectCount(0);
+    setWrongAnswers([]);
     loadProfile();
   };
 
@@ -426,6 +436,32 @@ export default function MutashabihatScreen({ navigation }: any) {
               🎉 لقد حصلت على +{earnedSiraj} سراج أضيفت لمحفظتك
             </Text>
           </View>
+
+          {/* Wrong answers report card block */}
+          {wrongAnswers.length > 0 && (
+            <View style={styles.wrongAnswersBlock}>
+              <Text style={styles.wrongAnswersBlockTitle}>📋 تقرير الإجابات التي تحتاج مراجعة:</Text>
+              {wrongAnswers.map((item, idx) => (
+                <View key={idx} style={styles.wrongAnswerCard}>
+                  <Text style={styles.wrongAnswerQuestion}>{item.question}</Text>
+                  
+                  <View style={styles.wrongAnswerRow}>
+                    <Text style={styles.wrongAnswerLabel}>إجابتك:</Text>
+                    <View style={styles.answerTextCardWrong}>
+                      <Text style={styles.answerTextWrong}>{item.selected} ❌</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.wrongAnswerRow}>
+                    <Text style={styles.wrongAnswerLabel}>الإجابة الصحيحة:</Text>
+                    <View style={styles.answerTextCardCorrect}>
+                      <Text style={styles.answerTextCorrect}>{item.correct} ✅</Text>
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
 
           <TouchableOpacity
             style={[styles.startBtn, { backgroundColor: colors.primary, width: '100%' }]}
@@ -864,5 +900,78 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     fontFamily: 'IBMPlexSansArabic-Medium',
+  },
+  wrongAnswersBlock: {
+    width: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 20,
+  },
+  wrongAnswersBlockTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1F2937',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+    textAlign: 'right',
+    marginBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+    paddingBottom: 8,
+  },
+  wrongAnswerCard: {
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  wrongAnswerQuestion: {
+    fontSize: 13.5,
+    color: '#374151',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+    textAlign: 'right',
+    lineHeight: 20,
+    marginBottom: 10,
+  },
+  wrongAnswerRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  wrongAnswerLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontFamily: 'IBMPlexSansArabic-Medium',
+  },
+  answerTextCardWrong: {
+    backgroundColor: '#FCE8E6',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FAD2CF',
+  },
+  answerTextWrong: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#C5221F',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+  answerTextCardCorrect: {
+    backgroundColor: '#E6F4EA',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#C3E6CB',
+  },
+  answerTextCorrect: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#137333',
+    fontFamily: 'IBMPlexSansArabic-Bold',
   },
 });

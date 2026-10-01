@@ -9,6 +9,7 @@ export type AppUser = {
   countryCode?: string;
   phone?: string;
   age?: number;
+  gender?: 'male' | 'female' | '';
   photoUri?: string;
   championshipScore?: number;
   championshipTime?: number;
@@ -58,7 +59,7 @@ async function readCurrentUser(): Promise<AppUser | null> {
   }
 }
 
-export async function signInAnonymous(displayName: string, phone: string, country: string, age?: number, photoUri?: string): Promise<AppUser> {
+export async function signInAnonymous(displayName: string, phone: string, country: string, age?: number, photoUri?: string, gender?: 'male' | 'female' | ''): Promise<AppUser> {
   const name = normalizeDisplayName(displayName);
   const existingUser = await readCurrentUser();
   const players = await readPlayers();
@@ -72,6 +73,7 @@ export async function signInAnonymous(displayName: string, phone: string, countr
     phone: phone.trim() || undefined,
     country: country.trim() || undefined,
     age: age || undefined,
+    gender: gender || undefined,
     photoUri: photoUri || undefined,
     sirajBalance: players[uid]?.sirajBalance ?? existingUser?.sirajBalance ?? 50,
     unlockedItems: players[uid]?.unlockedItems ?? existingUser?.unlockedItems ?? [],

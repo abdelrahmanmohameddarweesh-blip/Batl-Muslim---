@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Share, Platform } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { readCommunityPosts, saveCommunityPosts, type CommunityPost } from '../data/communityFeed';
@@ -30,19 +30,20 @@ const countriesList = [
 ];
 
 export default function CommunityFeedScreen({ navigation }: any) {
-  const { colors, isLightMode } = useTheme();
+  const { colors } = useTheme();
   const { language } = useLanguage();
   const styles = getStyles(colors);
 
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [loading, setLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [playingPostId, setPlayingPostId] = useState<string | null>(null);
 
   // Active Filters States
   const [filterReader, setFilterReader] = useState<string>('ALL');
   const [filterCountry, setFilterCountry] = useState<string>('ALL');
   const [filterStyle, setFilterStyle] = useState<string>('ALL');
-  const [filterAccuracy, setFilterAccuracy] = useState<string>('ALL'); // 'ALL' | '90' | '80' | '70'
+  const [filterAccuracy, setFilterAccuracy] = useState<string>('ALL');
 
   const loadFeed = async () => {
     setLoading(true);
@@ -102,8 +103,47 @@ export default function CommunityFeedScreen({ navigation }: any) {
     await saveCommunityPosts(updated);
   };
 
+  // Share recording card
+  const handleSharePost = async (post: CommunityPost) => {
+    try {
+      const message = `🎙️ استمع إلى تلاوة ${post.userName} المباركة لـ [${post.surahName}] عبر تطبيق *بطل مسلم* 🏆:\n\n⭐ نسبة التطابق: ${post.matchPercentage}%\n\nحمل التطبيق واستمع للتلاوات الحية الآن! 🚀`;
+      await Share.share({ message });
+
+      // Increment shares count
+      const updated = posts.map(p => {
+        if (p.id === post.id) {
+          return { ...p, sharesCount: (p.sharesCount || 0) + 1 };
+        }
+        return p;
+      });
+      setPosts(updated);
+      await saveCommunityPosts(updated);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Toggle audio playback simulation & count plays
+  const handleTogglePlay = (post: CommunityPost) => {
+    if (playingPostId === post.id) {
+      setPlayingPostId(null);
+    } else {
+      setPlayingPostId(post.id);
+      // Increment plays count
+      const updated = posts.map(p => {
+        if (p.id === post.id) {
+          return { ...p, playsCount: (p.playsCount || 0) + 1 };
+        }
+        return p;
+      });
+      setPosts(updated);
+      saveCommunityPosts(updated);
+    }
+  };
+
   const getReaderAvatarSymbol = (readerId: string) => {
     switch (readerId) {
+      case 'free_voice': return '🎤';
       case 'abdulbasit': return '🕌';
       case 'minshawi': return '📖';
       case 'husary': return '💡';
@@ -114,26 +154,26 @@ export default function CommunityFeedScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      {/* Feed Header */}
+      {/* 1. Feed Header (Fixed safe top offset so title and description appear cleanly) */}
       <View style={styles.feedHeader}>
         <Text style={styles.feedTitle}>
-          {language === 'ar' ? 'منبر التلاوة 🎙️' : 'Recitation Feed 🎙️'}
+          {language === 'ar' ? 'منبر التلاوة والمجتمع 🎙️' : 'Recitation Community Feed 🎙️'}
         </Text>
         <Text style={styles.feedSubtitle}>
           {language === 'ar' 
-            ? 'تفاعل مع تلاوات زملائك، وقارن تطابق تلاوتك مع كبار القراء' 
-            : 'Listen to recitations, react to top voices, and share your own'}
+            ? 'تفاعل مع تلاوات زملائك، استمع للأصوات العذبة، وسجّل تلاوتك الخاصة أو محاكاة القراء' 
+            : 'Listen to recitations, react to top voices, and share your own recitations'}
         </Text>
       </View>
 
-      {/* Floating Action / Filter Top Bar */}
+      {/* 2. Top Actions Bar */}
       <View style={styles.topActionsBar}>
         <TouchableOpacity
           style={styles.recordActionBtn}
           onPress={() => navigation.navigate('Voice')}
           activeOpacity={0.85}
         >
-          <Text style={styles.recordActionBtnText}>🎙️ {language === 'ar' ? 'سجّل تلاوتك' : 'Record Recitation'}</Text>
+          <Text style={styles.recordActionBtnText}>🎙️ {language === 'ar' ? 'سجّل تلاوتك الآن' : 'Record Recitation'}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -147,7 +187,7 @@ export default function CommunityFeedScreen({ navigation }: any) {
         </TouchableOpacity>
       </View>
 
-      {/* Modern Filter Sheet */}
+      {/* 3. Filter Sheet */}
       {showFilters && (
         <View style={styles.filterSheet}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
@@ -234,7 +274,7 @@ export default function CommunityFeedScreen({ navigation }: any) {
         </View>
       )}
 
-      {/* Social Timeline */}
+      {/* 4. Social Timeline with Redesigned Recitation Cards */}
       <ScrollView style={styles.timelineScroll} contentContainerStyle={styles.timelineContent} showsVerticalScrollIndicator={false}>
         {loading ? (
           <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
@@ -250,10 +290,10 @@ export default function CommunityFeedScreen({ navigation }: any) {
         ) : (
           filteredPosts.map(post => (
             <View key={post.id} style={styles.postCard}>
-              {/* Profile details header matching UI mockup */}
+              {/* Top Profile Header */}
               <View style={styles.profileRow}>
-                <TouchableOpacity style={styles.moreIcon} activeOpacity={0.7}>
-                  <Text style={styles.moreIconText}>•••</Text>
+                <TouchableOpacity style={styles.moreIcon} onPress={() => handleSharePost(post)} activeOpacity={0.7}>
+                  <Text style={{ fontSize: 16 }}>🔗</Text>
                 </TouchableOpacity>
 
                 <View style={styles.profileMeta}>
@@ -261,7 +301,7 @@ export default function CommunityFeedScreen({ navigation }: any) {
                     {post.userName} {getFlagEmoji(post.countryCode)}
                   </Text>
                   <View style={styles.levelBadgePill}>
-                    <Text style={styles.levelBadgeText}>Level {post.userLevel}</Text>
+                    <Text style={styles.levelBadgeText}>المستوى {post.userLevel}</Text>
                   </View>
                 </View>
                 
@@ -272,51 +312,56 @@ export default function CommunityFeedScreen({ navigation }: any) {
                 </View>
               </View>
 
-              {/* Quranic Text details */}
+              {/* Redesigned Card Body (No Ayah text, focusing on Surah, Duration, Ayahs count, Plays, Shares) */}
               <View style={styles.quranCard}>
-                <Text style={styles.ayahSurah}>{post.surahName}</Text>
-                <Text style={styles.ayahTextCalligraphy}>
-                  {post.surahName === 'سورة الكهف' && '﴿ إِنَّهُمْ فِتْيَةٌ آمَنُوا بِرَبِّهِمْ وَزِدْنَاهُمْ هُدًى ﴾'}
-                  {post.surahName === 'سورة يس' && '﴿ يس ﴾'}
-                  {post.surahName === 'سورة الملك' && '﴿ تَبَارَكَ الَّذِي بِيَدِهِ الْمُلْكُ وَهُوَ عَلَىٰ كُلِّ شَيْءٍ قَدِيرٌ ﴾'}
-                  {post.surahName === 'سورة الرحمن' && '﴿ الرَّحْمَٰنُ ﴾'}
-                  {post.surahName !== 'سورة الكهف' && post.surahName !== 'سورة يس' && post.surahName !== 'سورة الملك' && post.surahName !== 'سورة الرحمن' && '﴿ قُلْ هُوَ اللَّهُ أَحَدٌ ﴾'}
-                </Text>
-
-                {/* Score and Qari Badge */}
-                <View style={styles.scoreRow}>
-                  <View style={styles.qariBadge}>
-                    <Text style={styles.qariBadgeText}>
-                      👤 {language === 'ar' ? 'القارئ:' : 'Qari:'} {post.readerName} ({post.style === 'murattal' ? 'مرتل' : 'مجوّد'})
+                {/* Header Surah Title */}
+                <View style={styles.surahHeaderRow}>
+                  <Text style={styles.surahTitleText}>📖 {post.surahName}</Text>
+                  <View style={[styles.matchBadge, { backgroundColor: post.readerId === 'free_voice' ? '#F0FDFA' : '#ECFDF5' }]}>
+                    <Text style={[styles.matchBadgeText, { color: post.readerId === 'free_voice' ? '#0D9488' : '#059669' }]}>
+                      {post.readerId === 'free_voice' ? '🎤 تلاوة حرّة' : `⭐ ${post.matchPercentage}% تطابق`}
                     </Text>
                   </View>
-                  <View style={styles.matchBadge}>
-                    <Text style={styles.matchBadgeText}>⭐ {post.matchPercentage}% Match</Text>
-                  </View>
                 </View>
 
-                {/* Simulated Audio Progress Waveform matching generated mockup */}
+                {/* Speaker/Reader info */}
+                <Text style={styles.readerSubText}>
+                  🎙️ {post.readerName} ({post.style === 'murattal' ? 'مرتل' : 'مجوّد'})
+                </Text>
+
+                {/* Animated Waveform Audio Player Box */}
                 <View style={styles.waveformContainer}>
-                  <TouchableOpacity style={styles.playBtn} activeOpacity={0.8}>
-                    <Text style={styles.playBtnIcon}>▶️</Text>
+                  <TouchableOpacity
+                    style={styles.playBtn}
+                    onPress={() => handleTogglePlay(post)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.playBtnIcon}>{playingPostId === post.id ? '⏸️' : '▶️'}</Text>
                   </TouchableOpacity>
+
                   <View style={styles.barsRow}>
                     {[12, 18, 28, 22, 10, 16, 26, 32, 22, 12, 18, 30, 24, 14, 20, 28, 22, 12, 8].map((h, i) => (
-                      <View key={i} style={[styles.waveBar, { height: h }]} />
+                      <View
+                        key={i}
+                        style={[
+                          styles.waveBar,
+                          { height: playingPostId === post.id ? Math.max(6, (h + (i % 3) * 6) % 34) : h },
+                          playingPostId === post.id && { backgroundColor: colors.primary }
+                        ]}
+                      />
                     ))}
                   </View>
-                  <Text style={styles.durationLabel}>0:06</Text>
+                </View>
+
+                {/* Stats Counters Sub-row */}
+                <View style={styles.countersSubRow}>
+                  <Text style={styles.countersSubText}>
+                    ▶️ {post.playsCount || 420} {language === 'ar' ? 'استماع' : 'plays'}
+                  </Text>
                 </View>
               </View>
 
-              {/* Views, comments counter sub-row */}
-              <View style={styles.countersSubRow}>
-                <Text style={styles.countersSubText}>
-                  1,420 Views  •  12 Comments  •  23 Shares
-                </Text>
-              </View>
-
-              {/* Social Reactions Upvote Buttons with overlapping badges */}
+              {/* Social Reaction Buttons & Interactive Share Button */}
               <View style={styles.reactionActionRow}>
                 <TouchableOpacity
                   style={[styles.reactionBtn, post.hasVotedMashallah && styles.reactionBtnActive]}
@@ -339,6 +384,14 @@ export default function CommunityFeedScreen({ navigation }: any) {
                   </View>
                   <Text style={styles.reactionLabel}>📿 {language === 'ar' ? 'سبحان الله' : 'Subhanallah'}</Text>
                 </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.shareBtnCard}
+                  onPress={() => handleSharePost(post)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.shareBtnCardText}>🔗 {language === 'ar' ? 'مشاركة' : 'Share'} ({post.sharesCount || 0})</Text>
+                </TouchableOpacity>
               </View>
             </View>
           ))
@@ -357,7 +410,7 @@ const getStyles = (colors: any) => StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: Platform.OS === 'ios' ? 60 : 50,
   },
   feedHeader: {
     alignItems: 'center',
@@ -369,13 +422,15 @@ const getStyles = (colors: any) => StyleSheet.create({
     color: colors.primary,
     textAlign: 'center',
     marginBottom: 4,
+    fontFamily: 'IBMPlexSansArabic-Bold',
   },
   feedSubtitle: {
     fontSize: 12,
     color: colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 16,
+    lineHeight: 17,
     paddingHorizontal: 12,
+    fontFamily: 'IBMPlexSansArabic-Regular',
   },
   topActionsBar: {
     flexDirection: 'row-reverse',
@@ -398,6 +453,7 @@ const getStyles = (colors: any) => StyleSheet.create({
     fontSize: 13,
     fontWeight: '900',
     color: colors.surface,
+    fontFamily: 'IBMPlexSansArabic-Bold',
   },
   filterToggleBtn: {
     flex: 1,
@@ -416,10 +472,12 @@ const getStyles = (colors: any) => StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     color: colors.textSecondary,
+    fontFamily: 'IBMPlexSansArabic-Bold',
   },
   filterToggleBtnTextActive: {
     color: colors.primary,
     fontWeight: '900',
+    fontFamily: 'IBMPlexSansArabic-Bold',
   },
   filterSheet: {
     backgroundColor: colors.surface,
@@ -430,7 +488,7 @@ const getStyles = (colors: any) => StyleSheet.create({
     marginBottom: 14,
   },
   filterScroll: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     gap: 20,
   },
   filterGroup: {
@@ -440,9 +498,11 @@ const getStyles = (colors: any) => StyleSheet.create({
     fontSize: 11,
     fontWeight: '800',
     color: colors.textPrimary,
+    fontFamily: 'IBMPlexSansArabic-Bold',
+    textAlign: 'right',
   },
   badgeRow: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     gap: 6,
   },
   filterBadge: {
@@ -461,10 +521,12 @@ const getStyles = (colors: any) => StyleSheet.create({
     fontSize: 10,
     color: colors.textSecondary,
     fontWeight: '800',
+    fontFamily: 'IBMPlexSansArabic-Bold',
   },
   filterBadgeTextActive: {
     color: colors.surface,
     fontWeight: '900',
+    fontFamily: 'IBMPlexSansArabic-Bold',
   },
   timelineScroll: {
     flex: 1,
@@ -489,6 +551,7 @@ const getStyles = (colors: any) => StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: 30,
     fontWeight: '700',
+    fontFamily: 'IBMPlexSansArabic-Medium',
   },
   postCard: {
     backgroundColor: colors.surface,
@@ -498,202 +561,225 @@ const getStyles = (colors: any) => StyleSheet.create({
     borderColor: colors.border,
     shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 3,
   },
   profileRow: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     alignItems: 'center',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
     marginBottom: 12,
-    gap: 12,
   },
   moreIcon: {
-    marginRight: 'auto',
-    paddingHorizontal: 6,
-  },
-  moreIconText: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    fontWeight: '900',
+    padding: 6,
   },
   profileMeta: {
-    alignItems: 'flex-end',
+    flex: 1,
+    marginRight: 10,
+    alignItems: 'flex-start',
   },
   postUserName: {
     fontSize: 14,
     fontWeight: '800',
     color: colors.textPrimary,
+    fontFamily: 'IBMPlexSansArabic-Bold',
+    textAlign: 'right',
   },
   levelBadgePill: {
-    backgroundColor: colors.accentLight,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 8,
-    marginTop: 4,
-    alignSelf: 'flex-end',
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    marginTop: 2,
   },
   levelBadgeText: {
-    fontSize: 9,
-    color: colors.accent,
-    fontWeight: '900',
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: colors.primary,
+    fontFamily: 'IBMPlexSansArabic-Bold',
   },
   profileAvatar: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: colors.primaryTint,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: colors.primary,
+    borderColor: colors.primaryLight,
   },
   profileAvatarText: {
     fontSize: 22,
   },
   quranCard: {
     backgroundColor: colors.background,
-    borderRadius: 18,
-    padding: 16,
-    borderWidth: 1.5,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
     borderColor: colors.border,
-    gap: 12,
-    marginBottom: 10,
+    marginBottom: 12,
   },
-  ayahSurah: {
-    fontSize: 11,
-    color: colors.textSecondary,
-    fontWeight: '800',
-    textAlign: 'right',
-  },
-  ayahTextCalligraphy: {
-    fontSize: 16,
-    color: colors.textPrimary,
-    lineHeight: 24,
-    textAlign: 'right',
-    fontWeight: '900',
-  },
-  scoreRow: {
+  surahHeaderRow: {
     flexDirection: 'row-reverse',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 4,
+    marginBottom: 6,
   },
-  qariBadge: {
-    backgroundColor: colors.neutralTint,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+  surahTitleText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: colors.primary,
+    fontFamily: 'IBMPlexSansArabic-Bold',
+    textAlign: 'right',
   },
-  qariBadgeText: {
-    fontSize: 9,
+  readerSubText: {
+    fontSize: 11.5,
     color: colors.textSecondary,
+    fontFamily: 'IBMPlexSansArabic-Medium',
+    textAlign: 'right',
+    marginBottom: 10,
+  },
+  metaChipsRow: {
+    flexDirection: 'row-reverse',
+    gap: 8,
+    marginBottom: 12,
+  },
+  metaChip: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  metaChipText: {
+    fontSize: 10.5,
     fontWeight: '700',
+    color: colors.textPrimary,
+    fontFamily: 'IBMPlexSansArabic-Bold',
   },
   matchBadge: {
-    backgroundColor: colors.primaryLight,
     paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    borderWidth: 0.5,
-    borderColor: colors.primary,
+    paddingVertical: 3,
+    borderRadius: 10,
   },
   matchBadgeText: {
-    fontSize: 9,
-    color: colors.primary,
+    fontSize: 10,
     fontWeight: '800',
+    fontFamily: 'IBMPlexSansArabic-Bold',
   },
   waveformContainer: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     alignItems: 'center',
     backgroundColor: colors.surface,
+    borderRadius: 14,
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 10,
     gap: 10,
-    marginTop: 6,
   },
   playBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.accent,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
   playBtnIcon: {
-    fontSize: 11,
-    marginLeft: 1,
+    fontSize: 16,
   },
   barsRow: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     alignItems: 'center',
-    gap: 3,
+    justifyContent: 'space-between',
+    height: 36,
   },
   waveBar: {
     width: 3,
-    backgroundColor: colors.primary,
-    borderRadius: 1.5,
-    opacity: 0.75,
+    backgroundColor: colors.border,
+    borderRadius: 2,
   },
   durationLabel: {
-    fontSize: 9,
+    fontSize: 10.5,
+    fontWeight: '700',
     color: colors.textSecondary,
-    fontWeight: '800',
+    fontFamily: 'IBMPlexSansArabic-Bold',
   },
   countersSubRow: {
-    marginBottom: 14,
-    paddingHorizontal: 4,
+    flexDirection: 'row-reverse',
+    justifyContent: 'flex-start',
+    paddingTop: 4,
   },
   countersSubText: {
-    fontSize: 10,
+    fontSize: 11,
     color: colors.textSecondary,
-    fontWeight: '700',
+    fontFamily: 'IBMPlexSansArabic-Medium',
     textAlign: 'right',
   },
   reactionActionRow: {
     flexDirection: 'row-reverse',
-    gap: 12,
+    justifyContent: 'space-between',
+    gap: 8,
+    marginTop: 4,
   },
   reactionBtn: {
     flex: 1,
-    backgroundColor: colors.neutralTint,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: colors.background,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingVertical: 10,
-    borderRadius: 12,
-    alignItems: 'center',
-    position: 'relative',
+    gap: 6,
   },
   reactionBtnActive: {
     backgroundColor: colors.primaryLight,
     borderColor: colors.primary,
   },
-  reactionLabel: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: colors.textPrimary,
-  },
   reactionBadgeCount: {
-    position: 'absolute',
-    top: -8,
-    right: 12,
-    backgroundColor: colors.accent,
+    backgroundColor: colors.surface,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.surface,
-    zIndex: 1,
   },
   reactionBadgeCountText: {
-    fontSize: 8,
-    fontWeight: '900',
-    color: colors.surface,
+    fontSize: 10,
+    fontWeight: '800',
+    color: colors.primary,
+    fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+  reactionLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+  shareBtnCard: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  shareBtnCardText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    fontFamily: 'IBMPlexSansArabic-Bold',
   },
   adWrapper: {
-    marginTop: 10,
+    marginTop: 8,
   },
 });

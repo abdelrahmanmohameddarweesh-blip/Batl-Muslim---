@@ -8,6 +8,7 @@ type AuthUser = {
   phone?: string;
   country?: string;
   age?: number;
+  gender?: 'male' | 'female' | '';
   photoUri?: string;
   sirajBalance?: number;
   unlockedItems?: string[];
@@ -21,7 +22,7 @@ type AuthUser = {
 type AuthContextValue = {
   user: AuthUser | null;
   loading: boolean;
-  login: (displayName: string, phone: string, country: string, age?: number, photoUri?: string) => Promise<void>;
+  login: (displayName: string, phone: string, country: string, age?: number, photoUri?: string, gender?: 'male' | 'female' | '') => Promise<void>;
   logout: () => Promise<void>;
   updateUserFields: (fields: Partial<AuthUser>) => void;
 };
@@ -38,10 +39,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const login = async (displayName: string, phone: string, country: string, age?: number, photoUri?: string) => {
+  const login = async (displayName: string, phone: string, country: string, age?: number, photoUri?: string, gender?: 'male' | 'female' | '') => {
     setLoading(true);
     try {
-      const authUser = await signInAnonymous(displayName, phone, country, age, photoUri);
+      const authUser = await signInAnonymous(displayName, phone, country, age, photoUri, gender);
       setUser(authUser);
     } catch (error) {
       const fallbackUser = {
@@ -50,6 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         phone: phone || undefined,
         country: country || undefined,
         age: age || undefined,
+        gender: gender || undefined,
         photoUri: photoUri || undefined,
         score: 0,
         sirajBalance: 50,

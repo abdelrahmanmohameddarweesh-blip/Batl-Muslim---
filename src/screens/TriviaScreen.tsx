@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, Share } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, Share, Animated, Dimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { questionBank, type Question } from '../data/questions';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { saveUserScore, getCurrentUserProfile, saveUserChampionshipResult } from '../firebase/auth';
+import { saveUserScore, getCurrentUserProfile, saveUserChampionshipResult, addSirajPoints, incrementCorrectAnswers } from '../firebase/auth';
 import { Colors } from '../config/colors';
 import { useInterstitialAd } from '../config/adsService';
 import { AdMobConfig } from '../config/ads';
@@ -34,10 +34,35 @@ export default function TriviaScreen({ navigation, route }: any) {
   const [gameState, setGameState] = useState<'config' | 'quiz' | 'completed'>('config');
   const [pendingScore, setPendingScore] = useState<number | null>(null);
 
+  // Siraj and animation states
+  const [profile, setProfile] = useState<any>(null);
+  const [isFlying, setIsFlying] = useState(false);
+  const lanternScale = useRef(new Animated.Value(0)).current;
+  const lanternPos = useRef(new Animated.ValueXY({ x: 0, y: 150 })).current;
+  const lanternOpacity = useRef(new Animated.Value(1)).current;
+  const walletScale = useRef(new Animated.Value(1)).current;
+
+  const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+  const loadProfile = async () => {
+    if (user?.uid) {
+      try {
+        const data = await getCurrentUserProfile(user.uid);
+        setProfile(data);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
+
+  useEffect(() => {
+    loadProfile();
+  }, [user?.uid]);
+
   // Timers
   const [secondsElapsed, setSecondsElapsed] = useState(0);
   const [countdownTimeLeft, setCountdownTimeLeft] = useState(5);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Interstitial Ad setup
   const { isLoaded, isClosed, load, show } = useInterstitialAd(AdMobConfig.interstitialAdUnitID, {
@@ -174,7 +199,7 @@ export default function TriviaScreen({ navigation, route }: any) {
 
   // Championship Timer Effect
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
+    let interval: ReturnType<typeof setInterval> | null = null;
     if (gameState === 'quiz' && route?.params?.mode === 'championship' && !answered) {
       interval = setInterval(() => {
         setSecondsElapsed((prev) => prev + 0.1);
@@ -187,7 +212,7 @@ export default function TriviaScreen({ navigation, route }: any) {
 
   // Countdown Timer Effect (For Hardcore and Championship modes)
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
+    let interval: ReturnType<typeof setInterval> | null = null;
     const mode = route?.params?.mode;
     if (gameState === 'quiz' && (mode === 'hardcore' || mode === 'championship') && !answered) {
       const maxSeconds = mode === 'hardcore' ? 5 : 12;
@@ -282,6 +307,69 @@ export default function TriviaScreen({ navigation, route }: any) {
     setExplanation(currentQuestion.explanation);
     setAnswered(true);
 
+    if (isCorrect) {
+      // Start flying lantern animation
+      setIsFlying(true);
+      lanternScale.setValue(0);
+      lanternPos.setValue({ x: 0, y: 120 });
+      lanternOpacity.setValue(1);
+
+      // 1. Pop scale in center
+      Animated.spring(lanternScale, {
+        toValue: 1.5,
+        friction: 5,
+        useNativeDriver: false,
+      }).start(() => {
+        // 2. Fly to top left wallet
+        Animated.delay(400).start(() => {
+          Animated.parallel([
+            Animated.timing(lanternPos.x, {
+              toValue: -(SCREEN_WIDTH / 2 - 45),
+              duration: 700,
+              useNativeDriver: false,
+            }),
+            Animated.timing(lanternPos.y, {
+              toValue: -SCREEN_HEIGHT / 2 + 100, // align with wallet y
+              duration: 700,
+              useNativeDriver: false,
+            }),
+            Animated.timing(lanternScale, {
+              toValue: 0.3,
+              duration: 700,
+              useNativeDriver: false,
+            }),
+            Animated.timing(lanternOpacity, {
+              toValue: 0,
+              duration: 700,
+              useNativeDriver: false,
+            })
+          ]).start(async () => {
+            setIsFlying(false);
+            
+            // Bounce wallet
+            Animated.sequence([
+              Animated.timing(walletScale, { toValue: 1.3, duration: 100, useNativeDriver: false }),
+              Animated.timing(walletScale, { toValue: 1.0, duration: 100, useNativeDriver: false })
+            ]).start();
+
+            // Sync user profile score and Siraj points
+            if (user?.uid) {
+              try {
+                // Increment trivia correct count (since trivia category)
+                await incrementCorrectAnswers(user.uid, 'trivia', 1);
+                
+                // Add 5 Siraj Points
+                const updated = await addSirajPoints(user.uid, 5);
+                setProfile(updated);
+              } catch (err) {
+                console.error(err);
+              }
+            }
+          });
+        });
+      });
+    }
+
     if (!isCorrect && route?.params?.mode === 'hardcore') {
       // Hardcore Mode: Sudden death! Ends the game immediately upon mistake.
       setTimeout(() => {
@@ -342,260 +430,272 @@ export default function TriviaScreen({ navigation, route }: any) {
   };
 
   return (
-    <ScrollView style={styles.outerContainer} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-      <View style={styles.container}>
+    <View style={{ flex: 1, backgroundColor: Colors.background }}>
+      {/* custom top header bar */}
+      <View style={styles.headerCustom}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => gameState === 'config' ? navigation.goBack() : handleBackToConfig()}>
+          <Text style={{ fontSize: 20, color: Colors.primary }}>➔</Text>
+        </TouchableOpacity>
         
-        {/* GAME STATE 1: Config Dashboard */}
-        {gameState === 'config' && (
-          <View style={styles.configCard}>
-            <Text style={styles.configHeaderTitle}>تخصيص تحدي المعرفة</Text>
-            <Text style={styles.configHeaderSub}>اختر مستوى الصعوبة، التصنيف، وعدد الأسئلة لبدء رحلة التحدي</Text>
+        <Text style={styles.headerTitle}>تحدي المعرفة الإسلامية</Text>
+
+        <Animated.View style={[styles.walletBadge, { transform: [{ scale: walletScale }] }]}>
+          <Text style={{ fontSize: 16, marginRight: 4 }}>🕯️</Text>
+          <Text style={styles.walletText}>
+            {profile?.sirajBalance ?? 50}
+          </Text>
+        </Animated.View>
+      </View>
+
+      <ScrollView style={styles.outerContainer} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.container}>
+          
+          {/* GAME STATE 1: Config Dashboard */}
+          {gameState === 'config' && (
+            <View style={styles.configCard}>
+              <Text style={styles.configHeaderTitle}>تخصيص تحدي المعرفة</Text>
+              <Text style={styles.configHeaderSub}>اختر مستوى الصعوبة، التصنيف، وعدد الأسئلة لبدء رحلة التحدي</Text>
 
 
-            {/* 1. Difficulty Level */}
-            <View style={styles.configSection}>
-              <Text style={styles.configSectionTitle}>💪 مستوى الصعوبة:</Text>
-              <View style={styles.configRow}>
-                {tiers.map((tier) => (
-                  <TouchableOpacity
-                    key={tier}
-                    style={[styles.configBtn, selectedTier === tier && styles.configBtnActive]}
-                    onPress={() => setSelectedTier(tier)}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={[styles.configBtnText, selectedTier === tier && styles.configBtnTextActive]}>
-                      {tierTranslations[tier]}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            {/* 2. Category Selector */}
-            <View style={styles.configSection}>
-              <Text style={styles.configSectionTitle}>📖 تصنيف الأسئلة:</Text>
-              <View style={styles.categoryGrid}>
-                {categories.map((category) => (
-                  <TouchableOpacity
-                    key={category}
-                    style={[styles.categoryBtn, selectedCategory === category && styles.categoryBtnActive]}
-                    onPress={() => setSelectedCategory(category)}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={[styles.categoryBtnText, selectedCategory === category && styles.categoryBtnTextActive]}>
-                      {category}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            {/* 3. Question Limits */}
-            <View style={styles.configSection}>
-              <Text style={styles.configSectionTitle}>📊 عدد الأسئلة:</Text>
-              <View style={styles.configRow}>
-                {questionLimits.map((limit) => (
-                  <TouchableOpacity
-                    key={limit}
-                    style={[styles.configBtn, questionLimit === limit && styles.configBtnActive]}
-                    onPress={() => setQuestionLimit(limit)}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={[styles.configBtnText, questionLimit === limit && styles.configBtnTextActive]}>
-                      {limit} أسئلة
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            {/* Live Points Preview Card */}
-            <View style={styles.pointsPreviewCard}>
-              <Text style={styles.previewTitle}>النقاط التقديرية للتحدي</Text>
-              <View style={styles.previewStatsRow}>
-                <View style={styles.previewStatCol}>
-                  <Text style={styles.previewVal}>+{getPointsPerQuestion()} ن</Text>
-                  <Text style={styles.previewLbl}>لكل إجابة صحيحة</Text>
-                </View>
-                <View style={styles.previewDivider} />
-                <View style={styles.previewStatCol}>
-                  <Text style={styles.previewVal}>+{getPointsPerQuestion() * questionLimit} ن</Text>
-                  <Text style={styles.previewLbl}>النقاط القصوى</Text>
+              {/* 1. Difficulty Level */}
+              <View style={styles.configSection}>
+                <Text style={styles.configSectionTitle}>💪 مستوى الصعوبة:</Text>
+                <View style={styles.configRow}>
+                  {tiers.map((tier) => (
+                    <TouchableOpacity
+                      key={tier}
+                      style={[styles.configBtn, selectedTier === tier && styles.configBtnActive]}
+                      onPress={() => setSelectedTier(tier)}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={[styles.configBtnText, selectedTier === tier && styles.configBtnTextActive]}>
+                        {tierTranslations[tier]}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
               </View>
-            </View>
 
-            {/* Play Button */}
-            <TouchableOpacity style={styles.startButton} onPress={startChallenge} activeOpacity={0.85}>
-              <Text style={styles.startButtonText}>ابدأ التحدي الآن 🚀</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* GAME STATE 2: Quiz Question */}
-        {gameState === 'quiz' && currentQuestion && (
-          <View style={styles.quizCard}>
-            {/* Header info */}
-            <View style={styles.quizHeader}>
-              <View style={styles.metaRow}>
-                <View style={styles.categoryBadge}>
-                  <Text style={styles.categoryBadgeText}>📖 {currentQuestion.category}</Text>
+              {/* 2. Category Selector */}
+              <View style={styles.configSection}>
+                <Text style={styles.configSectionTitle}>📖 تصنيف الأسئلة:</Text>
+                <View style={styles.categoryGrid}>
+                  {categories.map((cat) => (
+                    <TouchableOpacity
+                      key={cat}
+                      style={[styles.categoryBtn, selectedCategory === cat && styles.categoryBtnActive]}
+                      onPress={() => setSelectedCategory(cat)}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={[styles.categoryBtnText, selectedCategory === cat && styles.categoryBtnTextActive]}>
+                        {cat}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
-                <Text style={styles.progressText}>
-                  {language === 'ar'
-                    ? `سؤال ${formatNumber(currentIndex + 1)} من ${formatNumber(questions.length)}`
-                    : `Question ${currentIndex + 1} of ${questions.length}`}
-                </Text>
-              </View>
-              
-              <View style={styles.progressBarBg}>
-                <View style={[styles.progressBarFill, { width: `${((currentIndex + 1) / questions.length) * 100}%` }]} />
               </View>
 
-              {/* Visual Active Timers */}
-              {route?.params?.mode === 'championship' && (
-                <View style={styles.activeTimerRow}>
-                  <Text style={styles.activeTimerText}>⏱️ {formatNumber(secondsElapsed.toFixed(1))} {language === 'ar' ? 'ث' : 's'}</Text>
-                  <Text style={[styles.activeTimerText, { color: '#EF4444', marginLeft: 16 }]}>⚡ {formatNumber(countdownTimeLeft)} {language === 'ar' ? 'ث' : 's'}</Text>
-                  <Text style={styles.activeTimerLabel}>{language === 'ar' ? 'الوقت المنقضي والمتبقي' : 'Elapsed & remaining countdown...'}</Text>
+              {/* 3. Number of Questions Selector */}
+              <View style={styles.configSection}>
+                <Text style={styles.configSectionTitle}>❓ عدد الأسئلة:</Text>
+                <View style={styles.configRow}>
+                  {questionLimits.map((limit) => (
+                    <TouchableOpacity
+                      key={limit}
+                      style={[styles.configBtn, questionLimit === limit && styles.configBtnActive]}
+                      onPress={() => setQuestionLimit(limit)}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={[styles.configBtnText, questionLimit === limit && styles.configBtnTextActive]}>
+                        {limit} {language === 'ar' ? 'سؤال' : 'Qs'}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
-              )}
+              </View>
 
-              {route?.params?.mode === 'hardcore' && (
-                <View style={styles.activeTimerRow}>
-                  <Text style={[styles.activeTimerText, { color: '#EF4444' }]}>⚡ {formatNumber(countdownTimeLeft)} {language === 'ar' ? 'ث' : 's'}</Text>
-                  <Text style={styles.activeTimerLabel}>{language === 'ar' ? 'سارع بالإجابة!' : 'Hurry up!'}</Text>
-                </View>
-              )}
+              {/* Play Button */}
+              <TouchableOpacity style={styles.startButton} onPress={startChallenge} activeOpacity={0.85}>
+                <Text style={styles.startButtonText}>ابدأ التحدي الآن 🚀</Text>
+              </TouchableOpacity>
             </View>
+          )}
 
-            {/* Question Text */}
-            <Text style={styles.questionText}>{currentQuestion.question}</Text>
-
-            {/* Options */}
-            <View style={styles.optionsContainer}>
-              {currentQuestion.options.map((option) => {
-                const isSelected = selectedAnswer === option;
-                const isCorrectAnswer = option === currentQuestion.answer;
+          {/* GAME STATE 2: Quiz Question */}
+          {gameState === 'quiz' && currentQuestion && (
+            <View style={styles.quizCard}>
+              {/* Header info */}
+              <View style={styles.quizHeader}>
+                <View style={styles.metaRow}>
+                  <View style={styles.categoryBadge}>
+                    <Text style={styles.categoryBadgeText}>📖 {currentQuestion.category}</Text>
+                  </View>
+                  <Text style={styles.progressText}>
+                    {language === 'ar'
+                      ? `سؤال ${formatNumber(currentIndex + 1)} من ${formatNumber(questions.length)}`
+                      : `Question ${currentIndex + 1} of ${questions.length}`}
+                  </Text>
+                </View>
                 
-                let btnStyle: any = styles.optionButton;
-                let textStyle: any = styles.optionText;
+                <View style={styles.progressBarBg}>
+                  <View style={[styles.progressBarFill, { width: `${((currentIndex + 1) / questions.length) * 100}%` }]} />
+                </View>
 
-                if (answered) {
-                  if (isCorrectAnswer) {
-                    btnStyle = [styles.optionButton, styles.optionButtonCorrect];
-                    textStyle = [styles.optionText, styles.optionTextWhite];
-                  } else if (isSelected) {
-                    btnStyle = [styles.optionButton, styles.optionButtonIncorrect];
-                    textStyle = [styles.optionText, styles.optionTextWhite];
-                  } else {
-                    btnStyle = [styles.optionButton, styles.optionButtonDisabled];
-                    textStyle = [styles.optionText, styles.optionTextMuted];
-                  }
-                } else if (isSelected) {
-                  btnStyle = [styles.optionButton, styles.optionButtonSelected];
-                  textStyle = [styles.optionText, styles.optionTextSelected];
-                }
-
-                return (
-                  <TouchableOpacity
-                    key={option}
-                    style={btnStyle}
-                    onPress={() => !answered && setSelectedAnswer(option)}
-                    disabled={answered}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={textStyle}>{option}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {/* Feedback details */}
-            {answered && (
-              <View style={[
-                styles.feedbackBox,
-                selectedAnswer === currentQuestion.answer ? styles.feedbackBoxCorrect : styles.feedbackBoxIncorrect
-              ]}>
-                <Text style={styles.feedbackTitle}>{feedback}</Text>
-                {selectedAnswer !== currentQuestion.answer && (
-                  <Text style={styles.correctAnswerVal}>{currentQuestion.answer}</Text>
+                {/* Active Timer Indicator inside Championship mode */}
+                {route?.params?.mode === 'championship' && (
+                  <View style={styles.activeTimerRow}>
+                    <Text style={styles.activeTimerText}>{secondsElapsed.toFixed(1)}ث</Text>
+                    <Text style={styles.activeTimerLabel}>الزمن المنقضي:</Text>
+                  </View>
                 )}
-                {explanation ? <Text style={styles.explanationText}>{explanation}</Text> : null}
               </View>
-            )}
 
-            {/* Action buttons */}
-            <View style={styles.actionRow}>
-              {answered ? (
+              {/* Question Text */}
+              <Text style={styles.questionText}>
+                {currentQuestion.question}
+              </Text>
+
+              {/* Options List */}
+              <View style={styles.optionsContainer}>
+                {currentQuestion.options.map((option) => {
+                  const isSelected = selectedAnswer === option;
+                  const isCorrectAnswer = option === currentQuestion.answer;
+
+                  let btnStyle: any = styles.optionButton;
+                  let textStyle: any = styles.optionText;
+
+                  if (answered) {
+                    if (isCorrectAnswer) {
+                      btnStyle = [styles.optionButton, styles.optionButtonCorrect];
+                      textStyle = [styles.optionText, styles.optionTextWhite];
+                    } else if (isSelected) {
+                      btnStyle = [styles.optionButton, styles.optionButtonIncorrect];
+                      textStyle = [styles.optionText, styles.optionTextWhite];
+                    } else {
+                      btnStyle = [styles.optionButton, styles.optionButtonDisabled];
+                      textStyle = [styles.optionText, styles.optionTextMuted];
+                    }
+                  } else if (isSelected) {
+                    btnStyle = [styles.optionButton, styles.optionButtonSelected];
+                    textStyle = [styles.optionText, styles.optionTextSelected];
+                  }
+
+                  return (
+                    <TouchableOpacity
+                      key={option}
+                      style={btnStyle}
+                      onPress={() => !answered && setSelectedAnswer(option)}
+                      disabled={answered}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={textStyle}>{option}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* Feedback and Explanation Details */}
+              {answered && (
+                <View style={[
+                  styles.feedbackBox,
+                  selectedAnswer === currentQuestion.answer ? styles.feedbackBoxCorrect : styles.feedbackBoxIncorrect
+                ]}>
+                  <Text style={styles.feedbackTitle}>{feedback}</Text>
+                  {selectedAnswer !== currentQuestion.answer && (
+                    <Text style={styles.correctAnswerVal}>{currentQuestion.answer}</Text>
+                  )}
+                  {explanation.trim() !== '' && (
+                    <Text style={styles.explanationText}>{explanation}</Text>
+                  )}
+                </View>
+              )}
+
+              {/* Next/Finish quiz trigger button */}
+              {answered && (
                 <TouchableOpacity style={styles.primaryButton} onPress={handleNext} activeOpacity={0.85}>
                   <Text style={styles.primaryButtonText}>
-                    {currentIndex + 1 < questions.length ? 'السؤال التالي ➔' : 'إنهاء الجولة وعرض النتائج'}
+                    {currentIndex + 1 < questions.length ? 'السؤال التالي ➔' : 'إنهاء المسابقة ✓'}
                   </Text>
                 </TouchableOpacity>
-              ) : (
+              )}
+
+              {/* Submit answer verification button */}
+              {!answered && (
                 <TouchableOpacity style={styles.primaryButton} onPress={handleSubmit} activeOpacity={0.85}>
                   <Text style={styles.primaryButtonText}>تأكيد الإجابة ✓</Text>
                 </TouchableOpacity>
               )}
             </View>
+          )}
 
-            {/* Score & Streak display */}
-            <View style={styles.scoreRow}>
-              <Text style={styles.scoreText}>🔥 المتتالية: {streak}</Text>
-              <Text style={styles.scoreText}>🏆 النقاط: {score}</Text>
-            </View>
-          </View>
-        )}
-
-        {/* GAME STATE 3: Completed Score Card */}
-        {gameState === 'completed' && (
-          <View style={styles.resultCard}>
-            <Text style={styles.resultEmoji}>🎉</Text>
-            <Text style={styles.resultTitle}>انتهت الجولة بنجاح!</Text>
-            <Text style={styles.resultSubtitle}>
-              {route?.params?.mode === 'championship' ? 
-                (language === 'ar' ? 'البطولة اليومية الموحدة' : 'Daily Global Championship')
-                : 
-                `المستوى: ${tierTranslations[selectedTier]} | القسم: ${selectedCategory === 'الكل' ? 'شامل' : selectedCategory}`
-              }
-            </Text>
-            
-            <View style={styles.resultStatsRow}>
-              <View style={styles.resultStatBox}>
-                <Text style={styles.resultStatVal}>{score}</Text>
-                <Text style={styles.resultStatLbl}>النقاط المكتسبة</Text>
+          {/* GAME STATE 3: Completed Scoreboard */}
+          {gameState === 'completed' && (
+            <View style={styles.resultCard}>
+              <Text style={styles.resultEmoji}>🏆</Text>
+              <Text style={styles.resultTitle}>انتهت المسابقة!</Text>
+              <Text style={styles.resultSubtitle}>
+                {score >= 70 
+                  ? 'أداء رائع وحصيلة معرفية متميزة ما شاء الله! 🌟' 
+                  : 'أداء جيد، استمر في المطالعة وزيادة معلوماتك الدينية.'}
+              </Text>
+              
+              <View style={styles.resultStatsRow}>
+                <View style={styles.resultStatBox}>
+                  <Text style={styles.resultStatVal}>{score}</Text>
+                  <Text style={styles.resultStatLbl}>النقاط المكتسبة</Text>
+                </View>
+                {route?.params?.mode === 'championship' ? (
+                  <View style={styles.resultStatBox}>
+                    <Text style={styles.resultStatVal}>{secondsElapsed.toFixed(1)}ث</Text>
+                    <Text style={styles.resultStatLbl}>الزمن الإجمالي</Text>
+                  </View>
+                ) : (
+                  <View style={styles.resultStatBox}>
+                    <Text style={styles.resultStatVal}>{streak}</Text>
+                    <Text style={styles.resultStatLbl}>أعلى متتالية</Text>
+                  </View>
+                )}
               </View>
-              {route?.params?.mode === 'championship' ? (
-                <View style={styles.resultStatBox}>
-                  <Text style={styles.resultStatVal}>{secondsElapsed.toFixed(1)}ث</Text>
-                  <Text style={styles.resultStatLbl}>الزمن الإجمالي</Text>
-                </View>
-              ) : (
-                <View style={styles.resultStatBox}>
-                  <Text style={styles.resultStatVal}>{streak}</Text>
-                  <Text style={styles.resultStatLbl}>أعلى متتالية</Text>
-                </View>
-              )}
-            </View>
 
-            {/* Share on WhatsApp Button */}
-            <TouchableOpacity style={styles.whatsappButton} onPress={handleShareChallenge} activeOpacity={0.85}>
-              <Text style={styles.whatsappButtonText}>شارك النتيجة على واتساب 💬</Text>
-            </TouchableOpacity>
+              {/* Share on WhatsApp Button */}
+              <TouchableOpacity style={styles.whatsappButton} onPress={handleShareChallenge} activeOpacity={0.85}>
+                <Text style={styles.whatsappButtonText}>شارك النتيجة على واتساب 💬</Text>
+              </TouchableOpacity>
 
             <TouchableOpacity style={styles.primaryButton} onPress={handleBackToConfig} activeOpacity={0.85}>
               <Text style={styles.primaryButtonText}>تحدي جديد 🔄</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate('Home')} activeOpacity={0.85}>
-              <Text style={styles.secondaryButtonText}>العودة للرئيسية</Text>
+              <Text style={styles.secondaryButtonText}>➔</Text>
             </TouchableOpacity>
           </View>
         )}
       </View>
-      <AdBanner />
     </ScrollView>
+    <AdBanner />
+
+    {/* FLYING LANTERN REWARD CELEBRATION */}
+    {isFlying && (
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        <Animated.View
+          style={[
+            styles.flyingFanoos,
+            {
+              transform: [
+                { scale: lanternScale },
+                { translateX: lanternPos.x },
+                { translateY: lanternPos.y },
+              ],
+              opacity: lanternOpacity,
+            },
+          ]}
+        >
+          <Text style={{ fontSize: 32 }}>🕯️</Text>
+        </Animated.View>
+      </View>
+    )}
+  </View>
   );
 }
 
@@ -1036,5 +1136,47 @@ const styles = StyleSheet.create({
     color: Colors.surface,
     fontWeight: '800',
     fontSize: 15,
+  },
+  headerCustom: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 54,
+    paddingBottom: 16,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  backBtn: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1A202C',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+  walletBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E6F4EA',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  walletText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#137333',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+  flyingFanoos: {
+    position: 'absolute',
+    left: Dimensions.get('window').width / 2 - 24,
+    top: Dimensions.get('window').height / 2 - 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 9999,
   },
 });

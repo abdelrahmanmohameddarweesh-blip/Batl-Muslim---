@@ -5,6 +5,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { mutashabihatQuestions, type MutashabahQuestion } from '../data/mutashabihat';
 import { addSirajPoints, getCurrentUserProfile, incrementCorrectAnswers, equipUserTitle } from '../firebase/auth';
+import AdBanner from '../components/AdBanner';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -15,6 +16,7 @@ export default function MutashabihatScreen({ navigation }: any) {
 
   const [screenState, setScreenState] = useState<'lobby' | 'quiz' | 'results'>('lobby');
   const [selectedDifficulty, setSelectedDifficulty] = useState<'easy' | 'medium' | 'hard' | 'expert'>('medium');
+  const [selectedQuestionCount, setSelectedQuestionCount] = useState<number>(10);
 
   const [questions, setQuestions] = useState<MutashabahQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -55,8 +57,15 @@ export default function MutashabihatScreen({ navigation }: any) {
 
   const handleStartQuiz = () => {
     const filtered = mutashabihatQuestions.filter(q => q.difficulty === selectedDifficulty);
-    const shuffled = [...filtered].sort(() => Math.random() - 0.5);
-    const selected = shuffled.slice(0, 5);
+    const shuffledFiltered = [...filtered].sort(() => Math.random() - 0.5);
+    
+    let selected = shuffledFiltered.slice(0, selectedQuestionCount);
+    if (selected.length < selectedQuestionCount) {
+      const remainingNeeded = selectedQuestionCount - selected.length;
+      const existingIds = new Set(selected.map(q => q.id));
+      const others = mutashabihatQuestions.filter(q => !existingIds.has(q.id)).sort(() => Math.random() - 0.5);
+      selected = [...selected, ...others.slice(0, remainingNeeded)];
+    }
 
     // Save snapshot of currently unlocked titles before starting
     setInitialTitles(profile?.unlockedTitles || []);
@@ -94,11 +103,11 @@ export default function MutashabihatScreen({ navigation }: any) {
         friction: 5,
         useNativeDriver: false,
       }).start(() => {
-        // 2. Fly to top right wallet
+        // 2. Fly to top left wallet
         Animated.delay(400).start(() => {
           Animated.parallel([
             Animated.timing(lanternPos.x, {
-              toValue: SCREEN_WIDTH / 2 - 45,
+              toValue: -(SCREEN_WIDTH / 2 - 45),
               duration: 700,
               useNativeDriver: false,
             }),
@@ -231,15 +240,21 @@ export default function MutashabihatScreen({ navigation }: any) {
   const handleAddTitleToProfile = async () => {
     if (!user?.uid || newlyUnlocked.length === 0) return;
     const titleId = newlyUnlocked[0];
+    
+    // Immediately close the first pop-up modal so it disappears from behind
+    setShowUnlockModal(false);
+
     try {
       const updated = await equipUserTitle(user.uid, titleId);
       setProfile(updated);
       updateUserFields({ activeTitle: updated.activeTitle });
-      Alert.alert(
-        language === 'ar' ? 'تهانينا! 🎉' : 'Congratulations! 🎉',
-        language === 'ar' ? 'تم تجهيز لقبك الجديد وإضافته لملفك الشخصي بنجاح!' : 'Your new title has been equipped and added to your profile!'
-      );
-      setShowUnlockModal(false);
+      
+      setTimeout(() => {
+        Alert.alert(
+          language === 'ar' ? 'تهانينا! 🎉' : 'Congratulations! 🎉',
+          language === 'ar' ? 'تم تجهيز لقبك الجديد وإضافته لملفك الشخصي بنجاح!' : 'Your new title has been equipped and added to your profile!'
+        );
+      }, 100);
     } catch (err) {
       console.error(err);
     }
@@ -250,7 +265,7 @@ export default function MutashabihatScreen({ navigation }: any) {
       {/* HEADER SECTION */}
       <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.surface }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => screenState === 'lobby' ? navigation.goBack() : handleReset()}>
-          <Text style={{ fontSize: 20, color: colors.primary }}>🔙</Text>
+          <Text style={{ fontSize: 20, color: colors.primary }}>➔</Text>
         </TouchableOpacity>
         
         <Text style={[styles.headerTitle, { color: colors.textPrimary, fontFamily: 'IBMPlexSansArabic-Bold' }]}>
@@ -311,11 +326,47 @@ export default function MutashabihatScreen({ navigation }: any) {
             );
           })}
 
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary, fontFamily: 'IBMPlexSansArabic-Bold', marginTop: 20 }]}>
+            عدد الأسئلة في التحدي:
+          </Text>
+
+          <View style={styles.countSelectorRow}>
+            {[5, 10, 15, 20].map(count => {
+              const isSelected = selectedQuestionCount === count;
+              return (
+                <TouchableOpacity
+                  key={count}
+                  style={[
+                    styles.countPill,
+                    {
+                      backgroundColor: isSelected ? colors.primary : colors.surface,
+                      borderColor: isSelected ? colors.primary : colors.border,
+                    }
+                  ]}
+                  onPress={() => setSelectedQuestionCount(count)}
+                  activeOpacity={0.8}
+                >
+                  <Text
+                    style={[
+                      styles.countPillText,
+                      {
+                        color: isSelected ? '#FFFFFF' : colors.textPrimary,
+                        fontFamily: isSelected ? 'IBMPlexSansArabic-Bold' : 'IBMPlexSansArabic-Regular',
+                      }
+                    ]}
+                  >
+                    {count} أسئلة
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
           <TouchableOpacity
-            style={[styles.startBtn, { backgroundColor: colors.primary }]}
+            style={[styles.startBtn, { backgroundColor: colors.primary, marginTop: 24 }]}
             onPress={handleStartQuiz}
           >
-            <Text style={styles.startBtnText}>ابدأ التحدي الآن</Text>
+            <Text style={styles.startBtnText}>ابدأ التحدي الآن ({selectedQuestionCount} أسئلة)</Text>
           </TouchableOpacity>
         </ScrollView>
       )}
@@ -548,6 +599,7 @@ export default function MutashabihatScreen({ navigation }: any) {
           </View>
         </Modal>
       )}
+      <AdBanner />
     </View>
   );
 }
@@ -973,5 +1025,23 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#137333',
     fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+  countSelectorRow: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginTop: 10,
+    marginBottom: 8,
+  },
+  countPill: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  countPillText: {
+    fontSize: 13,
   },
 });

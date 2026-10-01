@@ -10,10 +10,19 @@
       "web"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "الرجاء تمكين الوصول للأستوديو لرفع صورتك الشخصية وتغيير الأفاتار.",
+        "NSCameraUsageDescription": "الرجاء تمكين الوصول للكاميرا لالتقاط صورة وتغيير الأفاتار."
+      }
     },
     "android": {
-      "package": "com.darweesh.batlmuslim"
+      "package": "com.darweesh.batlmuslim",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ]
     },
     "extra": {
       "eas": {
@@ -21,15 +30,16 @@
       }
     },
     "plugins": [
+      "expo-font",
+      "expo-localization",
       [
-        "react-native-google-mobile-ads",
+        "expo-image-picker",
         {
-          "androidAppId": "ca-app-pub-6157287197742359~8744745472",
-          "iosAppId": "ca-app-pub-6157287197742359~4434945318"
+          "photosPermission": "الرجاء تمكين الوصول للأستوديو لرفع صورتك الشخصية وتغيير الأفاتار.",
+          "cameraPermission": "الرجاء تمكين الوصول للكاميرا لالتقاط صورة وتغيير الأفاتار."
         }
       ],
-      "expo-font",
-      "expo-localization"
+      "expo-sharing"
     ]
   }
 }

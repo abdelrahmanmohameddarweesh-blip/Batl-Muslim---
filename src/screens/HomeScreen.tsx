@@ -123,6 +123,26 @@ export default function HomeScreen({ navigation }: any) {
       color: '#044E3F',
     },
     {
+      id: 'finish-ayah-camera',
+      titleAr: 'فلتر أكمل الآية 📸',
+      titleEn: 'Finish Ayah AR Camera Filter 📸',
+      descAr: 'افتح الكلميرا الأمامية، تظهر لك آية عشوائية فوق رأسك رتلها ثم اكشف الإجابة!',
+      descEn: 'Open front camera with a floating Ayah card above your head! Recite & reveal!',
+      route: 'FinishAyahCamera',
+      icon: '📸',
+      color: '#D97706',
+    },
+    {
+      id: 'finish-ayah',
+      titleAr: 'تحدي إكمال الآية 🎧',
+      titleEn: 'Finish the Ayah Quiz 🎧',
+      descAr: 'استمع للتلاوة واكتشف الكلمة أو الآية المكملة الصحيحة كالمسابقات التفاعلية!',
+      descEn: 'Listen to the recitation snippet and pick the exact right completion!',
+      route: 'FinishAyah',
+      icon: '🎧',
+      color: '#059669',
+    },
+    {
       id: 'rapid',
       titleAr: 'الضغط السريع ⚡',
       titleEn: 'Rapid Fire Mode ⚡',
@@ -162,12 +182,23 @@ export default function HomeScreen({ navigation }: any) {
       route: 'SirahQuest',
       icon: '🗺️',
       color: '#78281F',
+    },
+    {
+      id: 'siraj-shop',
+      titleAr: 'متجر السراج 🕯️',
+      titleEn: 'Siraj Gamification Shop 🕯️',
+      descAr: 'استبدل قناديل السراج بالجوائز الشريفة، المقتنيات التاريخية، وخلفيات المحراب!',
+      descEn: 'Redeem Siraj lanterns for noble rewards, historical artifacts, and palace decor!',
+      route: 'Shop',
+      icon: '🕯️',
+      color: '#B45309',
     }
   ];
 
   return (
-    <ScrollView style={[styles.outerContainer, { backgroundColor: colors.background }]} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-      <View style={styles.container}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScrollView style={[styles.outerContainer, { backgroundColor: colors.background }]} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.container}>
         
         {/* Welcome & Top Row */}
         <View style={styles.topHeaderRow}>
@@ -453,6 +484,13 @@ export default function HomeScreen({ navigation }: any) {
                       <Path d="m16.24 7.76-2.12 6.36-6.36 2.12 2.12-6.36z" />
                     </Svg>
                   )}
+                  {item.id === 'siraj-shop' && (
+                    <Svg viewBox="0 0 24 24" width="110" height="110" opacity="0.2" fill="none" stroke="#FFFFFF" strokeWidth="2">
+                      {/* Lantern / Shop SVG */}
+                      <Path d="M12 2v3M9 5h6M9 5a4 4 0 0 0-4 4v7a4 4 0 0 0 4 4h6a4 4 0 0 0 4-4V9a4 4 0 0 0-4-4M9 5h6" />
+                      <Circle cx="12" cy="12" r="2" fill="#FFFFFF" />
+                    </Svg>
+                  )}
                 </View>
 
                 <Text style={styles.carouselCardIcon}>{item.icon}</Text>
@@ -465,7 +503,9 @@ export default function HomeScreen({ navigation }: any) {
 
                 <View style={styles.carouselCardButton}>
                   <Text style={[styles.carouselCardButtonText, { color: item.color }]}>
-                    {language === 'ar' ? 'ابدأ المواجهة ➔' : 'Start Arena ➔'}
+                    {item.id === 'siraj-shop' 
+                      ? (language === 'ar' ? 'افتح المتجر ➔' : 'Open Shop ➔')
+                      : (language === 'ar' ? 'ابدأ المواجهة ➔' : 'Start Arena ➔')}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -548,28 +588,63 @@ export default function HomeScreen({ navigation }: any) {
           </View>
         </View>
 
-        {/* LIVE ACTIVITY FEED */}
+        {/* DAILY WORSHIP TRACKER CARD (REPLACED LIVE ARENA FEED) */}
         <View style={styles.sectionHeaderRow}>
           <Text style={[styles.sectionTitleText, { color: colors.textPrimary }]}>
-            {language === 'ar' ? 'الأحداث الحية 🟢' : 'Live Arena Feed 🟢'}
+            {language === 'ar' ? 'متابع العبادات اليومي 🕌' : 'Daily Worship Tracker 🕌'}
           </Text>
         </View>
 
-        <View style={[styles.feedCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          {ACTIVITY_FEED.map((feed) => (
-            <View key={feed.id} style={[styles.feedItem, { borderBottomColor: colors.border }]}>
-              <Text style={styles.feedDot}>•</Text>
-              <Text style={[styles.feedText, { color: colors.textPrimary }]}>
-                {language === 'ar' ? feed.ar : feed.en}
+        <TouchableOpacity
+          style={[styles.trackerCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          onPress={() => navigation.navigate('PrayerTracker')}
+          activeOpacity={0.9}
+        >
+          <View style={styles.trackerCardContent}>
+            <View style={styles.trackerCardHeaderRow}>
+              <View style={styles.trackerBadge}>
+                <Text style={styles.trackerBadgeText}>
+                  {language === 'ar' ? 'سجل طاعاتك اليومية 🕯️' : 'Log Daily Worship 🕯️'}
+                </Text>
+              </View>
+              <Text style={{ fontSize: 26 }}>🕌</Text>
+            </View>
+
+            <Text style={[styles.trackerTitleText, { color: colors.textPrimary }]}>
+              {language === 'ar' ? 'جدول المحافظة على الصلوات والأوراد' : 'Daily Prayer & Adhkar Tracker'}
+            </Text>
+
+            <Text style={[styles.trackerDescText, { color: colors.textSecondary }]}>
+              {language === 'ar'
+                ? 'تتبع أداء الصلوات الخمس في أوقاتها، أذكار الصباح والمساء، والورد اليومي لترسيخ عادتك الإيمانية.'
+                : 'Track your 5 daily prayers, morning/evening adhkar, and daily Quran habit.'}
+            </Text>
+
+            <View style={styles.trackerFeaturesRow}>
+              <View style={[styles.trackerFeatureChip, { backgroundColor: colors.primaryLight }]}>
+                <Text style={[styles.trackerFeatureText, { color: colors.primary }]}>🕌 الصلوات الخمس</Text>
+              </View>
+              <View style={[styles.trackerFeatureChip, { backgroundColor: colors.accentLight }]}>
+                <Text style={[styles.trackerFeatureText, { color: colors.accent }]}>📿 الأذكار اليومية</Text>
+              </View>
+              <View style={[styles.trackerFeatureChip, { backgroundColor: '#FEE2E2' }]}>
+                <Text style={[styles.trackerFeatureText, { color: '#991B1B' }]}>📖 ورد القرآن</Text>
+              </View>
+            </View>
+
+            <View style={[styles.trackerCTA, { backgroundColor: colors.primaryDeep }]}>
+              <Text style={styles.trackerCTAText}>
+                {language === 'ar' ? 'افتح جدول متابعة العبادات ➔' : 'Open Daily Tracker ➔'}
               </Text>
             </View>
-          ))}
-        </View>
+          </View>
+        </TouchableOpacity>
 
-        <AdBanner />
       </View>
       <OnboardingStories visible={showOnboarding} onClose={() => setShowOnboarding(false)} />
     </ScrollView>
+    <AdBanner />
+  </View>
   );
 }
 
@@ -703,13 +778,13 @@ const styles = StyleSheet.create({
   // UNIFIED CARD
   unifiedCard: {
     borderRadius: 22,
-    borderWidth: 1,
+    borderWidth: 1.5,
     padding: 18,
-    shadowColor: '#1D2939',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 2,
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    elevation: 4,
   },
   unifiedHeaderRow: {
     flexDirection: 'row-reverse',
@@ -1123,28 +1198,78 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // LIVE ACTIVITY FEED
-  feedCard: {
+  // DAILY WORSHIP TRACKER CARD
+  trackerCard: {
     borderRadius: 18,
     borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  feedItem: {
+  trackerCardContent: {
+    gap: 10,
+  },
+  trackerCardHeaderRow: {
     flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
   },
-  feedDot: {
-    fontSize: 14,
-    color: '#10B981',
-    marginLeft: 6,
+  trackerBadge: {
+    backgroundColor: '#F0FDFA',
+    borderWidth: 1,
+    borderColor: '#99F6E4',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
-  feedText: {
-    fontSize: 11,
-    fontFamily: 'IBMPlexSansArabic-Medium',
-    flex: 1,
+  trackerBadgeText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#0D9488',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+  trackerTitleText: {
+    fontSize: 15,
+    fontWeight: '800',
     textAlign: 'right',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+    lineHeight: 22,
+  },
+  trackerDescText: {
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: 'right',
+    fontFamily: 'IBMPlexSansArabic-Regular',
+  },
+  trackerFeaturesRow: {
+    flexDirection: 'row-reverse',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginVertical: 4,
+  },
+  trackerFeatureChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  trackerFeatureText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+  trackerCTA: {
+    borderRadius: 14,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  trackerCTAText: {
+    color: '#FFFFFF',
+    fontSize: 12.5,
+    fontWeight: '700',
+    fontFamily: 'IBMPlexSansArabic-Bold',
   },
 });

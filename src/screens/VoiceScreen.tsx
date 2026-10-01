@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Animated, ScrollView, Alert, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Audio } from 'expo-av';
+import { SafeAudio as Audio } from '../utils/safeAudio';
 import { readers, type Reader } from '../data/readers';
 import { ayahs, type Ayah } from '../data/ayahs';
 import { generateReferenceProfile, analyzeVocalImitation, calculateTextMatchScore } from '../data/voiceTemplates';
@@ -12,6 +12,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { saveUserScore, getCurrentUserProfile } from '../firebase/auth';
 import { addCommunityPost } from '../data/communityFeed';
 import { Colors } from '../config/colors';
+import AdBanner from '../components/AdBanner';
 import { useInterstitialAd } from '../config/adsService';
 import { AdMobConfig } from '../config/ads';
 
@@ -86,7 +87,7 @@ export default function VoiceScreen({ navigation }: any) {
   const [seconds, setSeconds] = useState(0);
   
   // Audio state
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [recording, setRecording] = useState<any>(null);
   const [meteringHistory, setMeteringHistory] = useState<number[]>([]);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [liveVolume, setLiveVolume] = useState(0); // 0.0 to 1.0
@@ -446,8 +447,10 @@ export default function VoiceScreen({ navigation }: any) {
         ayahNumber: currentAyah.number,
         readerId: selectedReader.id,
         readerName: selectedReader.name,
-        matchPercentage: scoreBreakdown.overall,
+        matchPercentage: selectedReader.id === 'free_voice' ? 100 : scoreBreakdown.overall,
         style: recitationStyle,
+        duration: seconds > 0 ? `00:${seconds < 10 ? '0' + seconds : seconds}` : '01:20',
+        ayahsCount: typeof currentAyah.number === 'number' ? `الآية ${currentAyah.number}` : `${currentAyah.number} آيات`,
       });
       setHasShared(true);
       Alert.alert(
@@ -586,8 +589,9 @@ export default function VoiceScreen({ navigation }: any) {
   };
 
   return (
-    <ScrollView style={styles.outerContainer} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-      <View style={styles.container}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScrollView style={styles.outerContainer} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.container}>
         
         {/* Header */}
         <View style={styles.header}>
@@ -1099,9 +1103,7 @@ export default function VoiceScreen({ navigation }: any) {
               </TouchableOpacity>
               
               <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.goBack()} activeOpacity={0.85}>
-                <Text style={styles.secondaryButtonText}>
-                  {language === 'ar' ? 'العودة لقائمة التحديات' : 'Back to Sanctuary'}
-                </Text>
+                <Text style={styles.secondaryButtonText}>➔</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1109,6 +1111,8 @@ export default function VoiceScreen({ navigation }: any) {
 
       </View>
     </ScrollView>
+    <AdBanner />
+  </View>
   );
 }
 

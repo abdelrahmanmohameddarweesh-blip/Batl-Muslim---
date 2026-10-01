@@ -410,9 +410,7 @@ export default function LiveDuelScreen({ navigation }: any) {
             onPress={() => navigation.navigate('Home')}
             activeOpacity={0.8}
           >
-            <Text style={styles.doneBtnText}>
-              {language === 'ar' ? 'العودة للمحطة الرئيسية ➔' : 'Back to Home ➔'}
-            </Text>
+            <Text style={styles.doneBtnText}>➔</Text>
           </TouchableOpacity>
         </View>
       )}

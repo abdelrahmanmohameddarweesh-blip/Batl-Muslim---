@@ -11,7 +11,7 @@ import {
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { questionBank, Question } from '../data/questions';
-import { Audio } from 'expo-av';
+import { SafeAudio as Audio } from '../utils/safeAudio';
 
 const { width } = Dimensions.get('window');
 
@@ -758,7 +758,7 @@ const getStyles = (colors: any) => StyleSheet.create({
     fontSize: 10,
   },
   countdownOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(17, 24, 39, 0.88)',
     justifyContent: 'center',
     alignItems: 'center',

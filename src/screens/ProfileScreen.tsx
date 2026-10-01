@@ -209,8 +209,8 @@ export default function ProfileScreen({ navigation }: any) {
     }
   };
 
-  // Navigation segment: 'profile' | 'accountability'
-  const [activeSection, setActiveSection] = useState<'profile' | 'accountability'>('profile');
+  // Selected category modal sub-page: 'achievements' | 'saved_records' | 'settings' | 'logout' | null
+  const [selectedCategoryPage, setSelectedCategoryPage] = useState<'achievements' | 'saved_records' | 'settings' | 'logout' | null>(null);
 
   // Profile data states
   const [profile, setProfile] = useState<any>(null);
@@ -532,41 +532,48 @@ export default function ProfileScreen({ navigation }: any) {
     }
   }, [profile?.lastPlayedAt, language]);
 
+  const handleSelectCountry = async (countryCode: string) => {
+    if (!user?.uid) return;
+    try {
+      const selected = countriesList.find(c => c.code === countryCode);
+      const countryName = selected ? (language === 'ar' ? selected.nameAr : selected.nameEn) : countryCode;
+      await updateUserCountry(user.uid, countryName, countryCode);
+      updateUserFields({ country: countryCode });
+      setProfile((prev: any) => prev ? { ...prev, country: countryCode } : { country: countryCode });
+      Alert.alert(
+        language === 'ar' ? 'تم التحديث!' : 'Updated!',
+        language === 'ar' ? 'تم تحديث بلدك بنجاح.' : 'Your country was updated successfully.'
+      );
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      language === 'ar' ? 'تسجيل الخروج 🚪' : 'Logout 🚪',
+      language === 'ar' ? 'هل أنت متأكد من أنك تريد تسجيل الخروج من حسابك؟' : 'Are you sure you want to log out of your account?',
+      [
+        { text: language === 'ar' ? 'إلغاء' : 'Cancel', style: 'cancel' },
+        {
+          text: language === 'ar' ? 'تأكيد الخروج' : 'Confirm Logout',
+          style: 'destructive',
+          onPress: async () => {
+            await logout();
+          }
+        }
+      ]
+    );
+  };
+
   return (
     <View style={[styles.outerContainer, { backgroundColor: colors.background }]}>
-      {/* Top Segmented Tabs Wrapper */}
-      <View style={[styles.headerContainer, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <View style={[styles.segmentsContainer, { backgroundColor: colors.neutralTint }]}>
-          <TouchableOpacity
-            style={[styles.segmentBtn, activeSection === 'accountability' && styles.segmentBtnActive]}
-            onPress={() => setActiveSection('accountability')}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.segmentText, activeSection === 'accountability' ? { color: colors.textPrimary, fontWeight: '700' } : { color: colors.textSecondary }]}>
-              {language === 'ar' ? 'سجل المحاسبة' : 'Accountability'}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.segmentBtn, activeSection === 'profile' && styles.segmentBtnActive]}
-            onPress={() => setActiveSection('profile')}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.segmentText, activeSection === 'profile' ? { color: colors.textPrimary, fontWeight: '700' } : { color: colors.textSecondary }]}>
-              {language === 'ar' ? 'حسابي' : 'Profile'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {loading ? (
           <ActivityIndicator size="large" color="#059669" style={styles.loader} />
-        ) : activeSection === 'profile' ? (
-          /* ========================================================
-             PROFILE SECTION
-             ======================================================== */
+        ) : (
           <View style={styles.contentWrapper}>
-            {/* Profile Card Header */}
+            {/* User Profile Banner Header */}
             <View style={[styles.profileHeaderCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <TouchableOpacity 
                 style={[styles.avatarContainer, { backgroundColor: colors.primaryTint, borderColor: colors.primary, overflow: 'hidden' }]}
@@ -580,7 +587,6 @@ export default function ProfileScreen({ navigation }: any) {
                     {user?.displayName ? user.displayName[0].toUpperCase() : '👤'}
                   </Text>
                 )}
-                {/* Tiny edit overlay */}
                 <View style={{ position: 'absolute', bottom: 0, width: '100%', backgroundColor: 'rgba(0,0,0,0.4)', paddingVertical: 2, alignItems: 'center' }}>
                   <Text style={{ color: '#FFFFFF', fontSize: 9, fontWeight: '700' }}>{language === 'ar' ? 'تعديل' : 'Edit'}</Text>
                 </View>
@@ -600,610 +606,45 @@ export default function ProfileScreen({ navigation }: any) {
               </View>
             </View>
 
-            {/* Stats Grid */}
-            <View style={styles.statsGrid}>
-              <View style={[styles.statBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <Text style={[styles.statVal, { color: colors.primaryDeep }]}>{currentScore}</Text>
-                <Text style={[styles.statLbl, { color: colors.textSecondary }]}>{language === 'ar' ? 'مجموع النقاط' : 'Total Score'}</Text>
-              </View>
-              <View style={[styles.statBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <Text style={[styles.statVal, { color: colors.primaryDeep }]}>
-                  {unlockedBadgeIds.length} / {badgesCatalog.length}
-                </Text>
-                <Text style={[styles.statLbl, { color: colors.textSecondary }]}>{language === 'ar' ? 'الأوسمة المفتوحة' : 'Unlocked Badges'}</Text>
-              </View>
-            </View>
-
-            {/* Cabinet of Badges */}
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>{t('badgesTitle')}</Text>
-            <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>{t('badgesDesc')}</Text>
-            
-            <View style={styles.badgesCabinet}>
-              {badgesCatalog.map((badge) => {
-                const isUnlocked = unlockedBadgeIds.includes(badge.id);
-                return (
-                  <View
-                    key={badge.id}
+            {/* 4 SMALL CATEGORY CARDS GRID (UNDER MAIN PROFILE CARD) */}
+            <View style={styles.categoryCardsGrid}>
+              {[
+                { id: 'achievements', icon: '🏆', titleAr: 'الإنجازات والألقاب', titleEn: 'Achievements', descAr: 'الأوسمة والجوائز واللقب', descEn: 'Badges, Titles & Vault' },
+                { id: 'saved_records', icon: '💾', titleAr: 'المحفوظات والسجل', titleEn: 'Saved Records', descAr: 'التلاوات وسجل المحاسبة', descEn: 'Recitations & Journal' },
+                { id: 'settings', icon: '⚙️', titleAr: 'إعدادات الحساب', titleEn: 'Settings', descAr: 'اللغة والمظهر والدولة', descEn: 'Language, Theme & Region' },
+                { id: 'logout', icon: '🚪', titleAr: 'تسجيل الخروج', titleEn: 'Logout', descAr: 'إغلاق الجلسة الحالية', descEn: 'Exit active session' },
+              ].map((cat) => (
+                <TouchableOpacity
+                  key={cat.id}
+                  style={[
+                    styles.smallCategoryCard,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: colors.border,
+                    }
+                  ]}
+                  onPress={() => setSelectedCategoryPage(cat.id as any)}
+                  activeOpacity={0.85}
+                >
+                  <View style={[styles.smallCategoryIconWrapper, { backgroundColor: colors.neutralTint }]}>
+                    <Text style={{ fontSize: 20 }}>{cat.icon}</Text>
+                  </View>
+                  <Text
                     style={[
-                      styles.badgeCard,
-                      { backgroundColor: colors.surface, borderColor: colors.border },
-                      isUnlocked && { borderColor: badge.color, backgroundColor: `${badge.color}15` }
+                      styles.smallCategoryTitle,
+                      {
+                        color: colors.textPrimary,
+                        fontFamily: 'IBMPlexSansArabic-Bold',
+                      }
                     ]}
                   >
-                    <View style={[styles.badgeEmojiWrapper, !isUnlocked && styles.badgeEmojiWrapperLocked]}>
-                      <Text style={[styles.badgeEmoji, !isUnlocked && styles.badgeEmojiLocked]}>
-                        {badge.emoji}
-                      </Text>
-                    </View>
-                    <Text style={[styles.badgeTitle, { color: colors.textPrimary }, !isUnlocked && styles.badgeTitleLocked]}>
-                      {language === 'ar' ? badge.titleAr : badge.titleEn}
-                    </Text>
-                    <Text style={[styles.badgeDesc, { color: colors.textSecondary }, !isUnlocked && styles.badgeDescLocked]}>
-                      {language === 'ar' ? badge.descAr : badge.descEn}
-                    </Text>
-                  </View>
-                );
-              })}
-            </View>
-
-            {/* Quranic Titles Section */}
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-              {language === 'ar' ? '👑 الألقاب القرآنية المكتسبة' : '👑 Earned Quranic Titles'}
-            </Text>
-            <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
-              {language === 'ar' 
-                ? 'حقق مستهدفات الاختبارات لفتح الألقاب الشريفة وتجهيزها في حسابك' 
-                : 'Complete quiz milestones to unlock and equip noble titles'}
-            </Text>
-
-            <View style={styles.titlesContainer}>
-              {QURANIC_TITLES.map(title => {
-                const isUnlocked = profile?.unlockedTitles?.includes(title.id);
-                const isActive = profile?.activeTitle === title.id;
-
-                // Get current value towards target
-                const currentValue = title.targetTest === 'mutashabihat'
-                  ? (profile?.mutashabihatCorrectCount ?? 0)
-                  : title.targetTest === 'quran'
-                    ? (profile?.quranCorrectCount ?? 0)
-                    : title.targetTest === 'trivia'
-                      ? (profile?.triviaCorrectCount ?? 0)
-                      : ((profile?.mutashabihatCorrectCount ?? 0) + (profile?.quranCorrectCount ?? 0) + (profile?.triviaCorrectCount ?? 0));
-
-                const progress = Math.min(1, currentValue / title.targetValue);
-
-                return (
-                  <View
-                    key={title.id}
-                    style={[
-                      styles.titleCard,
-                      { backgroundColor: colors.surface, borderColor: isActive ? colors.primary : colors.border }
-                    ]}
-                  >
-                    <View style={styles.titleCardHeader}>
-                      <View style={[styles.titleEmojiBg, { backgroundColor: colors.border }]}>
-                        <Text style={{ fontSize: 24 }}>{title.emoji}</Text>
-                      </View>
-                      
-                      <View style={styles.titleMeta}>
-                        <Text style={[styles.titleName, { color: colors.textPrimary, fontFamily: 'IBMPlexSansArabic-Bold' }]}>
-                          {language === 'ar' ? title.titleAr : title.titleEn}
-                        </Text>
-                        <Text style={[styles.titleDesc, { color: colors.textSecondary }]}>
-                          {language === 'ar' ? title.descAr : title.descEn}
-                        </Text>
-                      </View>
-                    </View>
-
-                    {/* Progress Bar (Only show if locked) */}
-                    {!isUnlocked ? (
-                      <View style={styles.titleProgressContainer}>
-                        <View style={styles.titleProgressLabels}>
-                          <Text style={{ fontSize: 10, color: colors.textSecondary }}>
-                            {language === 'ar' ? `المستهدف: ${title.targetValue} إجابة` : `Target: ${title.targetValue} answers`}
-                          </Text>
-                          <Text style={{ fontSize: 10, color: colors.textPrimary, fontWeight: '700' }}>
-                            {currentValue} / {title.targetValue}
-                          </Text>
-                        </View>
-                        <View style={[styles.titleProgressBarBg, { backgroundColor: colors.border }]}>
-                          <View style={[styles.titleProgressBarFill, { width: `${progress * 100}%`, backgroundColor: colors.primary }]} />
-                        </View>
-                      </View>
-                    ) : (
-                      <View style={styles.titleActionRow}>
-                        {isActive ? (
-                          <View style={[styles.activeTitleBadge, { backgroundColor: colors.primaryLight }]}>
-                            <Text style={[styles.activeTitleText, { color: colors.primary, fontFamily: 'IBMPlexSansArabic-Bold' }]}>
-                              {language === 'ar' ? '✓ مجهز حالياً' : '✓ Active'}
-                            </Text>
-                          </View>
-                        ) : (
-                          <TouchableOpacity
-                            style={[styles.equipBtn, { backgroundColor: colors.primary }]}
-                            onPress={() => handleEquipTitle(title.id)}
-                          >
-                            <Text style={styles.equipBtnText}>
-                              {language === 'ar' ? 'تجهيز اللقب' : 'Equip Title'}
-                            </Text>
-                          </TouchableOpacity>
-                        )}
-                      </View>
-                    )}
-                  </View>
-                );
-              })}
-            </View>
-
-            {/* Historical Collection Vault */}
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-              {language === 'ar' ? '🏛️ محراب المقتنيات التاريخية' : '🏛️ Historical Artifacts Vault'}
-            </Text>
-            <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
-              {language === 'ar' 
-                ? 'استكشف المقتنيات الإسلامية التي قمت بفتحها من متجر السراج وشاهد قصصها' 
-                : 'Explore and watch the stories of Islamic artifacts you unlocked from the shop'}
-            </Text>
-
-            <View style={styles.vaultGrid}>
-              {HISTORICAL_ARTIFACTS.map(art => {
-                const isUnlocked = profile?.unlockedItems?.includes(art.id);
-                return (
-                  <TouchableOpacity
-                    key={art.id}
-                    style={[
-                      styles.vaultCard,
-                      { backgroundColor: colors.surface, borderColor: isUnlocked ? '#E5B942' : colors.border }
-                    ]}
-                    onPress={() => isUnlocked && setSelectedArtifact(art)}
-                    disabled={!isUnlocked}
-                    activeOpacity={0.8}
-                  >
-                    <View style={[styles.vaultIconWrapper, !isUnlocked && { opacity: 0.25 }]}>
-                      <Text style={{ fontSize: 28 }}>{art.badge}</Text>
-                    </View>
-                    <Text style={[styles.vaultTextName, { color: isUnlocked ? colors.textPrimary : colors.textSecondary }]}>
-                      {language === 'ar' ? art.titleAr.replace(' الشريف', '').replace(' الشريفة', '') : art.titleEn}
-                    </Text>
-                    {!isUnlocked && (
-                      <View style={styles.lockedOverlay}>
-                        <Text style={{ fontSize: 11, color: colors.textSecondary }}>🔒 مغلق</Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {/* Saved Recitations Portfolio */}
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-              {language === 'ar' ? '💾 تلاواتي المحفوظة' : '💾 My Saved Recitations'}
-            </Text>
-            <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
-              {language === 'ar' 
-                ? `سعة تخزين التلاوات: ${savedRecitations.length} / ٣ مساحات مجانية مستخدمة`
-                : `Storage limit: ${savedRecitations.length} / 3 free slots used`}
-            </Text>
-
-            <View style={styles.portfolioContainer}>
-              {savedRecitations.length === 0 ? (
-                <View style={[styles.portfolioEmptyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                  <Text style={[styles.portfolioEmptyText, { color: colors.textSecondary }]}>
-                    {language === 'ar' 
-                      ? 'لا توجد تلاوات محفوظة حتى الآن. سجل تلاوتك لحفظها هنا!'
-                      : 'No saved recitations found. Record recitations to save them here!'}
+                    {language === 'ar' ? cat.titleAr : cat.titleEn}
                   </Text>
-                </View>
-              ) : (
-                <View style={styles.portfolioGrid}>
-                  {savedRecitations.map((item: any) => (
-                    <View key={item.id} style={[styles.portfolioCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                      <View style={styles.portfolioHeader}>
-                        <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDeleteSaved(item.id)} activeOpacity={0.75}>
-                          <Svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E7000B" strokeWidth="2.2">
-                            <Path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                          </Svg>
-                        </TouchableOpacity>
-                        <Text style={[styles.portfolioCardTitle, { color: colors.textPrimary }]}>{item.surahName}</Text>
-                      </View>
-                      <Text style={[styles.portfolioCardMeta, { color: colors.textSecondary }]}>
-                        {language === 'ar' ? `آية: ${item.ayahNumber}` : `Ayah: ${item.ayahNumber}`} | {item.style === 'mujawwad' ? (language === 'ar' ? 'مجوّد' : 'Mujawwad') : (language === 'ar' ? 'مرتل' : 'Murattal')}
-                      </Text>
-                      <Text style={[styles.portfolioCardQari, { color: colors.textSecondary }]}>
-                        👤 {item.readerName}
-                      </Text>
-                      <View style={[styles.portfolioScoreBadge, { backgroundColor: colors.neutralTint }]}>
-                        <Text style={[styles.portfolioScoreText, { color: colors.primaryDeep }]}>🎯 {item.matchPercentage}% match</Text>
-                      </View>
-                    </View>
-                  ))}
-                </View>
-              )}
-            </View>
-
-            {/* Language Switcher & Settings */}
-            <View style={[styles.detailsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
-                {language === 'ar' ? 'تفاصيل الحساب والاعدادات' : 'Account details & Settings'}
-              </Text>
-              
-              <View style={[styles.detailRow, { borderBottomColor: colors.border }]}>
-                <Text style={[styles.detailValue, { color: colors.textPrimary }]}>
-                  {user?.uid ? (language === 'ar' ? 'نشط (محلي)' : 'Active (Local)') : 'Offline'}
-                </Text>
-                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>{language === 'ar' ? 'حالة الاتصال' : 'Connection status'}</Text>
-              </View>
-              
-              <View style={[styles.detailRow, { borderBottomColor: colors.border }]}>
-                <Text style={[styles.detailValue, { color: colors.textPrimary }]}>{formattedDate}</Text>
-                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>{language === 'ar' ? 'آخر نشاط' : 'Last activity'}</Text>
-              </View>
-
-              <View style={[styles.detailRow, { borderBottomColor: colors.border }]}>
-                <View style={styles.langSwitchContainer}>
-                  <TouchableOpacity
-                    style={[styles.langBtn, language === 'ar' && { backgroundColor: colors.primaryDeep }]}
-                    onPress={() => setLanguage('ar')}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[styles.langBtnText, language === 'ar' ? { color: '#FFFFFF' } : { color: colors.textSecondary }]}>عربي</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.langBtn, language === 'en' && { backgroundColor: colors.primaryDeep }]}
-                    onPress={() => setLanguage('en')}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[styles.langBtnText, language === 'en' ? { color: '#FFFFFF' } : { color: colors.textSecondary }]}>English</Text>
-                  </TouchableOpacity>
-                </View>
-                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>{t('langToggle')}</Text>
-              </View>
-
-              {/* Country Selection */}
-              <View style={styles.detailRowCol}>
-                <Text style={[styles.detailLabelCol, { color: colors.textSecondary }]}>{t('selectCountry')}</Text>
-                <View style={styles.countryListContainer}>
-                  {countriesList.map((c) => {
-                    const isSelected = profile?.countryCode === c.code;
-                    return (
-                      <TouchableOpacity
-                        key={c.code}
-                        style={[
-                          styles.countryBadge,
-                          { backgroundColor: colors.neutralTint, borderColor: colors.border },
-                          isSelected && { backgroundColor: colors.primaryDeep, borderColor: colors.primaryDeep }
-                        ]}
-                        onPress={async () => {
-                          if (user?.uid) {
-                            await updateUserCountry(user.uid, c.nameEn, c.code);
-                            loadProfile();
-                          }
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={[styles.countryBadgeText, isSelected ? { color: '#FFFFFF' } : { color: colors.textPrimary }]}>
-                          {language === 'ar' ? c.nameAr : c.nameEn}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
-            </View>
-
-            {/* Theme Toggle Card */}
-            <View style={[styles.themeToggleCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <View style={styles.themeHeader}>
-                <Text style={[styles.themeTitle, { color: colors.textPrimary }]}>
-                  {language === 'ar' ? 'مظهر التطبيق' : 'App Theme'}
-                </Text>
-                <Text style={[styles.themeSub, { color: colors.textSecondary }]}>
-                  {language === 'ar' 
-                    ? (isLightMode ? 'مظهر مضيء ☀️' : 'مظهر داكن 🌙') 
-                    : (isLightMode ? 'Light Mode ☀️' : 'Dark Mode 🌙')}
-                </Text>
-              </View>
-              <TouchableOpacity style={[styles.themeToggleBtn, { backgroundColor: colors.neutralTint, borderColor: colors.border }]} onPress={toggleTheme} activeOpacity={0.8}>
-                <Text style={[styles.themeToggleBtnText, { color: colors.textPrimary }]}>
-                  {language === 'ar' ? 'تغيير المظهر 🔄' : 'Change Theme 🔄'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Motivational Note */}
-            <View style={[styles.noteCard, { backgroundColor: '#FFF7ED', borderColor: '#FFD6A7' }]}>
-              <Text style={[styles.noteText, { color: '#973C00' }]}>
-                💡 {language === 'ar' 
-                  ? '"من سلك طريقًا يلتمس فيه علمًا، سهّل الله له به طريقًا إلى الجنة." استمر في تحدي المعرفة اليومي!'
-                  : '"Whoever follows a path in pursuit of knowledge, Allah will make easy for him a path to Paradise." Keep up your daily quest!'}
-              </Text>
-            </View>
-
-            {/* Logout Button */}
-            <TouchableOpacity style={styles.logoutButton} onPress={logout} activeOpacity={0.85}>
-              <Text style={styles.logoutButtonText}>{t('logout')} ➔</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          /* ========================================================
-             ACCOUNTABILITY SECTION (MERGED FROM ACCOUNTABILITY SCREEN)
-             ======================================================== */
-          <View style={styles.contentWrapper}>
-            {/* Header Description */}
-            <View style={styles.logHeader}>
-              <Text style={[styles.logTitle, { color: colors.textPrimary }]}>
-                {language === 'ar' ? 'سجل المحاسبة اليومية' : 'Daily Accountability Journal'}
-              </Text>
-              <Text style={[styles.logSubtitle, { color: colors.textSecondary }]}>
-                {language === 'ar'
-                  ? 'حاسبوا أنفسكم قبل أن تُحاسبوا، وزِنوا أعمالكم قبل أن تُوزن عليكم.'
-                  : 'Hold yourself accountable daily for continuous personal growth.'}
-              </Text>
-            </View>
-
-            {/* PRAYERS LOG CARD */}
-            <View style={[styles.logCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.logCardTitle, { color: colors.textPrimary }]}>
-                {language === 'ar' ? '🕌 سجل الصلوات المفروضة' : '🕌 Daily Prayers Log'}
-              </Text>
-              <Text style={[styles.logCardSubtitle, { color: colors.textSecondary }]}>
-                {language === 'ar' ? 'أدّيت الصلوات بأي صفة اليوم؟' : 'How did you offer your prayers today?'}
-              </Text>
-
-              <View style={styles.prayersList}>
-                {prayersCatalog.map((p) => {
-                  const currentStatus = prayers[p.key];
-                  return (
-                    <View key={p.key} style={[styles.prayerRow, { borderBottomColor: colors.neutralTint }]}>
-                      <Text style={[styles.prayerNameText, { color: colors.textPrimary }]}>
-                        {language === 'ar' ? p.labelAr : p.labelEn}
-                      </Text>
-                      
-                      <View style={styles.optionsRow}>
-                        <TouchableOpacity
-                          style={[
-                            styles.optionBtn,
-                            { backgroundColor: colors.neutralTint, borderColor: colors.border },
-                            currentStatus === 'congregation' && { backgroundColor: '#10B981', borderColor: '#10B981' }
-                          ]}
-                          onPress={() => handleTogglePrayer(p.key, 'congregation')}
-                          activeOpacity={0.8}
-                        >
-                          <Text style={[styles.optionBtnText, currentStatus === 'congregation' ? { color: '#FFFFFF' } : { color: colors.textPrimary }]}>
-                            {language === 'ar' ? 'جماعة' : 'Congr.'}
-                          </Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                          style={[
-                            styles.optionBtn,
-                            { backgroundColor: colors.neutralTint, borderColor: colors.border },
-                            currentStatus === 'individual' && { backgroundColor: '#F5B841', borderColor: '#F5B841' }
-                          ]}
-                          onPress={() => handleTogglePrayer(p.key, 'individual')}
-                          activeOpacity={0.8}
-                        >
-                          <Text style={[styles.optionBtnText, currentStatus === 'individual' ? { color: '#FFFFFF' } : { color: colors.textPrimary }]}>
-                            {language === 'ar' ? 'منفرداً' : 'Indiv.'}
-                          </Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                          style={[
-                            styles.optionBtn,
-                            { backgroundColor: colors.neutralTint, borderColor: colors.border },
-                            currentStatus === 'missed' && { backgroundColor: '#E7000B', borderColor: '#E7000B' }
-                          ]}
-                          onPress={() => handleTogglePrayer(p.key, 'missed')}
-                          activeOpacity={0.8}
-                        >
-                          <Text style={[styles.optionBtnText, currentStatus === 'missed' ? { color: '#FFFFFF' } : { color: colors.textPrimary }]}>
-                            {language === 'ar' ? 'فاتتني' : 'Missed'}
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  );
-                })}
-              </View>
-            </View>
-
-            {/* DEEDS LOG CARD */}
-            <View style={[styles.logCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.logCardTitle, { color: colors.textPrimary }]}>
-                {language === 'ar' ? '📖 سجل محاسبة الطاعات' : '📖 Accountability of Deeds'}
-              </Text>
-              <Text style={[styles.logCardSubtitle, { color: colors.textSecondary }]}>
-                {language === 'ar' ? 'طاعات وسنن يومية تعهد نفسك عليها:' : 'Daily spiritual habits to maintain:'}
-              </Text>
-
-              <View style={styles.deedsList}>
-                {deedsCatalog.map((d) => {
-                  const isChecked = !!deeds[d.key];
-                  return (
-                    <TouchableOpacity
-                      key={d.key}
-                      style={[
-                        styles.deedRow,
-                        { borderColor: colors.border },
-                        isChecked && { borderColor: colors.primaryTintBorder, backgroundColor: colors.primaryTint }
-                      ]}
-                      onPress={() => handleToggleDeed(d.key)}
-                      activeOpacity={0.85}
-                    >
-                      <View style={[
-                        styles.deedCheckbox,
-                        { borderColor: isChecked ? colors.primary : colors.borderStrong, backgroundColor: isChecked ? colors.primary : 'transparent' }
-                      ]}>
-                        {isChecked && (
-                          <Svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                            <Path d="M20 6 9 17l-5-5" />
-                          </Svg>
-                        )}
-                      </View>
-                      <Text style={[styles.deedText, { color: colors.textPrimary }, isChecked && { fontWeight: '700' }]}>
-                        {language === 'ar' ? d.labelAr : d.labelEn}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-
-            {/* PLEDGE CARD */}
-            <View style={[styles.pledgeCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <TouchableOpacity
-                style={styles.pledgeCheckboxRow}
-                onPress={handleTogglePledge}
-                activeOpacity={0.85}
-              >
-                <View style={[
-                  styles.pledgeCheckbox,
-                  { borderColor: pledged ? colors.accentDeep : colors.borderStrong, backgroundColor: pledged ? colors.accentDeep : 'transparent' }
-                ]}>
-                  {pledged && (
-                    <Svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <Path d="M20 6 9 17l-5-5" />
-                    </Svg>
-                  )}
-                </View>
-                <View style={styles.pledgeTextCol}>
-                  <Text style={[styles.pledgeTitle, { color: colors.textPrimary }]}>
-                    {language === 'ar' ? 'ميثاق الصدق والأمانة 🤝' : 'Pledge of Honesty 🤝'}
+                  <Text style={[styles.smallCategoryDesc, { color: colors.textSecondary }]}>
+                    {language === 'ar' ? cat.descAr : cat.descEn}
                   </Text>
-                  <Text style={[styles.pledgeDescText, { color: colors.textSecondary }]}>
-                    {language === 'ar'
-                      ? 'أؤكد بموجب هذا أن جميع البيانات المسجلة صحيحة وصادقة تماماً.'
-                      : 'I pledge before Allah that my logs are completely honest and true.'}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            </View>
-
-            {/* WEEKLY CHART & DETAILED REPORT */}
-            <View style={[styles.logCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.logCardTitle, { color: colors.textPrimary, fontFamily: 'IBMPlexSansArabic-Bold' }]}>
-                {language === 'ar' ? '📈 التقرير الأسبوعي المفصل' : '📈 Detailed Weekly Performance'}
-              </Text>
-              <Text style={[styles.logCardSubtitle, { color: colors.textSecondary }]}>
-                {language === 'ar' ? 'إحصائيات الصلوات والعبادات خلال الـ ٧ أيام الماضية:' : 'Prayer & habit insights for the past 7 days:'}
-              </Text>
-
-              {/* Dynamic Assessment Notification Box */}
-              <View style={[styles.weeklyAssessmentBox, { backgroundColor: weeklyAnalytics.alertColor }]}>
-                <Text style={[styles.weeklyAssessmentText, { color: weeklyAnalytics.textThemeColor, fontFamily: 'IBMPlexSansArabic-Medium' }]}>
-                  {language === 'ar' ? weeklyAnalytics.assessmentAr : weeklyAnalytics.assessmentEn}
-                </Text>
-              </View>
-
-              {/* Segmented Ratio Bar for Prayers */}
-              <View style={styles.ratioCard}>
-                <Text style={[styles.ratioTitle, { color: colors.textPrimary, fontFamily: 'IBMPlexSansArabic-Bold' }]}>
-                  {language === 'ar' ? '📊 توزيع أداء الصلوات' : '📊 Prayer Distribution Ratio'}
-                </Text>
-                
-                {weeklyAnalytics.totalPrayersLogged > 0 ? (
-                  <View style={styles.segmentedBar}>
-                    {weeklyAnalytics.congregationCount > 0 && (
-                      <View style={[styles.segmentedSegment, { flex: weeklyAnalytics.congregationPct, backgroundColor: '#10B981' }]} />
-                    )}
-                    {weeklyAnalytics.individualCount > 0 && (
-                      <View style={[styles.segmentedSegment, { flex: weeklyAnalytics.individualPct, backgroundColor: '#F5B841' }]} />
-                    )}
-                    {weeklyAnalytics.missedCount > 0 && (
-                      <View style={[styles.segmentedSegment, { flex: weeklyAnalytics.missedPct, backgroundColor: '#E7000B' }]} />
-                    )}
-                  </View>
-                ) : (
-                  <View style={[styles.segmentedBar, { backgroundColor: colors.border }]} />
-                )}
-
-                <View style={styles.ratioLabelsRow}>
-                  <View style={styles.ratioLabelItem}>
-                    <View style={[styles.ratioColorDot, { backgroundColor: '#10B981' }]} />
-                    <Text style={[styles.ratioLabelText, { color: colors.textSecondary }]}>
-                      {language === 'ar' ? `جماعة: ${weeklyAnalytics.congregationCount}` : `Congr: ${weeklyAnalytics.congregationCount}`}
-                    </Text>
-                  </View>
-                  <View style={styles.ratioLabelItem}>
-                    <View style={[styles.ratioColorDot, { backgroundColor: '#F5B841' }]} />
-                    <Text style={[styles.ratioLabelText, { color: colors.textSecondary }]}>
-                      {language === 'ar' ? `منفرداً: ${weeklyAnalytics.individualCount}` : `Indiv: ${weeklyAnalytics.individualCount}`}
-                    </Text>
-                  </View>
-                  <View style={styles.ratioLabelItem}>
-                    <View style={[styles.ratioColorDot, { backgroundColor: '#E7000B' }]} />
-                    <Text style={[styles.ratioLabelText, { color: colors.textSecondary }]}>
-                      {language === 'ar' ? `فاتتني: ${weeklyAnalytics.missedCount}` : `Missed: ${weeklyAnalytics.missedCount}`}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* Challenge Milestones Status */}
-              <View style={styles.challengeSummaryCard}>
-                <View style={[styles.challengeStatItem, { borderBottomColor: colors.border }]}>
-                  <Text style={[styles.challengeStatVal, { color: colors.primaryDeep }]}>
-                    {weeklyAnalytics.fajrOnTimeCount} / {weeklyAnalytics.totalDaysWithLogs} {language === 'ar' ? 'أيام' : 'days'}
-                  </Text>
-                  <Text style={[styles.challengeStatLabel, { color: colors.textPrimary }]}>
-                    🌅 {language === 'ar' ? 'تحدي الفجر (في الجماعة)' : 'Fajr Challenge (in Congregation)'}
-                  </Text>
-                </View>
-                
-                <View style={[styles.challengeStatItem, { borderBottomColor: colors.border }]}>
-                  <Text style={[styles.challengeStatVal, { color: colors.primaryDeep }]}>
-                    {weeklyAnalytics.morningAzkarCount} / {weeklyAnalytics.totalDaysWithLogs} {language === 'ar' ? 'أيام' : 'days'}
-                  </Text>
-                  <Text style={[styles.challengeStatLabel, { color: colors.textPrimary }]}>
-                    📿 {language === 'ar' ? 'أذكار الصباح المسجلة' : 'Morning Adhkar Completed'}
-                  </Text>
-                </View>
-
-                <View style={styles.challengeStatItem}>
-                  <Text style={[styles.challengeStatVal, { color: colors.primaryDeep }]}>
-                    {weeklyAnalytics.eveningAzkarCount} / {weeklyAnalytics.totalDaysWithLogs} {language === 'ar' ? 'أيام' : 'days'}
-                  </Text>
-                  <Text style={[styles.challengeStatLabel, { color: colors.textPrimary }]}>
-                    📿 {language === 'ar' ? 'أذكار المساء المسجلة' : 'Evening Adhkar Completed'}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Weekly Activity Bar Chart */}
-              <Text style={[styles.chartTitleText, { color: colors.textPrimary, fontFamily: 'IBMPlexSansArabic-Bold', marginTop: 20 }]}>
-                {language === 'ar' ? '📊 رسم بياني للنشاط اليومي' : '📊 Daily Completed Actions Chart'}
-              </Text>
-              <View style={styles.chartContainer}>
-                {weeklyHistory.map((day, index) => {
-                  // Max completed count is 5 prayers + 6 deeds = 11 total
-                  const barHeight = Math.max(10, (day.completedCount / 11) * 120);
-                  const isCurrent = day.dateStr === todayStr;
-
-                  return (
-                    <View key={index} style={styles.chartCol}>
-                      <Text style={[styles.chartValText, { color: colors.textSecondary }]}>
-                        {day.completedCount}
-                      </Text>
-                      <View style={[
-                        styles.chartBarBg,
-                        { backgroundColor: colors.neutralTint }
-                      ]}>
-                        <View style={[
-                          styles.chartBarFill,
-                          {
-                            height: barHeight,
-                            backgroundColor: isCurrent ? colors.accentDeep : colors.primaryDeep,
-                          }
-                        ]} />
-                      </View>
-                      <Text style={[styles.chartDayText, { color: colors.textSecondary }, isCurrent && { color: colors.accentDeep, fontWeight: '700' }]}>
-                        {new Date(day.dateStr).toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US', { weekday: 'narrow' })}
-                      </Text>
-                    </View>
-                  );
-                })}
-              </View>
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
         )}
@@ -1212,6 +653,723 @@ export default function ProfileScreen({ navigation }: any) {
           <AdBanner />
         </View>
       </ScrollView>
+
+      {/* DEDICATED FULL-PAGE MODAL FOR CATEGORIES */}
+      {selectedCategoryPage !== null && (
+        <Modal
+          animationType="slide"
+          visible={selectedCategoryPage !== null}
+          onRequestClose={() => setSelectedCategoryPage(null)}
+        >
+          <View style={[styles.outerContainer, { backgroundColor: colors.background, paddingTop: 40 }]}>
+            {/* Sub-page Header with Icon-only Back Arrow ➔ */}
+            <View style={[styles.subPageHeader, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+              <TouchableOpacity
+                style={[styles.backIconBtn, { backgroundColor: colors.neutralTint, borderColor: colors.border }]}
+                onPress={() => setSelectedCategoryPage(null)}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.backIconText, { color: colors.textPrimary, transform: [{ scaleX: language === 'ar' ? 1 : -1 }] }]}>
+                  ➔
+                </Text>
+              </TouchableOpacity>
+              <Text style={[styles.subPageHeaderTitle, { color: colors.textPrimary, fontFamily: 'IBMPlexSansArabic-Bold' }]}>
+                {selectedCategoryPage === 'achievements' && (language === 'ar' ? '🏆 الإنجازات والألقاب' : '🏆 Achievements')}
+                {selectedCategoryPage === 'saved_records' && (language === 'ar' ? '💾 المحفوظات والسجل' : '💾 Saved Records')}
+                {selectedCategoryPage === 'settings' && (language === 'ar' ? '⚙️ إعدادات الحساب' : '⚙️ Settings')}
+                {selectedCategoryPage === 'logout' && (language === 'ar' ? '🚪 تسجيل الخروج' : '🚪 Logout')}
+              </Text>
+              <View style={{ width: 38 }} />
+            </View>
+
+            <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+              {/* PAGE 1: ACHIEVEMENTS */}
+              {selectedCategoryPage === 'achievements' && (
+                <View>
+                  {/* Stats Grid */}
+                  <View style={styles.statsGrid}>
+                    <View style={[styles.statBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                      <Text style={[styles.statVal, { color: colors.primaryDeep }]}>{currentScore}</Text>
+                      <Text style={[styles.statLbl, { color: colors.textSecondary }]}>{language === 'ar' ? 'مجموع النقاط' : 'Total Score'}</Text>
+                    </View>
+                    <View style={[styles.statBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                      <Text style={[styles.statVal, { color: colors.primaryDeep }]}>
+                        {unlockedBadgeIds.length} / {badgesCatalog.length}
+                      </Text>
+                      <Text style={[styles.statLbl, { color: colors.textSecondary }]}>{language === 'ar' ? 'الأوسمة المفتوحة' : 'Unlocked Badges'}</Text>
+                    </View>
+                  </View>
+
+                  {/* Quranic Titles Section */}
+                  <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+                    {language === 'ar' ? '👑 الألقاب القرآنية المكتسبة' : '👑 Earned Quranic Titles'}
+                  </Text>
+                  <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
+                    {language === 'ar' 
+                      ? 'حقق مستهدفات الاختبارات لفتح الألقاب الشريفة وتجهيزها في حسابك' 
+                      : 'Complete quiz milestones to unlock and equip noble titles'}
+                  </Text>
+
+                  <View style={styles.titlesContainer}>
+                    {QURANIC_TITLES.map(title => {
+                      const isUnlocked = profile?.unlockedTitles?.includes(title.id);
+                      const isActive = profile?.activeTitle === title.id;
+
+                      const currentValue = title.targetTest === 'mutashabihat'
+                        ? (profile?.mutashabihatCorrectCount ?? 0)
+                        : title.targetTest === 'quran'
+                          ? (profile?.quranCorrectCount ?? 0)
+                          : title.targetTest === 'trivia'
+                            ? (profile?.triviaCorrectCount ?? 0)
+                            : ((profile?.mutashabihatCorrectCount ?? 0) + (profile?.quranCorrectCount ?? 0) + (profile?.triviaCorrectCount ?? 0));
+
+                      const progress = Math.min(1, currentValue / title.targetValue);
+
+                      return (
+                        <View
+                          key={title.id}
+                          style={[
+                            styles.titleCard,
+                            { backgroundColor: colors.surface, borderColor: isActive ? colors.primary : colors.border }
+                          ]}
+                        >
+                          <View style={styles.titleCardHeader}>
+                            <View style={[styles.titleEmojiBg, { backgroundColor: colors.border }]}>
+                              <Text style={{ fontSize: 24 }}>{title.emoji}</Text>
+                            </View>
+                            
+                            <View style={styles.titleMeta}>
+                              <Text style={[styles.titleName, { color: colors.textPrimary, fontFamily: 'IBMPlexSansArabic-Bold' }]}>
+                                {language === 'ar' ? title.titleAr : title.titleEn}
+                              </Text>
+                              <Text style={[styles.titleDesc, { color: colors.textSecondary }]}>
+                                {language === 'ar' ? title.descAr : title.descEn}
+                              </Text>
+                            </View>
+                          </View>
+
+                          {!isUnlocked ? (
+                            <View style={styles.titleProgressContainer}>
+                              <View style={styles.titleProgressLabels}>
+                                <Text style={{ fontSize: 10, color: colors.textSecondary }}>
+                                  {language === 'ar' ? `المستهدف: ${title.targetValue} إجابة` : `Target: ${title.targetValue} answers`}
+                                </Text>
+                                <Text style={{ fontSize: 10, color: colors.textPrimary, fontWeight: '700' }}>
+                                  {currentValue} / {title.targetValue}
+                                </Text>
+                              </View>
+                              <View style={[styles.titleProgressBarBg, { backgroundColor: colors.border }]}>
+                                <View style={[styles.titleProgressBarFill, { width: `${progress * 100}%`, backgroundColor: colors.primary }]} />
+                              </View>
+                            </View>
+                          ) : (
+                            <View style={styles.titleActionRow}>
+                              {isActive ? (
+                                <View style={[styles.activeTitleBadge, { backgroundColor: colors.primaryLight }]}>
+                                  <Text style={[styles.activeTitleText, { color: colors.primary, fontFamily: 'IBMPlexSansArabic-Bold' }]}>
+                                    {language === 'ar' ? '✓ مجهز حالياً' : '✓ Active'}
+                                  </Text>
+                                </View>
+                              ) : (
+                                <TouchableOpacity
+                                  style={[styles.equipBtn, { backgroundColor: colors.primary }]}
+                                  onPress={() => handleEquipTitle(title.id)}
+                                >
+                                  <Text style={styles.equipBtnText}>
+                                    {language === 'ar' ? 'تجهيز اللقب' : 'Equip Title'}
+                                  </Text>
+                                </TouchableOpacity>
+                              )}
+                            </View>
+                          )}
+                        </View>
+                      );
+                    })}
+                  </View>
+
+                  {/* Cabinet of Badges */}
+                  <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginTop: 12 }]}>{t('badgesTitle')}</Text>
+                  <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>{t('badgesDesc')}</Text>
+                  
+                  <View style={styles.badgesCabinet}>
+                    {badgesCatalog.map((badge) => {
+                      const isUnlocked = unlockedBadgeIds.includes(badge.id);
+                      return (
+                        <View
+                          key={badge.id}
+                          style={[
+                            styles.badgeCard,
+                            { backgroundColor: colors.surface, borderColor: colors.border },
+                            isUnlocked && { borderColor: badge.color, backgroundColor: `${badge.color}15` }
+                          ]}
+                        >
+                          <View style={[styles.badgeEmojiWrapper, !isUnlocked && styles.badgeEmojiWrapperLocked]}>
+                            <Text style={[styles.badgeEmoji, !isUnlocked && styles.badgeEmojiLocked]}>
+                              {badge.emoji}
+                            </Text>
+                          </View>
+                          <Text style={[styles.badgeTitle, { color: colors.textPrimary }, !isUnlocked && styles.badgeTitleLocked]}>
+                            {language === 'ar' ? badge.titleAr : badge.titleEn}
+                          </Text>
+                          <Text style={[styles.badgeDesc, { color: colors.textSecondary }, !isUnlocked && styles.badgeDescLocked]}>
+                            {language === 'ar' ? badge.descAr : badge.descEn}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+
+                  {/* Historical Collection Vault */}
+                  <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginTop: 12 }]}>
+                    {language === 'ar' ? '🏛️ محراب المقتنيات التاريخية' : '🏛️ Historical Artifacts Vault'}
+                  </Text>
+                  <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
+                    {language === 'ar' 
+                      ? 'استكشف المقتنيات الإسلامية التي قمت بفتحها من متجر السراج وشاهد قصصها' 
+                      : 'Explore and watch the stories of Islamic artifacts you unlocked from the shop'}
+                  </Text>
+
+                  <View style={styles.vaultGrid}>
+                    {HISTORICAL_ARTIFACTS.map(art => {
+                      const isUnlocked = profile?.unlockedItems?.includes(art.id);
+                      return (
+                        <TouchableOpacity
+                          key={art.id}
+                          style={[
+                            styles.vaultCard,
+                            { backgroundColor: colors.surface, borderColor: isUnlocked ? '#E5B942' : colors.border }
+                          ]}
+                          onPress={() => isUnlocked && setSelectedArtifact(art)}
+                          disabled={!isUnlocked}
+                          activeOpacity={0.8}
+                        >
+                          <View style={[styles.vaultIconWrapper, !isUnlocked && { opacity: 0.25 }]}>
+                            <Text style={{ fontSize: 28 }}>{art.badge}</Text>
+                          </View>
+                          <Text style={[styles.vaultTextName, { color: isUnlocked ? colors.textPrimary : colors.textSecondary }]}>
+                            {language === 'ar' ? art.titleAr.replace(' الشريف', '').replace(' الشريفة', '') : art.titleEn}
+                          </Text>
+                          {!isUnlocked && (
+                            <View style={styles.lockedOverlay}>
+                              <Text style={{ fontSize: 11, color: colors.textSecondary }}>🔒 مغلق</Text>
+                            </View>
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+              )}
+
+              {/* PAGE 2: SAVED RECORDS */}
+              {selectedCategoryPage === 'saved_records' && (
+                <View>
+                  {/* Saved Recitations Portfolio */}
+                  <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+                    {language === 'ar' ? '💾 تلاواتي المحفوظة' : '💾 My Saved Recitations'}
+                  </Text>
+                  <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
+                    {language === 'ar' 
+                      ? `سعة تخزين التلاوات: ${savedRecitations.length} / ٣ مساحات مجانية مستخدمة`
+                      : `Storage limit: ${savedRecitations.length} / 3 free slots used`}
+                  </Text>
+
+                  <View style={styles.portfolioContainer}>
+                    {savedRecitations.length === 0 ? (
+                      <View style={[styles.portfolioEmptyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                        <Text style={[styles.portfolioEmptyText, { color: colors.textSecondary }]}>
+                          {language === 'ar' 
+                            ? 'لا توجد تلاوات محفوظة حتى الآن. سجل تلاوتك لحفظها هنا!'
+                            : 'No saved recitations found. Record recitations to save them here!'}
+                        </Text>
+                      </View>
+                    ) : (
+                      <View style={styles.portfolioGrid}>
+                        {savedRecitations.map((item: any) => (
+                          <View key={item.id} style={[styles.portfolioCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                            <View style={styles.portfolioHeader}>
+                              <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDeleteSaved(item.id)} activeOpacity={0.75}>
+                                <Svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E7000B" strokeWidth="2.2">
+                                  <Path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                                </Svg>
+                              </TouchableOpacity>
+                              <Text style={[styles.portfolioCardTitle, { color: colors.textPrimary }]}>{item.surahName}</Text>
+                            </View>
+                            <Text style={[styles.portfolioCardMeta, { color: colors.textSecondary }]}>
+                              {language === 'ar' ? `آية: ${item.ayahNumber}` : `Ayah: ${item.ayahNumber}`} | {item.style === 'mujawwad' ? (language === 'ar' ? 'مجوّد' : 'Mujawwad') : (language === 'ar' ? 'مرتل' : 'Murattal')}
+                            </Text>
+                            <Text style={[styles.portfolioCardQari, { color: colors.textSecondary }]}>
+                              👤 {item.readerName}
+                            </Text>
+                            <View style={[styles.portfolioScoreBadge, { backgroundColor: colors.neutralTint }]}>
+                              <Text style={[styles.portfolioScoreText, { color: colors.primaryDeep }]}>🎯 {item.matchPercentage}% match</Text>
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Daily Accountability Journal */}
+                  <View style={styles.logHeader}>
+                    <Text style={[styles.logTitle, { color: colors.textPrimary }]}>
+                      {language === 'ar' ? 'سجل المحاسبة اليومية' : 'Daily Accountability Journal'}
+                    </Text>
+                    <Text style={[styles.logSubtitle, { color: colors.textSecondary }]}>
+                      {language === 'ar'
+                        ? 'حاسبوا أنفسكم قبل أن تُحاسبوا، وزِنوا أعمالكم قبل أن تُوزن عليكم.'
+                        : 'Hold yourself accountable daily for continuous personal growth.'}
+                    </Text>
+                  </View>
+
+                  {/* PRAYERS LOG CARD */}
+                  <View style={[styles.logCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <Text style={[styles.logCardTitle, { color: colors.textPrimary }]}>
+                      {language === 'ar' ? '🕌 سجل الصلوات المفروضة' : '🕌 Daily Prayers Log'}
+                    </Text>
+                    <Text style={[styles.logCardSubtitle, { color: colors.textSecondary }]}>
+                      {language === 'ar' ? 'أدّيت الصلوات بأي صفة اليوم؟' : 'How did you offer your prayers today?'}
+                    </Text>
+
+                    <View style={styles.prayersList}>
+                      {prayersCatalog.map((p) => {
+                        const currentStatus = prayers[p.key];
+                        return (
+                          <View key={p.key} style={[styles.prayerRow, { borderBottomColor: colors.neutralTint }]}>
+                            <Text style={[styles.prayerNameText, { color: colors.textPrimary }]}>
+                              {language === 'ar' ? p.labelAr : p.labelEn}
+                            </Text>
+                            
+                            <View style={styles.optionsRow}>
+                              <TouchableOpacity
+                                style={[
+                                  styles.optionBtn,
+                                  { backgroundColor: colors.neutralTint, borderColor: colors.border },
+                                  currentStatus === 'congregation' && { backgroundColor: '#10B981', borderColor: '#10B981' }
+                                ]}
+                                onPress={() => handleTogglePrayer(p.key, 'congregation')}
+                                activeOpacity={0.8}
+                              >
+                                <Text style={[styles.optionBtnText, currentStatus === 'congregation' ? { color: '#FFFFFF' } : { color: colors.textPrimary }]}>
+                                  {language === 'ar' ? 'جماعة' : 'Congr.'}
+                                </Text>
+                              </TouchableOpacity>
+
+                              <TouchableOpacity
+                                style={[
+                                  styles.optionBtn,
+                                  { backgroundColor: colors.neutralTint, borderColor: colors.border },
+                                  currentStatus === 'individual' && { backgroundColor: '#F5B841', borderColor: '#F5B841' }
+                                ]}
+                                onPress={() => handleTogglePrayer(p.key, 'individual')}
+                                activeOpacity={0.8}
+                              >
+                                <Text style={[styles.optionBtnText, currentStatus === 'individual' ? { color: '#FFFFFF' } : { color: colors.textPrimary }]}>
+                                  {language === 'ar' ? 'منفرداً' : 'Indiv.'}
+                                </Text>
+                              </TouchableOpacity>
+
+                              <TouchableOpacity
+                                style={[
+                                  styles.optionBtn,
+                                  { backgroundColor: colors.neutralTint, borderColor: colors.border },
+                                  currentStatus === 'missed' && { backgroundColor: '#E7000B', borderColor: '#E7000B' }
+                                ]}
+                                onPress={() => handleTogglePrayer(p.key, 'missed')}
+                                activeOpacity={0.8}
+                              >
+                                <Text style={[styles.optionBtnText, currentStatus === 'missed' ? { color: '#FFFFFF' } : { color: colors.textPrimary }]}>
+                                  {language === 'ar' ? 'فاتتني' : 'Missed'}
+                                </Text>
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </View>
+
+                  {/* DEEDS LOG CARD */}
+                  <View style={[styles.logCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <Text style={[styles.logCardTitle, { color: colors.textPrimary }]}>
+                      {language === 'ar' ? '📖 سجل محاسبة الطاعات' : '📖 Accountability of Deeds'}
+                    </Text>
+                    <Text style={[styles.logCardSubtitle, { color: colors.textSecondary }]}>
+                      {language === 'ar' ? 'طاعات وسنن يومية تعهد نفسك عليها:' : 'Daily spiritual habits to maintain:'}
+                    </Text>
+
+                    <View style={styles.deedsList}>
+                      {deedsCatalog.map((d) => {
+                        const isChecked = !!deeds[d.key];
+                        return (
+                          <TouchableOpacity
+                            key={d.key}
+                            style={[
+                              styles.deedRow,
+                              { borderColor: colors.border },
+                              isChecked && { borderColor: colors.primaryTintBorder, backgroundColor: colors.primaryTint }
+                            ]}
+                            onPress={() => handleToggleDeed(d.key)}
+                            activeOpacity={0.85}
+                          >
+                            <View style={[
+                              styles.deedCheckbox,
+                              { borderColor: isChecked ? colors.primary : colors.borderStrong, backgroundColor: isChecked ? colors.primary : 'transparent' }
+                            ]}>
+                              {isChecked && (
+                                <Svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                  <Path d="M20 6 9 17l-5-5" />
+                                </Svg>
+                              )}
+                            </View>
+                            <Text style={[styles.deedText, { color: colors.textPrimary }, isChecked && { fontWeight: '700' }]}>
+                              {language === 'ar' ? d.labelAr : d.labelEn}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+
+                  {/* PLEDGE CARD */}
+                  <View style={[styles.pledgeCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <TouchableOpacity
+                      style={styles.pledgeCheckboxRow}
+                      onPress={handleTogglePledge}
+                      activeOpacity={0.85}
+                    >
+                      <View style={[
+                        styles.pledgeCheckbox,
+                        { borderColor: pledged ? colors.accentDeep : colors.borderStrong, backgroundColor: pledged ? colors.accentDeep : 'transparent' }
+                      ]}>
+                        {pledged && (
+                          <Svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            <Path d="M20 6 9 17l-5-5" />
+                          </Svg>
+                        )}
+                      </View>
+                      <View style={styles.pledgeTextCol}>
+                        <Text style={[styles.pledgeTitle, { color: colors.textPrimary }]}>
+                          {language === 'ar' ? 'ميثاق الصدق والأمانة 🤝' : 'Pledge of Honesty 🤝'}
+                        </Text>
+                        <Text style={[styles.pledgeDescText, { color: colors.textSecondary }]}>
+                          {language === 'ar'
+                            ? 'أؤكد بموجب هذا أن جميع البيانات المسجلة صحيحة وصادقة تماماً.'
+                            : 'I pledge before Allah that my logs are completely honest and true.'}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* WEEKLY CHART & DETAILED REPORT */}
+                  <View style={[styles.logCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <Text style={[styles.logCardTitle, { color: colors.textPrimary, fontFamily: 'IBMPlexSansArabic-Bold' }]}>
+                      {language === 'ar' ? '📈 التقرير الأسبوعي المفصل' : '📈 Detailed Weekly Performance'}
+                    </Text>
+                    <Text style={[styles.logCardSubtitle, { color: colors.textSecondary }]}>
+                      {language === 'ar' ? 'إحصائيات الصلوات والعبادات خلال الـ ٧ أيام الماضية:' : 'Prayer & habit insights for the past 7 days:'}
+                    </Text>
+
+                    {/* Dynamic Assessment Notification Box */}
+                    <View style={[styles.weeklyAssessmentBox, { backgroundColor: weeklyAnalytics.alertColor }]}>
+                      <Text style={[styles.weeklyAssessmentText, { color: weeklyAnalytics.textThemeColor, fontFamily: 'IBMPlexSansArabic-Medium' }]}>
+                        {language === 'ar' ? weeklyAnalytics.assessmentAr : weeklyAnalytics.assessmentEn}
+                      </Text>
+                    </View>
+
+                    {/* Segmented Ratio Bar for Prayers */}
+                    <View style={styles.ratioCard}>
+                      <Text style={[styles.ratioTitle, { color: colors.textPrimary, fontFamily: 'IBMPlexSansArabic-Bold' }]}>
+                        {language === 'ar' ? '📊 توزيع أداء الصلوات' : '📊 Prayer Distribution Ratio'}
+                      </Text>
+                      
+                      {weeklyAnalytics.totalPrayersLogged > 0 ? (
+                        <View style={styles.segmentedBar}>
+                          {weeklyAnalytics.congregationCount > 0 && (
+                            <View style={[styles.segmentedSegment, { flex: weeklyAnalytics.congregationPct, backgroundColor: '#10B981' }]} />
+                          )}
+                          {weeklyAnalytics.individualCount > 0 && (
+                            <View style={[styles.segmentedSegment, { flex: weeklyAnalytics.individualPct, backgroundColor: '#F5B841' }]} />
+                          )}
+                          {weeklyAnalytics.missedCount > 0 && (
+                            <View style={[styles.segmentedSegment, { flex: weeklyAnalytics.missedPct, backgroundColor: '#E7000B' }]} />
+                          )}
+                        </View>
+                      ) : (
+                        <View style={[styles.segmentedBar, { backgroundColor: colors.border }]} />
+                      )}
+
+                      <View style={styles.ratioLabelsRow}>
+                        <View style={styles.ratioLabelItem}>
+                          <View style={[styles.ratioColorDot, { backgroundColor: '#10B981' }]} />
+                          <Text style={[styles.ratioLabelText, { color: colors.textSecondary }]}>
+                            {language === 'ar' ? `جماعة: ${weeklyAnalytics.congregationCount}` : `Congr: ${weeklyAnalytics.congregationCount}`}
+                          </Text>
+                        </View>
+                        <View style={styles.ratioLabelItem}>
+                          <View style={[styles.ratioColorDot, { backgroundColor: '#F5B841' }]} />
+                          <Text style={[styles.ratioLabelText, { color: colors.textSecondary }]}>
+                            {language === 'ar' ? `منفرداً: ${weeklyAnalytics.individualCount}` : `Indiv: ${weeklyAnalytics.individualCount}`}
+                          </Text>
+                        </View>
+                        <View style={styles.ratioLabelItem}>
+                          <View style={[styles.ratioColorDot, { backgroundColor: '#E7000B' }]} />
+                          <Text style={[styles.ratioLabelText, { color: colors.textSecondary }]}>
+                            {language === 'ar' ? `فاتتني: ${weeklyAnalytics.missedCount}` : `Missed: ${weeklyAnalytics.missedCount}`}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Challenge Milestones Status */}
+                    <View style={styles.challengeSummaryCard}>
+                      <View style={[styles.challengeStatItem, { borderBottomColor: colors.border }]}>
+                        <Text style={[styles.challengeStatVal, { color: colors.primaryDeep }]}>
+                          {weeklyAnalytics.fajrOnTimeCount} / {weeklyAnalytics.totalDaysWithLogs} {language === 'ar' ? 'أيام' : 'days'}
+                        </Text>
+                        <Text style={[styles.challengeStatLabel, { color: colors.textPrimary }]}>
+                          🌅 {language === 'ar' ? 'تحدي الفجر (في الجماعة)' : 'Fajr Challenge (in Congregation)'}
+                        </Text>
+                      </View>
+                      
+                      <View style={[styles.challengeStatItem, { borderBottomColor: colors.border }]}>
+                        <Text style={[styles.challengeStatVal, { color: colors.primaryDeep }]}>
+                          {weeklyAnalytics.morningAzkarCount} / {weeklyAnalytics.totalDaysWithLogs} {language === 'ar' ? 'أيام' : 'days'}
+                        </Text>
+                        <Text style={[styles.challengeStatLabel, { color: colors.textPrimary }]}>
+                          📿 {language === 'ar' ? 'أذكار الصباح المسجلة' : 'Morning Adhkar Completed'}
+                        </Text>
+                      </View>
+
+                      <View style={styles.challengeStatItem}>
+                        <Text style={[styles.challengeStatVal, { color: colors.primaryDeep }]}>
+                          {weeklyAnalytics.eveningAzkarCount} / {weeklyAnalytics.totalDaysWithLogs} {language === 'ar' ? 'أيام' : 'days'}
+                        </Text>
+                        <Text style={[styles.challengeStatLabel, { color: colors.textPrimary }]}>
+                          📿 {language === 'ar' ? 'أذكار المساء المسجلة' : 'Evening Adhkar Completed'}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Weekly Activity Bar Chart */}
+                    <Text style={[styles.chartTitleText, { color: colors.textPrimary, fontFamily: 'IBMPlexSansArabic-Bold', marginTop: 20 }]}>
+                      {language === 'ar' ? '📊 رسم بياني للنشاط اليومي' : '📊 Daily Completed Actions Chart'}
+                    </Text>
+                    <View style={styles.chartContainer}>
+                      {weeklyHistory.map((day, index) => {
+                        const barHeight = Math.max(10, (day.completedCount / 11) * 120);
+                        const isCurrent = day.dateStr === todayStr;
+
+                        return (
+                          <View key={index} style={styles.chartCol}>
+                            <Text style={[styles.chartValText, { color: colors.textSecondary }]}>
+                              {day.completedCount}
+                            </Text>
+                            <View style={[
+                              styles.chartBarBg,
+                              { backgroundColor: colors.neutralTint }
+                            ]}>
+                              <View style={[
+                                styles.chartBarFill,
+                                {
+                                  height: barHeight,
+                                  backgroundColor: isCurrent ? colors.accentDeep : colors.primaryDeep,
+                                }
+                              ]} />
+                            </View>
+                            <Text style={[styles.chartDayText, { color: colors.textSecondary }, isCurrent && { color: colors.accentDeep, fontWeight: '700' }]}>
+                              {new Date(day.dateStr).toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US', { weekday: 'narrow' })}
+                            </Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              {/* PAGE 3: SETTINGS */}
+              {selectedCategoryPage === 'settings' && (
+                <View>
+                  {/* Account & System Status */}
+                  <View style={[styles.detailsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
+                      {language === 'ar' ? '👤 تفاصيل الحساب والنظام' : '👤 Account & System Details'}
+                    </Text>
+
+                    <View style={[styles.detailRow, { borderBottomColor: colors.border }]}>
+                      <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
+                        {language === 'ar' ? 'حالة الاتصال بالسيرفر' : 'Server Connection'}
+                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#10B981' }} />
+                        <Text style={[styles.detailValue, { color: colors.textPrimary, fontWeight: '700' }]}>
+                          {language === 'ar' ? 'متصل وخالي من الأخطاء' : 'Online & Syncing'}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={[styles.detailRow, { borderBottomColor: colors.border }]}>
+                      <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
+                        {language === 'ar' ? 'آخر نشاط مسجّل' : 'Last Logged Activity'}
+                      </Text>
+                      <Text style={[styles.detailValue, { color: colors.textPrimary }]}>{formattedDate}</Text>
+                    </View>
+
+                    <View style={[styles.detailRow, { borderBottomColor: colors.border }]}>
+                      <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
+                        {language === 'ar' ? 'لغة التطبيق' : 'App Language'}
+                      </Text>
+                      <View style={styles.langSwitchContainer}>
+                        <TouchableOpacity
+                          style={[styles.langBtn, language === 'ar' && { backgroundColor: colors.primary }]}
+                          onPress={() => setLanguage('ar')}
+                        >
+                          <Text style={[styles.langBtnText, { color: language === 'ar' ? '#FFFFFF' : colors.textSecondary }]}>
+                            عربي
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.langBtn, language === 'en' && { backgroundColor: colors.primary }]}
+                          onPress={() => setLanguage('en')}
+                        >
+                          <Text style={[styles.langBtnText, { color: language === 'en' ? '#FFFFFF' : colors.textSecondary }]}>
+                            English
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+
+                    {/* Country Selector */}
+                    <View style={styles.detailRowCol}>
+                      <Text style={[styles.detailLabelCol, { color: colors.textSecondary }]}>
+                        {language === 'ar' ? 'الدولة / المنطقة الجغرافية' : 'Country / Region'}
+                      </Text>
+                      <View style={styles.countryListContainer}>
+                        {countriesList.map(c => {
+                          const isSelected = profile?.country === c.code;
+                          return (
+                            <TouchableOpacity
+                              key={c.code}
+                              style={[
+                                styles.countryBadge,
+                                {
+                                  backgroundColor: isSelected ? colors.primaryTint : colors.neutralTint,
+                                  borderColor: isSelected ? colors.primary : colors.border,
+                                }
+                              ]}
+                              onPress={() => handleSelectCountry(c.code)}
+                              activeOpacity={0.8}
+                            >
+                              <Text
+                                style={[
+                                  styles.countryBadgeText,
+                                  { color: isSelected ? colors.primaryDeep : colors.textPrimary }
+                                ]}
+                              >
+                                {language === 'ar' ? c.nameAr : c.nameEn}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Theme Selector */}
+                  <View style={[styles.themeToggleCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <View style={styles.themeHeader}>
+                      <Text style={[styles.themeTitle, { color: colors.textPrimary }]}>
+                        {language === 'ar' ? 'مظهر التطبيق (الوضع الليلي)' : 'App Theme Mode'}
+                      </Text>
+                      <Text style={[styles.themeSub, { color: colors.textSecondary }]}>
+                        {language === 'ar'
+                          ? isLightMode ? 'الوضع النهاري مفعّل حالياً' : 'الوضع الليلي مفعّل حالياً'
+                          : isLightMode ? 'Light Mode active' : 'Dark Mode active'}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      style={[styles.themeToggleBtn, { backgroundColor: colors.neutralTint, borderColor: colors.border }]}
+                      onPress={toggleTheme}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[styles.themeToggleBtnText, { color: colors.textPrimary }]}>
+                        {isLightMode ? (language === 'ar' ? '🌙 تفعيل الداكن' : '🌙 Dark') : (language === 'ar' ? '☀️ تفعيل الفاتح' : '☀️ Light')}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Motivational Quote Note Card */}
+                  <View style={[styles.noteCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <Text style={[styles.noteText, { color: colors.textSecondary }]}>
+                      {language === 'ar'
+                        ? '💡 ملحوظة: يمكنك تغيير لغة التطبيق أو الدولة أو المظهر الداكن في أي وقت. يتم حفظ كافة التفضيلات تلقائياً في حسابك.'
+                        : '💡 Note: You can switch language, country, or dark mode anytime. All preferences are automatically synced.'}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {/* PAGE 4: LOGOUT */}
+              {selectedCategoryPage === 'logout' && (
+                <View>
+                  {/* Account Details Box */}
+                  <View style={[styles.detailsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
+                      {language === 'ar' ? '🔒 معلومات الجلسة الحالية' : '🔒 Current Session Info'}
+                    </Text>
+
+                    <View style={[styles.detailRow, { borderBottomColor: colors.border }]}>
+                      <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
+                        {language === 'ar' ? 'اسم المستخدم' : 'Display Name'}
+                      </Text>
+                      <Text style={[styles.detailValue, { color: colors.textPrimary, fontWeight: '700' }]}>
+                        {user?.displayName || (language === 'ar' ? 'ضيف' : 'Guest')}
+                      </Text>
+                    </View>
+
+                    <View style={[styles.detailRow, { borderBottomColor: colors.border }]}>
+                      <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
+                        {language === 'ar' ? 'المستوى الحالي' : 'Current Level'}
+                      </Text>
+                      <Text style={[styles.detailValue, { color: colors.primaryDeep, fontWeight: '700' }]}>
+                        {levelName} ({currentScore} {language === 'ar' ? 'نقطة' : 'pts'})
+                      </Text>
+                    </View>
+
+                    <View style={[styles.detailRow, { borderBottomColor: colors.border }]}>
+                      <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
+                        {language === 'ar' ? 'اللقب المجهز' : 'Active Title'}
+                      </Text>
+                      <Text style={[styles.detailValue, { color: colors.textPrimary }]}>
+                        {profile?.activeTitle 
+                          ? QURANIC_TITLES.find(t => t.id === profile.activeTitle)?.[language === 'ar' ? 'titleAr' : 'titleEn']
+                          : (language === 'ar' ? 'لا يوجد لقب مجهز' : 'No title equipped')}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Logout Security Assurance Box */}
+                  <View style={[styles.noteCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <Text style={[styles.noteText, { color: colors.textSecondary }]}>
+                      {language === 'ar'
+                        ? '🛡️ عند تسجيل الخروج، تظل جميع إنجازاتك وأوسمتك ونقاطك محفوظة بآمان في حسابك، ويمكنك العودة إليها في أي وقت ببيانات دخولك.'
+                        : '🛡️ Your badges, title progression, and points remain safely saved in the cloud upon logging out.'}
+                    </Text>
+                  </View>
+
+                  {/* Prominent Red Logout Button */}
+                  <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.85}>
+                    <Text style={styles.logoutButtonText}>
+                      {language === 'ar' ? '🚪 تسجيل الخروج من الحساب' : '🚪 Logout from Account'}
+                    </Text>
+                  </TouchableOpacity>
+              </View>
+            )}
+          </ScrollView>
+        </View>
+      </Modal>
+    )}
 
       {/* INTERACTIVE MULTIMEDIA CARD OVERLAY MODAL */}
       {selectedArtifact && (
@@ -1286,6 +1444,31 @@ export default function ProfileScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
+  subPageHeader: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+  },
+  backIconBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  backIconText: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  subPageHeaderTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
   outerContainer: {
     flex: 1,
   },
@@ -1325,13 +1508,54 @@ const styles = StyleSheet.create({
     fontFamily: 'IBMPlexSansArabic-SemiBold',
   },
   scrollContent: {
+    paddingTop: 44,
     paddingBottom: 24,
   },
   contentWrapper: {
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
   },
   loader: {
     marginTop: 40,
+  },
+  categoryCardsGrid: {
+    flexDirection: 'row-reverse',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 20,
+  },
+  smallCategoryCard: {
+    width: '47%',
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    shadowColor: '#1D2939',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
+    flexGrow: 1,
+  },
+  smallCategoryIconWrapper: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  smallCategoryTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 2,
+    textAlign: 'center',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+  smallCategoryDesc: {
+    fontSize: 9.5,
+    textAlign: 'center',
+    fontFamily: 'IBMPlexSansArabic-Regular',
   },
   profileHeaderCard: {
     borderRadius: 18,
@@ -2153,5 +2377,53 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 12,
     textAlign: 'right',
+  },
+  categoryTabsRow: {
+    flexDirection: 'row-reverse',
+    gap: 8,
+    paddingVertical: 4,
+  },
+  categoryTabBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  categoryTabText: {
+    fontSize: 12.5,
+    fontWeight: '600',
+  },
+  logoutCardContainer: {
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 24,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  logoutCardTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  logoutCardSubtitle: {
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 20,
+    fontFamily: 'IBMPlexSansArabic-Regular',
+  },
+  logoutUserInfoBox: {
+    width: '100%',
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  logoutUserText: {
+    fontSize: 14,
   },
 });

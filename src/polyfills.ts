@@ -1,4 +1,4 @@
-if (typeof global.DOMException === 'undefined') {
+if (typeof globalThis.DOMException === 'undefined') {
   class DOMException extends Error {
     constructor(message?: string, name?: string) {
       super(message);
@@ -7,5 +7,5 @@ if (typeof global.DOMException === 'undefined') {
     }
   }
 
-  (global as any).DOMException = DOMException;
+  (globalThis as any).DOMException = DOMException;
 }

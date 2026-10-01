@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
 import { readingPassages, type ReadingPassage } from '../data/reading';
 import { useAuth } from '../contexts/AuthContext';
-import { saveUserScore, getCurrentUserProfile } from '../firebase/auth';
+import { saveUserScore, getCurrentUserProfile, addSirajPoints } from '../firebase/auth';
 import { Colors } from '../config/colors';
 
 export default function ReadingChallengeScreen({ navigation }: any) {
@@ -14,8 +14,24 @@ export default function ReadingChallengeScreen({ navigation }: any) {
   const [feedback, setFeedback] = useState('');
   const [scoreEarned, setScoreEarned] = useState(0);
   const [completed, setCompleted] = useState(false);
+  const [profile, setProfile] = useState<any>(null);
 
   const currentPassage = passages[currentIndex];
+
+  const loadProfile = async () => {
+    if (user?.uid) {
+      try {
+        const data = await getCurrentUserProfile(user.uid);
+        setProfile(data);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
+
+  useEffect(() => {
+    loadProfile();
+  }, [user?.uid]);
 
   const handleSubmit = async () => {
     if (!currentPassage) return;
@@ -29,15 +45,16 @@ export default function ReadingChallengeScreen({ navigation }: any) {
     setAnswered(true);
 
     if (isCorrect) {
-      setFeedback('إجابة صحيحة! أحسنت وبوركت قراءتك 🌟');
+      setFeedback('إجابة صحيحة! أحسنت وبوركت قراءتك 🌟 (+١٠ 🕯️ سراج)');
       const earned = scoreEarned + 10;
       setScoreEarned(earned);
 
-      // Sync user profile score
+      // Sync user profile score and Siraj points
       if (user?.uid) {
         try {
-          const profile = await getCurrentUserProfile(user.uid);
-          const currentScore = profile?.score ?? 0;
+          const updated = await addSirajPoints(user.uid, 10);
+          setProfile(updated);
+          const currentScore = updated.score ?? 0;
           await saveUserScore(user.uid, currentScore + 10);
         } catch (err) {
           console.error(err);
@@ -68,108 +85,125 @@ export default function ReadingChallengeScreen({ navigation }: any) {
   }
 
   return (
-    <ScrollView style={styles.outerContainer} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>تحدي القراءة والفهم</Text>
-          <Text style={styles.subtitle}>اقرأ النصوص بدقة وتدبر لتجيب على الأسئلة وتزيد معرفتك</Text>
+    <View style={styles.outerContainer}>
+      {/* Top Header Bar with Icon-Only Back Button and Siraj Badge on Left */}
+      <View style={styles.headerCustom}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <Text style={{ fontSize: 20, color: Colors.primary }}>➔</Text>
+        </TouchableOpacity>
+        
+        <Text style={styles.headerTitle}>تحدي القراءة وفهم المقروء</Text>
+
+        <View style={styles.walletBadge}>
+          <Text style={{ fontSize: 15, marginRight: 4 }}>🕯️</Text>
+          <Text style={styles.walletText}>
+            {profile?.sirajBalance ?? 50}
+          </Text>
         </View>
-
-        {completed ? (
-          <View style={styles.resultCard}>
-            <Text style={styles.resultEmoji}>📚</Text>
-            <Text style={styles.resultTitle}>أنهيت القراءة بنجاح!</Text>
-            <Text style={styles.resultSubtitle}>قراءة هادفة تغذي العقل والروح</Text>
-            
-            <View style={styles.statBox}>
-              <Text style={styles.statVal}>{scoreEarned}</Text>
-              <Text style={styles.statLbl}>النقاط المكتسبة</Text>
-            </View>
-
-            <TouchableOpacity style={styles.primaryButton} onPress={() => navigation.goBack()} activeOpacity={0.85}>
-              <Text style={styles.primaryButtonText}>العودة لقائمة التحديات</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={styles.quizCard}>
-            {/* Passage Text */}
-            <View style={styles.passageContainer}>
-              <Text style={styles.passageTitle}>📖 {currentPassage.title}</Text>
-              <Text style={styles.passageText}>{currentPassage.passage}</Text>
-            </View>
-
-            {/* Question Text */}
-            <Text style={styles.questionText}>{currentPassage.question}</Text>
-
-            {/* Options */}
-            <View style={styles.optionsContainer}>
-              {currentPassage.options.map((option) => {
-                const isSelected = selectedAnswer === option;
-                const isCorrect = option === currentPassage.answer;
-
-                let btnStyle: any = styles.optionButton;
-                let textStyle: any = styles.optionText;
-
-                if (answered) {
-                  if (isCorrect) {
-                    btnStyle = [styles.optionButton, styles.optionButtonCorrect];
-                    textStyle = [styles.optionText, styles.optionTextWhite];
-                  } else if (isSelected) {
-                    btnStyle = [styles.optionButton, styles.optionButtonIncorrect];
-                    textStyle = [styles.optionText, styles.optionTextWhite];
-                  } else {
-                    btnStyle = [styles.optionButton, styles.optionButtonDisabled];
-                    textStyle = [styles.optionText, styles.optionTextMuted];
-                  }
-                } else if (isSelected) {
-                  btnStyle = [styles.optionButton, styles.optionButtonSelected];
-                  textStyle = [styles.optionText, styles.optionTextSelected];
-                }
-
-                return (
-                  <TouchableOpacity
-                    key={option}
-                    style={btnStyle}
-                    onPress={() => !answered && setSelectedAnswer(option)}
-                    disabled={answered}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={textStyle}>{option}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {/* Feedback block */}
-            {answered && (
-              <View style={[
-                styles.feedbackBox,
-                selectedAnswer === currentPassage.answer ? styles.feedbackBoxCorrect : styles.feedbackBoxIncorrect
-              ]}>
-                <Text style={styles.feedbackTitle}>{feedback}</Text>
-                {selectedAnswer !== currentPassage.answer && (
-                  <Text style={styles.correctVal}>{currentPassage.answer}</Text>
-                )}
-                <Text style={styles.explanationText}>{currentPassage.explanation}</Text>
-              </View>
-            )}
-
-            {/* Actions */}
-            {answered ? (
-              <TouchableOpacity style={styles.primaryButton} onPress={handleNext} activeOpacity={0.85}>
-                <Text style={styles.primaryButtonText}>
-                  {currentIndex + 1 < passages.length ? 'النص التالي ➔' : 'إنهاء التحدي ✓'}
-                </Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity style={styles.primaryButton} onPress={handleSubmit} activeOpacity={0.85}>
-                <Text style={styles.primaryButtonText}>تأكيد الإجابة ✓</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
       </View>
-    </ScrollView>
+
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <Text style={styles.subtitle}>اقرأ النصوص بدقة وتدبر لتجيب على الأسئلة وتزيد أنوار السراج 🕯️</Text>
+          </View>
+
+          {completed ? (
+            <View style={styles.resultCard}>
+              <Text style={styles.resultEmoji}>📚</Text>
+              <Text style={styles.resultTitle}>أنهيت القراءة بنجاح!</Text>
+              <Text style={styles.resultSubtitle}>قراءة هادفة تغذي العقل والروح وتزيد حصيلتك من أنوار السراج</Text>
+              
+              <View style={styles.statBox}>
+                <Text style={styles.statVal}>+{scoreEarned} 🕯️</Text>
+                <Text style={styles.statLbl}>أنوار السراج المكتسبة</Text>
+              </View>
+
+              <TouchableOpacity style={styles.primaryButton} onPress={() => navigation.goBack()} activeOpacity={0.85}>
+                <Text style={styles.primaryButtonText}>➔</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.quizCard}>
+              {/* Passage Text */}
+              <View style={styles.passageContainer}>
+                <Text style={styles.passageTitle}>📖 {currentPassage.title}</Text>
+                <Text style={styles.passageText}>{currentPassage.passage}</Text>
+              </View>
+
+              {/* Question Text */}
+              <Text style={styles.questionText}>{currentPassage.question}</Text>
+
+              {/* Options */}
+              <View style={styles.optionsContainer}>
+                {currentPassage.options.map((option) => {
+                  const isSelected = selectedAnswer === option;
+                  const isCorrect = option === currentPassage.answer;
+
+                  let btnStyle: any = styles.optionButton;
+                  let textStyle: any = styles.optionText;
+
+                  if (answered) {
+                    if (isCorrect) {
+                      btnStyle = [styles.optionButton, styles.optionButtonCorrect];
+                      textStyle = [styles.optionText, styles.optionTextWhite];
+                    } else if (isSelected) {
+                      btnStyle = [styles.optionButton, styles.optionButtonIncorrect];
+                      textStyle = [styles.optionText, styles.optionTextWhite];
+                    } else {
+                      btnStyle = [styles.optionButton, styles.optionButtonDisabled];
+                      textStyle = [styles.optionText, styles.optionTextMuted];
+                    }
+                  } else if (isSelected) {
+                    btnStyle = [styles.optionButton, styles.optionButtonSelected];
+                    textStyle = [styles.optionText, styles.optionTextSelected];
+                  }
+
+                  return (
+                    <TouchableOpacity
+                      key={option}
+                      style={btnStyle}
+                      onPress={() => !answered && setSelectedAnswer(option)}
+                      disabled={answered}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={textStyle}>{option}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* Feedback block */}
+              {answered && (
+                <View style={[
+                  styles.feedbackBox,
+                  selectedAnswer === currentPassage.answer ? styles.feedbackBoxCorrect : styles.feedbackBoxIncorrect
+                ]}>
+                  <Text style={styles.feedbackTitle}>{feedback}</Text>
+                  {selectedAnswer !== currentPassage.answer && (
+                    <Text style={styles.correctVal}>{currentPassage.answer}</Text>
+                  )}
+                  <Text style={styles.explanationText}>{currentPassage.explanation}</Text>
+                </View>
+              )}
+
+              {/* Actions */}
+              {answered ? (
+                <TouchableOpacity style={styles.primaryButton} onPress={handleNext} activeOpacity={0.85}>
+                  <Text style={styles.primaryButtonText}>
+                    {currentIndex + 1 < passages.length ? 'النص التالي ➔' : 'إنهاء التحدي ✓'}
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity style={styles.primaryButton} onPress={handleSubmit} activeOpacity={0.85}>
+                  <Text style={styles.primaryButtonText}>تأكيد الإجابة ✓</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -177,6 +211,48 @@ const styles = StyleSheet.create({
   outerContainer: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  headerCustom: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 55,
+    paddingBottom: 15,
+    paddingHorizontal: 20,
+    backgroundColor: Colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: Colors.textPrimary,
+    fontFamily: 'IBMPlexSansArabic-Bold',
+    textAlign: 'center',
+  },
+  walletBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 16,
+    backgroundColor: Colors.primaryLight,
+  },
+  walletText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: Colors.primary,
+    fontFamily: 'IBMPlexSansArabic-Bold',
   },
   scrollContent: {
     paddingBottom: 24,
@@ -187,21 +263,14 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: Colors.primary,
-    textAlign: 'center',
-    marginBottom: 6,
+    marginBottom: 16,
   },
   subtitle: {
-    fontSize: 13,
+    fontSize: 12.5,
     color: Colors.textSecondary,
     textAlign: 'center',
     lineHeight: 18,
-    paddingHorizontal: 12,
+    fontFamily: 'IBMPlexSansArabic-Regular',
   },
   resultCard: {
     backgroundColor: Colors.surface,
@@ -220,11 +289,14 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: Colors.primary,
     marginBottom: 6,
+    fontFamily: 'IBMPlexSansArabic-Bold',
   },
   resultSubtitle: {
     fontSize: 13,
     color: Colors.textSecondary,
     marginBottom: 20,
+    textAlign: 'center',
+    fontFamily: 'IBMPlexSansArabic-Regular',
   },
   statBox: {
     backgroundColor: Colors.background,
@@ -241,11 +313,13 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: Colors.primary,
     marginBottom: 4,
+    fontFamily: 'IBMPlexSansArabic-Bold',
   },
   statLbl: {
     fontSize: 12,
     color: Colors.textSecondary,
     fontWeight: '700',
+    fontFamily: 'IBMPlexSansArabic-Bold',
   },
   quizCard: {
     backgroundColor: Colors.surface,
@@ -268,12 +342,14 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     textAlign: 'right',
     marginBottom: 8,
+    fontFamily: 'IBMPlexSansArabic-Bold',
   },
   passageText: {
     fontSize: 14,
     lineHeight: 22,
     color: Colors.textPrimary,
     textAlign: 'right',
+    fontFamily: 'IBMPlexSansArabic-Regular',
   },
   questionText: {
     fontSize: 16,
@@ -282,6 +358,7 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     textAlign: 'right',
     marginBottom: 16,
+    fontFamily: 'IBMPlexSansArabic-Bold',
   },
   optionsContainer: {
     gap: 10,
@@ -317,14 +394,17 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.textPrimary,
     textAlign: 'center',
+    fontFamily: 'IBMPlexSansArabic-Medium',
   },
   optionTextSelected: {
     color: Colors.primary,
     fontWeight: '700',
+    fontFamily: 'IBMPlexSansArabic-Bold',
   },
   optionTextWhite: {
     color: Colors.surface,
     fontWeight: '700',
+    fontFamily: 'IBMPlexSansArabic-Bold',
   },
   optionTextMuted: {
     color: '#A0AEC0',
@@ -339,6 +419,7 @@ const styles = StyleSheet.create({
     color: Colors.surface,
     fontWeight: '700',
     fontSize: 15,
+    fontFamily: 'IBMPlexSansArabic-Bold',
   },
   feedbackBox: {
     borderRadius: 14,
@@ -360,6 +441,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     textAlign: 'right',
     color: Colors.textPrimary,
+    fontFamily: 'IBMPlexSansArabic-Bold',
   },
   correctVal: {
     fontSize: 14,
@@ -368,6 +450,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     marginTop: 4,
     marginBottom: 6,
+    fontFamily: 'IBMPlexSansArabic-Bold',
   },
   explanationText: {
     fontSize: 12,
@@ -375,10 +458,12 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     textAlign: 'right',
     marginTop: 4,
+    fontFamily: 'IBMPlexSansArabic-Regular',
   },
   emptyState: {
     textAlign: 'center',
     color: Colors.textSecondary,
     marginTop: 40,
+    fontFamily: 'IBMPlexSansArabic-Medium',
   },
 });

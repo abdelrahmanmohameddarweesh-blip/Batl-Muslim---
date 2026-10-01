@@ -239,9 +239,7 @@ export default function GroupQuizResultsScreen({ route, navigation }: any) {
           style={styles.backLobbyBtn}
           activeOpacity={0.9}
         >
-          <Text style={styles.backLobbyBtnText}>
-            {language === 'ar' ? '🔄 العودة لقاعة الانتظار' : '🔄 Back to Waiting Lobby'}
-          </Text>
+          <Text style={styles.backLobbyBtnText}>➔</Text>
         </TouchableOpacity>
 
         {/* Row 2: Secondary buttons */}

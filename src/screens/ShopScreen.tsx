@@ -221,7 +221,7 @@ export default function ShopScreen({ navigation }: any) {
       {/* HEADER ROW */}
       <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.surface }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Text style={{ fontSize: 20, color: colors.primary }}>🔙</Text>
+          <Text style={{ fontSize: 20, color: colors.primary }}>➔</Text>
         </TouchableOpacity>
         
         <View style={styles.headerTitleContainer}>

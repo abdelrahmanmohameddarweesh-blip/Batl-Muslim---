@@ -1,45 +1,135 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ActivityIndicator,
-  StyleSheet, Keyboard, KeyboardAvoidingView, Platform, ScrollView, Image, Alert, Modal,
+  StyleSheet, Keyboard, KeyboardAvoidingView, Platform, ScrollView, Alert, Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle } from 'react-native-svg';
-import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import OnboardingStories from '../components/OnboardingStories';
 
 const countriesList = [
-  { code: 'EG', nameAr: 'مصر 🇪🇬', nameEn: 'Egypt', ext: '+20' },
-  { code: 'SA', nameAr: 'السعودية 🇸🇦', nameEn: 'Saudi Arabia', ext: '+966' },
-  { code: 'JO', nameAr: 'الأردن 🇯🇴', nameEn: 'Jordan', ext: '+962' },
-  { code: 'PS', nameAr: 'فلسطين 🇵🇸', nameEn: 'Palestine', ext: '+970' },
-  { code: 'AE', nameAr: 'الإمارات 🇦🇪', nameEn: 'UAE', ext: '+971' },
-  { code: 'MA', nameAr: 'المغرب 🇲🇦', nameEn: 'Morocco', ext: '+212' },
-  { code: 'OTH', nameAr: 'أخرى 🌍', nameEn: 'Other', ext: '+' },
+  { code: 'EG', nameAr: 'مصر 🇪🇬', nameEn: 'Egypt', ext: '+20', maxLen: 10 },
+  { code: 'SA', nameAr: 'السعودية 🇸🇦', nameEn: 'Saudi Arabia', ext: '+966', maxLen: 9 },
+  { code: 'JO', nameAr: 'الأردن 🇯🇴', nameEn: 'Jordan', ext: '+962', maxLen: 9 },
+  { code: 'PS', nameAr: 'فلسطين 🇵🇸', nameEn: 'Palestine', ext: '+970', maxLen: 9 },
+  { code: 'AE', nameAr: 'الإمارات 🇦🇪', nameEn: 'UAE', ext: '+971', maxLen: 9 },
+  { code: 'MA', nameAr: 'المغرب 🇲🇦', nameEn: 'Morocco', ext: '+212', maxLen: 9 },
+  { code: 'OTH', nameAr: 'أخرى 🌍', nameEn: 'Other', ext: '+', maxLen: 15 },
 ];
 
-const validatePhoneNumber = (phone: string, countryCode: string): boolean => {
+const validatePhoneNumberDetails = (phone: string, countryCode: string): { isValid: boolean; errorMsg: string } => {
   const cleanPhone = phone.replace(/\s+/g, '');
-  if (!cleanPhone) return true; // Optional field
-  
+  if (!cleanPhone) return { isValid: true, errorMsg: '' }; // Optional field if empty
+
   switch (countryCode) {
-    case 'EG':
-      return /^1[0125][0-9]{8}$/.test(cleanPhone); // Egypt: 10 digits starting with 1
-    case 'SA':
-      return /^5[0-9]{8}$/.test(cleanPhone); // Saudi: 9 digits starting with 5
-    case 'JO':
-      return /^7[789][0-9]{7}$/.test(cleanPhone); // Jordan: 9 digits starting with 7
-    case 'AE':
-      return /^5[024568][0-9]{7}$/.test(cleanPhone); // UAE: 9 digits starting with 5
-    case 'MA':
-      return /^[567][0-9]{8}$/.test(cleanPhone); // Morocco: 9 digits starting with 5, 6, 7
-    case 'PS':
-      return /^[5-9][0-9]{8}$/.test(cleanPhone); // Palestine: 9 digits starting with 5-9
-    default:
-      return /^[0-9]{5,15}$/.test(cleanPhone); // General standard length
+    case 'EG': {
+      if (cleanPhone.length > 10) {
+        return { isValid: false, errorMsg: 'رقم الهاتف في مصر يجب ألا يزيد عن 10 أرقام (بدون 0 في البداية)' };
+      }
+      if (cleanPhone.length >= 2 && !/^(10|11|12|15)/.test(cleanPhone)) {
+        return { isValid: false, errorMsg: 'رقم الهاتف المصري يجب أن يبدأ بـ 10 أو 11 أو 12 أو 15' };
+      }
+      if (cleanPhone.length === 1 && cleanPhone !== '1') {
+        return { isValid: false, errorMsg: 'رقم الهاتف المصري يجب أن يبدأ بـ 10 أو 11 أو 12 أو 15' };
+      }
+      if (cleanPhone.length === 10 && /^1[0125][0-9]{8}$/.test(cleanPhone)) {
+        return { isValid: true, errorMsg: '' };
+      }
+      if (cleanPhone.length < 10) {
+        return { isValid: false, errorMsg: 'رقم الهاتف في مصر يجب أن يتكون من 10 أرقام (مثال: 1012345678)' };
+      }
+      return { isValid: false, errorMsg: 'صيغة رقم الهاتف غير صحيحة' };
+    }
+
+    case 'SA': {
+      if (cleanPhone.length > 9) {
+        return { isValid: false, errorMsg: 'رقم الهاتف في السعودية يجب ألا يزيد عن 9 أرقام (يبدأ بـ 5)' };
+      }
+      if (cleanPhone.length >= 1 && !/^5/.test(cleanPhone)) {
+        return { isValid: false, errorMsg: 'رقم الهاتف السعودي يجب أن يبدأ بـ 5' };
+      }
+      if (cleanPhone.length === 9 && /^5[0-9]{8}$/.test(cleanPhone)) {
+        return { isValid: true, errorMsg: '' };
+      }
+      if (cleanPhone.length < 9) {
+        return { isValid: false, errorMsg: 'رقم الهاتف السعودي يجب أن يتكون من 9 أرقام' };
+      }
+      return { isValid: false, errorMsg: 'صيغة رقم الهاتف غير صحيحة' };
+    }
+
+    case 'JO': {
+      if (cleanPhone.length > 9) {
+        return { isValid: false, errorMsg: 'رقم الهاتف في الأردن يجب ألا يزيد عن 9 أرقام' };
+      }
+      if (cleanPhone.length >= 1 && !/^7/.test(cleanPhone)) {
+        return { isValid: false, errorMsg: 'رقم الهاتف الأردني يجب أن يبدأ بـ 7' };
+      }
+      if (cleanPhone.length === 9 && /^7[789][0-9]{7}$/.test(cleanPhone)) {
+        return { isValid: true, errorMsg: '' };
+      }
+      if (cleanPhone.length < 9) {
+        return { isValid: false, errorMsg: 'رقم الهاتف الأردني يجب أن يتكون من 9 أرقام' };
+      }
+      return { isValid: false, errorMsg: 'صيغة رقم الهاتف غير صحيحة' };
+    }
+
+    case 'AE': {
+      if (cleanPhone.length > 9) {
+        return { isValid: false, errorMsg: 'رقم الهاتف في الإمارات يجب ألا يزيد عن 9 أرقام' };
+      }
+      if (cleanPhone.length >= 1 && !/^5/.test(cleanPhone)) {
+        return { isValid: false, errorMsg: 'رقم الهاتف الإماراتي يجب أن يبدأ بـ 5' };
+      }
+      if (cleanPhone.length === 9 && /^5[024568][0-9]{7}$/.test(cleanPhone)) {
+        return { isValid: true, errorMsg: '' };
+      }
+      if (cleanPhone.length < 9) {
+        return { isValid: false, errorMsg: 'رقم الهاتف الإماراتي يجب أن يتكون من 9 أرقام' };
+      }
+      return { isValid: false, errorMsg: 'صيغة رقم الهاتف غير صحيحة' };
+    }
+
+    case 'MA': {
+      if (cleanPhone.length > 9) {
+        return { isValid: false, errorMsg: 'رقم الهاتف في المغرب يجب ألا يزيد عن 9 أرقام' };
+      }
+      if (cleanPhone.length >= 1 && !/^[567]/.test(cleanPhone)) {
+        return { isValid: false, errorMsg: 'رقم الهاتف المغربي يجب أن يبدأ بـ 5 أو 6 أو 7' };
+      }
+      if (cleanPhone.length === 9 && /^[567][0-9]{8}$/.test(cleanPhone)) {
+        return { isValid: true, errorMsg: '' };
+      }
+      if (cleanPhone.length < 9) {
+        return { isValid: false, errorMsg: 'رقم الهاتف المغربي يجب أن يتكون من 9 أرقام' };
+      }
+      return { isValid: false, errorMsg: 'صيغة رقم الهاتف غير صحيحة' };
+    }
+
+    case 'PS': {
+      if (cleanPhone.length > 9) {
+        return { isValid: false, errorMsg: 'رقم الهاتف في فلسطين يجب ألا يزيد عن 9 أرقام' };
+      }
+      if (cleanPhone.length === 9 && /^[5-9][0-9]{8}$/.test(cleanPhone)) {
+        return { isValid: true, errorMsg: '' };
+      }
+      if (cleanPhone.length < 9) {
+        return { isValid: false, errorMsg: 'رقم الهاتف الفلسطيني يجب أن يتكون من 9 أرقام' };
+      }
+      return { isValid: false, errorMsg: 'صيغة رقم الهاتف غير صحيحة' };
+    }
+
+    default: {
+      if (cleanPhone.length > 15) {
+        return { isValid: false, errorMsg: 'رقم الهاتف يجب ألا يزيد عن 15 رقم' };
+      }
+      if (/^[0-9]{5,15}$/.test(cleanPhone)) {
+        return { isValid: true, errorMsg: '' };
+      }
+      return { isValid: false, errorMsg: 'الرجاء إدخال رقم هاتف صحيح' };
+    }
   }
 };
 
@@ -49,18 +139,18 @@ export default function LoginScreen({ navigation }: any) {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [country, setCountry] = useState(countriesList[0].nameAr);
+  const [selectedCountryObj, setSelectedCountryObj] = useState(countriesList[0]);
   const [age, setAge] = useState('');
+  const [gender, setGender] = useState<'male' | 'female' | ''>('');
   const [error, setError] = useState('');
   const [phoneError, setPhoneError] = useState('');
   const [saving, setSaving] = useState(false);
   const [focusedField, setFocusedField] = useState<'name' | 'phone' | 'country' | 'age' | null>(null);
   const [showCountryModal, setShowCountryModal] = useState(false);
-  const [selectedCountryObj, setSelectedCountryObj] = useState(countriesList[0]);
 
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
-    // Check if onboarding needs to be shown (first time launch)
     const checkOnboarding = async () => {
       try {
         const seen = await AsyncStorage.getItem('user-has-seen-onboarding');
@@ -78,6 +168,34 @@ export default function LoginScreen({ navigation }: any) {
     }
   }, [user, navigation]);
 
+  // Handle phone input with instant character count & prefix validation
+  const handlePhoneChange = (text: string) => {
+    const cleaned = text.replace(/[^0-9]/g, '');
+    setPhone(cleaned);
+
+    if (cleaned) {
+      const check = validatePhoneNumberDetails(cleaned, selectedCountryObj.code);
+      setPhoneError(check.errorMsg);
+    } else {
+      setPhoneError('');
+    }
+  };
+
+  // Handle country selection and auto-update extension
+  const handleCountrySelect = (c: typeof countriesList[0]) => {
+    setSelectedCountryObj(c);
+    setCountry(c.nameAr);
+    setShowCountryModal(false);
+
+    // Instant re-validate phone for new country
+    if (phone) {
+      const check = validatePhoneNumberDetails(phone, c.code);
+      setPhoneError(check.errorMsg);
+    } else {
+      setPhoneError('');
+    }
+  };
+
   const handleContinue = async () => {
     if (!name.trim()) {
       setError('الرجاء كتابة اسمك للبدء في رحلة التحدي!');
@@ -85,9 +203,9 @@ export default function LoginScreen({ navigation }: any) {
     }
 
     if (phone.trim()) {
-      const isValid = validatePhoneNumber(phone.trim(), selectedCountryObj.code);
-      if (!isValid) {
-        setPhoneError(`رقم الهاتف غير مطابق لصيغة دولة ${selectedCountryObj.nameAr}`);
+      const check = validatePhoneNumberDetails(phone.trim(), selectedCountryObj.code);
+      if (!check.isValid) {
+        setPhoneError(check.errorMsg);
         return;
       }
     }
@@ -98,7 +216,7 @@ export default function LoginScreen({ navigation }: any) {
     try {
       const parsedAge = age.trim() ? parseInt(age.trim(), 10) : undefined;
       const fullPhone = phone.trim() ? `${selectedCountryObj.ext}${phone.trim()}` : '';
-      await login(name.trim(), fullPhone, country.trim(), parsedAge);
+      await login(name.trim(), fullPhone, country.trim(), parsedAge, undefined, gender);
     } finally {
       setSaving(false);
     }
@@ -141,7 +259,6 @@ export default function LoginScreen({ navigation }: any) {
 
           <View style={styles.middleSection}>
 
-
             {/* Input Label - Name */}
             <Text style={[styles.inputLabel, { color: colors.textBody }]}>اسمك في الميدان</Text>
             
@@ -179,17 +296,11 @@ export default function LoginScreen({ navigation }: any) {
               </Svg>
             </View>
 
-            {/* Helper/Error message */}
-            {error ? (
-              <Text style={styles.errorText}>{error}</Text>
-            ) : (
-              <Text style={[styles.helperText, { color: colors.textSecondary, marginBottom: 8 }]}>
-                يظهر هذا الاسم على لوحة الصدارة وفي المبارزات.
-              </Text>
-            )}
+            {/* Red error text for Name if invalid */}
+            {!!error && <Text style={styles.errorText}>{error}</Text>}
 
             {/* Input Label - Country */}
-            <Text style={[styles.inputLabel, { color: colors.textBody, marginTop: 12 }]}>الدولة (اختياري)</Text>
+            <Text style={[styles.inputLabel, { color: colors.textBody, marginTop: 14 }]}>الدولة (اختياري)</Text>
             
             {/* Input Row - Country Dropdown */}
             <TouchableOpacity 
@@ -212,12 +323,9 @@ export default function LoginScreen({ navigation }: any) {
                 <Path d="M6 9l6 6 6-6" />
               </Svg>
             </TouchableOpacity>
-            <Text style={[styles.helperText, { color: colors.textSecondary, marginBottom: 8 }]}>
-              تُعرض دولتك بجانب اسمك في لوحات الصدارة العالمية.
-            </Text>
 
             {/* Input Label - Phone */}
-            <Text style={[styles.inputLabel, { color: colors.textBody, marginTop: 12 }]}>رقم الهاتف (اختياري)</Text>
+            <Text style={[styles.inputLabel, { color: colors.textBody, marginTop: 14 }]}>رقم الهاتف (اختياري)</Text>
             
             {/* Input Row - Phone */}
             <View style={[
@@ -230,34 +338,27 @@ export default function LoginScreen({ navigation }: any) {
                 placeholder={selectedCountryObj.code === 'EG' ? 'مثال: 1012345678' : 'أدخل رقم الهاتف...'}
                 placeholderTextColor={colors.textSecondary}
                 value={phone}
-                onChangeText={(text) => {
-                  setPhone(text.replace(/[^0-9]/g, ''));
-                  if (phoneError) setPhoneError('');
-                }}
-                maxLength={12}
+                onChangeText={handlePhoneChange}
+                maxLength={selectedCountryObj.maxLen}
                 keyboardType="phone-pad"
                 onFocus={() => setFocusedField('phone')}
                 onBlur={() => setFocusedField(null)}
                 returnKeyType="next"
               />
 
-              {/* Country Extension Prefix */}
+              {/* Automated Country Extension Prefix */}
               <View style={{ paddingHorizontal: 12, borderRightWidth: 1, borderRightColor: colors.border, justifyContent: 'center' }}>
-                <Text style={{ color: colors.textSecondary, fontWeight: '700', fontSize: 14 }}>
+                <Text style={{ color: colors.primaryDeep, fontWeight: '700', fontSize: 14 }}>
                   {selectedCountryObj?.ext || '+'}
                 </Text>
               </View>
             </View>
-            {phoneError ? (
-              <Text style={styles.errorText}>{phoneError}</Text>
-            ) : (
-              <Text style={[styles.helperText, { color: colors.textSecondary, marginBottom: 8 }]}>
-                رقم هاتفك يُستخدم للتحقق والترقية (يبقى آمناً تماماً).
-              </Text>
-            )}
+
+            {/* Instant Red Validation Error for Phone */}
+            {!!phoneError && <Text style={styles.errorText}>{phoneError}</Text>}
 
             {/* Input Label - Age */}
-            <Text style={[styles.inputLabel, { color: colors.textBody, marginTop: 12 }]}>العمر (اختياري)</Text>
+            <Text style={[styles.inputLabel, { color: colors.textBody, marginTop: 14 }]}>العمر (اختياري)</Text>
             
             {/* Input Row - Age */}
             <View style={[
@@ -276,7 +377,6 @@ export default function LoginScreen({ navigation }: any) {
                 onFocus={() => setFocusedField('age')}
                 onBlur={() => setFocusedField(null)}
                 returnKeyType="done"
-                onSubmitEditing={handleContinue}
               />
 
               <Svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={styles.userIcon}>
@@ -284,10 +384,46 @@ export default function LoginScreen({ navigation }: any) {
                 <Path d="M12 6v6l4 2" />
               </Svg>
             </View>
-            <Text style={[styles.helperText, { color: colors.textSecondary, marginBottom: 16 }]}>
-              يُساعدنا العمر في عرض وتخصيص أسئلة مناسبة لسنّك.
-            </Text>
 
+            {/* Input Label - Gender */}
+            <Text style={[styles.inputLabel, { color: colors.textBody, marginTop: 14 }]}>الجنس (اختياري)</Text>
+
+            {/* Gender Selection Cards */}
+            <View style={styles.genderContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.genderCard,
+                  {
+                    backgroundColor: gender === 'male' ? 'rgba(16, 185, 129, 0.12)' : colors.surface,
+                    borderColor: gender === 'male' ? '#10B981' : colors.border,
+                  }
+                ]}
+                onPress={() => setGender(gender === 'male' ? '' : 'male')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.genderEmoji}>👨</Text>
+                <Text style={[styles.genderLabelText, { color: gender === 'male' ? '#10B981' : colors.textPrimary }]}>
+                  ذكر
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.genderCard,
+                  {
+                    backgroundColor: gender === 'female' ? 'rgba(16, 185, 129, 0.12)' : colors.surface,
+                    borderColor: gender === 'female' ? '#10B981' : colors.border,
+                  }
+                ]}
+                onPress={() => setGender(gender === 'female' ? '' : 'female')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.genderEmoji}>👩</Text>
+                <Text style={[styles.genderLabelText, { color: gender === 'female' ? '#10B981' : colors.textPrimary }]}>
+                  أنثى
+                </Text>
+              </TouchableOpacity>
+            </View>
 
           </View>
 
@@ -304,11 +440,6 @@ export default function LoginScreen({ navigation }: any) {
                 <Text style={styles.ctaButtonText}>ابدأ اللعب الآن</Text>
               </TouchableOpacity>
             )}
-
-            {/* Footnote */}
-            <Text style={[styles.footnote, { color: colors.textTertiary }]}>
-              لا حاجة لبريد أو كلمة مرور — تقدّمك محفوظ على جهازك.
-            </Text>
           </View>
         </View>
       </ScrollView>
@@ -335,13 +466,7 @@ export default function LoginScreen({ navigation }: any) {
                     styles.dropdownModalItem,
                     selectedCountryObj.code === c.code && { backgroundColor: colors.primaryTint }
                   ]}
-                  onPress={() => {
-                    setSelectedCountryObj(c);
-                    setCountry(c.nameAr);
-                    setPhone(''); // reset phone on country change
-                    setPhoneError('');
-                    setShowCountryModal(false);
-                  }}
+                  onPress={() => handleCountrySelect(c)}
                 >
                   <Text style={{ fontSize: 16, color: colors.textPrimary, fontWeight: '700' }}>{c.nameAr}</Text>
                   <Text style={{ fontSize: 14, color: colors.textSecondary }}>{c.ext}</Text>
@@ -429,13 +554,13 @@ const styles = StyleSheet.create({
   },
   middleSection: {
     width: '100%',
-    marginVertical: 20,
+    marginVertical: 14,
   },
   inputLabel: {
     fontSize: 12,
     fontWeight: '600',
     textAlign: 'right',
-    marginBottom: 8,
+    marginBottom: 6,
     fontFamily: 'IBMPlexSansArabic-Medium',
   },
   inputRow: {
@@ -471,43 +596,44 @@ const styles = StyleSheet.create({
     marginRight: 8,
     writingDirection: 'ltr',
   },
-  helperText: {
-    fontSize: 11,
-    fontWeight: '500',
-    textAlign: 'right',
-    marginTop: 8,
-    marginBottom: 20,
-    fontFamily: 'IBMPlexSansArabic-Regular',
-  },
   errorText: {
     color: '#E7000B',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     textAlign: 'right',
-    marginTop: 8,
-    marginBottom: 20,
+    marginTop: 6,
+    marginBottom: 4,
     fontFamily: 'IBMPlexSansArabic-Bold',
   },
-  chipsRow: {
+  genderContainer: {
     flexDirection: 'row-reverse',
+    gap: 12,
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  genderCard: {
+    flex: 1,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    borderWidth: 1.5,
     gap: 8,
-    marginTop: 8,
   },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: 1,
+  genderEmoji: {
+    fontSize: 20,
   },
-  chipText: {
-    fontSize: 11,
-    fontWeight: '600',
-    fontFamily: 'IBMPlexSansArabic-SemiBold',
+  genderLabelText: {
+    fontSize: 15,
+    fontWeight: '700',
+    fontFamily: 'IBMPlexSansArabic-Bold',
   },
   bottomSection: {
     width: '100%',
     alignItems: 'center',
+    marginTop: 10,
   },
   ctaButton: {
     backgroundColor: '#059669',

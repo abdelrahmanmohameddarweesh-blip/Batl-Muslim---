@@ -1,10 +1,12 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Share, ActivityIndicator, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Share, ActivityIndicator, Animated, Dimensions } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { surahsList } from '../data/surahs';
 import { quranVerses, type QuranVerse } from '../data/quranVerses';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
+import { getCurrentUserProfile, addSirajPoints, incrementCorrectAnswers } from '../firebase/auth';
 import AdBanner from '../components/AdBanner';
 
 interface DynamicQuestion {
@@ -24,9 +26,35 @@ interface DynamicQuestion {
 export default function QuranAssessmentScreen({ navigation }: any) {
   const { colors } = useTheme();
   const { language, formatNumber } = useLanguage();
+  const { user } = useAuth();
 
   const [screenState, setScreenState] = useState<'lobby' | 'introduction' | 'assessment' | 'results'>('lobby');
   const [wrongAnswers, setWrongAnswers] = useState<{ question: string; selected: string; correct: string }[]>([]);
+
+  // Siraj and animation states
+  const [profile, setProfile] = useState<any>(null);
+  const [isFlying, setIsFlying] = useState(false);
+  const lanternScale = useRef(new Animated.Value(0)).current;
+  const lanternPos = useRef(new Animated.ValueXY({ x: 0, y: 150 })).current;
+  const lanternOpacity = useRef(new Animated.Value(1)).current;
+  const walletScale = useRef(new Animated.Value(1)).current;
+
+  const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+  const loadProfile = async () => {
+    if (user?.uid) {
+      try {
+        const data = await getCurrentUserProfile(user.uid);
+        setProfile(data);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
+
+  useEffect(() => {
+    loadProfile();
+  }, [user?.uid]);
 
   // Lobby Configuration Choices
   const [filterMode, setFilterMode] = useState<'juz' | 'surah'>('juz');
@@ -159,6 +187,67 @@ export default function QuranAssessmentScreen({ navigation }: any) {
           ? 'رائع! ترتيب الكلمات للآية الكريمة صحيح تماماً 🌟'
           : 'Excellent! The word order for the verse is perfectly correct 🌟'
       );
+
+      // Start flying lantern animation
+      setIsFlying(true);
+      lanternScale.setValue(0);
+      lanternPos.setValue({ x: 0, y: 120 });
+      lanternOpacity.setValue(1);
+
+      // 1. Pop scale in center
+      Animated.spring(lanternScale, {
+        toValue: 1.5,
+        friction: 5,
+        useNativeDriver: false,
+      }).start(() => {
+        // 2. Fly to top right wallet
+        Animated.delay(400).start(() => {
+          Animated.parallel([
+            Animated.timing(lanternPos.x, {
+              toValue: SCREEN_WIDTH / 2 - 45,
+              duration: 700,
+              useNativeDriver: false,
+            }),
+            Animated.timing(lanternPos.y, {
+              toValue: -SCREEN_HEIGHT / 2 + 100,
+              duration: 700,
+              useNativeDriver: false,
+            }),
+            Animated.timing(lanternScale, {
+              toValue: 0.3,
+              duration: 700,
+              useNativeDriver: false,
+            }),
+            Animated.timing(lanternOpacity, {
+              toValue: 0,
+              duration: 700,
+              useNativeDriver: false,
+            })
+          ]).start(async () => {
+            setIsFlying(false);
+            
+            // Bounce wallet
+            Animated.sequence([
+              Animated.timing(walletScale, { toValue: 1.3, duration: 100, useNativeDriver: false }),
+              Animated.timing(walletScale, { toValue: 1.0, duration: 100, useNativeDriver: false })
+            ]).start();
+
+            // Sync user profile score and Siraj points
+            if (user?.uid) {
+              try {
+                // Increment quran correct count
+                await incrementCorrectAnswers(user.uid, 'quran', 1);
+                
+                // Add 5 Siraj Points
+                const updated = await addSirajPoints(user.uid, 5);
+                setProfile(updated);
+              } catch (err) {
+                console.error(err);
+              }
+            }
+          });
+        });
+      });
     } else {
       setFeedback(
         language === 'ar'
@@ -646,6 +735,67 @@ export default function QuranAssessmentScreen({ navigation }: any) {
     if (isCorrect) {
       setCorrectCount((prev) => prev + 1);
       setFeedback(language === 'ar' ? 'إجابة صحيحة! أحسنت وحفظك مبارك 🌟' : 'Correct answer! Excellent memorization 🌟');
+
+      // Start flying lantern animation
+      setIsFlying(true);
+      lanternScale.setValue(0);
+      lanternPos.setValue({ x: 0, y: 120 });
+      lanternOpacity.setValue(1);
+
+      // 1. Pop scale in center
+      Animated.spring(lanternScale, {
+        toValue: 1.5,
+        friction: 5,
+        useNativeDriver: false,
+      }).start(() => {
+        // 2. Fly to top left wallet
+        Animated.delay(400).start(() => {
+          Animated.parallel([
+            Animated.timing(lanternPos.x, {
+              toValue: -(SCREEN_WIDTH / 2 - 45),
+              duration: 700,
+              useNativeDriver: false,
+            }),
+            Animated.timing(lanternPos.y, {
+              toValue: -SCREEN_HEIGHT / 2 + 100,
+              duration: 700,
+              useNativeDriver: false,
+            }),
+            Animated.timing(lanternScale, {
+              toValue: 0.3,
+              duration: 700,
+              useNativeDriver: false,
+            }),
+            Animated.timing(lanternOpacity, {
+              toValue: 0,
+              duration: 700,
+              useNativeDriver: false,
+            })
+          ]).start(async () => {
+            setIsFlying(false);
+            
+            // Bounce wallet
+            Animated.sequence([
+              Animated.timing(walletScale, { toValue: 1.3, duration: 100, useNativeDriver: false }),
+              Animated.timing(walletScale, { toValue: 1.0, duration: 100, useNativeDriver: false })
+            ]).start();
+
+            // Sync user profile score and Siraj points
+            if (user?.uid) {
+              try {
+                // Increment quran correct count
+                await incrementCorrectAnswers(user.uid, 'quran', 1);
+                
+                // Add 5 Siraj Points
+                const updated = await addSirajPoints(user.uid, 5);
+                setProfile(updated);
+              } catch (err) {
+                console.error(err);
+              }
+            }
+          });
+        });
+      });
     } else {
       setFeedback(language === 'ar' ? 'إجابة غير صحيحة. الإجابة الصحيحة هي:' : 'Incorrect answer. The correct answer is:');
       setWrongAnswers(prev => [...prev, {
@@ -697,8 +847,27 @@ export default function QuranAssessmentScreen({ navigation }: any) {
   }, [selectedLimit, language]);
 
   return (
-    <ScrollView style={[styles.outerContainer, { backgroundColor: colors.background }]} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-      <View style={styles.container}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      {/* custom top header bar */}
+      <View style={styles.headerCustom}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => screenState === 'lobby' ? navigation.goBack() : setScreenState('lobby')}>
+          <Text style={{ fontSize: 20, color: colors.primary }}>➔</Text>
+        </TouchableOpacity>
+        
+        <Text style={styles.headerTitle}>
+          {language === 'ar' ? 'تقييم حفظ القرآن الكريم' : 'Quran memorization assessment'}
+        </Text>
+
+        <Animated.View style={[styles.walletBadge, { transform: [{ scale: walletScale }] }]}>
+          <Text style={{ fontSize: 16, marginRight: 4 }}>🕯️</Text>
+          <Text style={styles.walletText}>
+            {profile?.sirajBalance ?? 50}
+          </Text>
+        </Animated.View>
+      </View>
+
+      <ScrollView style={[styles.outerContainer, { backgroundColor: colors.background }]} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.container}>
         
         {/* LOBBY STATE */}
         {screenState === 'lobby' && (
@@ -1216,16 +1385,36 @@ export default function QuranAssessmentScreen({ navigation }: any) {
               }} 
               activeOpacity={0.85}
             >
-              <Text style={[styles.backToHomeBtnText, { color: colors.textSecondary }]}>
-                {language === 'ar' ? 'العودة للرئيسية' : 'Back to Lobby'}
-              </Text>
+              <Text style={[styles.backToHomeBtnText, { color: colors.textSecondary }]}>➔</Text>
             </TouchableOpacity>
           </View>
         )}
 
-        <AdBanner />
       </View>
     </ScrollView>
+    <AdBanner />
+
+    {/* FLYING LANTERN REWARD CELEBRATION */}
+    {isFlying && (
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        <Animated.View
+          style={[
+            styles.flyingFanoos,
+            {
+              transform: [
+                { scale: lanternScale },
+                { translateX: lanternPos.x },
+                { translateY: lanternPos.y },
+              ],
+              opacity: lanternOpacity,
+            },
+          ]}
+        >
+          <Text style={{ fontSize: 32 }}>🕯️</Text>
+        </Animated.View>
+      </View>
+    )}
+  </View>
   );
 }
 
@@ -1904,5 +2093,47 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#137333',
     fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+  headerCustom: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 54,
+    paddingBottom: 16,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  backBtn: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1A202C',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+  walletBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E6F4EA',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  walletText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#137333',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+  flyingFanoos: {
+    position: 'absolute',
+    left: Dimensions.get('window').width / 2 - 24,
+    top: Dimensions.get('window').height / 2 - 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 9999,
   },
 });

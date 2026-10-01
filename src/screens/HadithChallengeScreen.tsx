@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, Animated, Dimensions } from 'react-native';
 import { hadiths, type HadithQuestion } from '../data/hadith';
 import { useAuth } from '../contexts/AuthContext';
-import { saveUserScore, getCurrentUserProfile } from '../firebase/auth';
+import { saveUserScore, getCurrentUserProfile, addSirajPoints, incrementCorrectAnswers } from '../firebase/auth';
 import { Colors } from '../config/colors';
+import AdBanner from '../components/AdBanner';
 
 export default function HadithChallengeScreen({ navigation }: any) {
   const { user } = useAuth();
@@ -16,6 +17,31 @@ export default function HadithChallengeScreen({ navigation }: any) {
   const [completed, setCompleted] = useState(false);
 
   const currentQuestion = questions[currentIndex];
+
+  // Siraj and animation states
+  const [profile, setProfile] = useState<any>(null);
+  const [isFlying, setIsFlying] = useState(false);
+  const lanternScale = useRef(new Animated.Value(0)).current;
+  const lanternPos = useRef(new Animated.ValueXY({ x: 0, y: 150 })).current;
+  const lanternOpacity = useRef(new Animated.Value(1)).current;
+  const walletScale = useRef(new Animated.Value(1)).current;
+
+  const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+  const loadProfile = async () => {
+    if (user?.uid) {
+      try {
+        const data = await getCurrentUserProfile(user.uid);
+        setProfile(data);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
+
+  useEffect(() => {
+    loadProfile();
+  }, [user?.uid]);
 
   const handleSubmit = async () => {
     if (!currentQuestion) return;
@@ -33,16 +59,70 @@ export default function HadithChallengeScreen({ navigation }: any) {
       const earned = scoreEarned + 15;
       setScoreEarned(earned);
 
-      // Sync user profile score
-      if (user?.uid) {
-        try {
-          const profile = await getCurrentUserProfile(user.uid);
-          const currentScore = profile?.score ?? 0;
-          await saveUserScore(user.uid, currentScore + 15);
-        } catch (err) {
-          console.error(err);
-        }
-      }
+      // Start flying lantern animation
+      setIsFlying(true);
+      lanternScale.setValue(0);
+      lanternPos.setValue({ x: 0, y: 120 });
+      lanternOpacity.setValue(1);
+
+      // 1. Pop scale in center
+      Animated.spring(lanternScale, {
+        toValue: 1.5,
+        friction: 5,
+        useNativeDriver: false,
+      }).start(() => {
+        // 2. Fly to top left wallet
+        Animated.delay(400).start(() => {
+          Animated.parallel([
+            Animated.timing(lanternPos.x, {
+              toValue: -(SCREEN_WIDTH / 2 - 45),
+              duration: 700,
+              useNativeDriver: false,
+            }),
+            Animated.timing(lanternPos.y, {
+              toValue: -SCREEN_HEIGHT / 2 + 100, // align with wallet y
+              duration: 700,
+              useNativeDriver: false,
+            }),
+            Animated.timing(lanternScale, {
+              toValue: 0.3,
+              duration: 700,
+              useNativeDriver: false,
+            }),
+            Animated.timing(lanternOpacity, {
+              toValue: 0,
+              duration: 700,
+              useNativeDriver: false,
+            })
+          ]).start(async () => {
+            setIsFlying(false);
+            
+            // Bounce wallet
+            Animated.sequence([
+              Animated.timing(walletScale, { toValue: 1.3, duration: 100, useNativeDriver: false }),
+              Animated.timing(walletScale, { toValue: 1.0, duration: 100, useNativeDriver: false })
+            ]).start();
+
+            // Sync user profile score and Siraj points
+            if (user?.uid) {
+              try {
+                // Increment trivia Correct Answers count (since Hadith is trivia category)
+                await incrementCorrectAnswers(user.uid, 'trivia', 1);
+                
+                // Add 5 Siraj Points
+                const updated = await addSirajPoints(user.uid, 5);
+                setProfile(updated);
+
+                // Add general score
+                const currentScore = updated.score ?? 0;
+                await saveUserScore(user.uid, currentScore + 15);
+              } catch (err) {
+                console.error(err);
+              }
+            }
+          });
+        });
+      });
     } else {
       setFeedback(`إجابة غير صحيحة. الإجابة الصحيحة هي:`);
     }
@@ -68,117 +148,156 @@ export default function HadithChallengeScreen({ navigation }: any) {
   }
 
   return (
-    <ScrollView style={styles.outerContainer} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>تحدي الحديث الشريف</Text>
-          <Text style={styles.subtitle}>تعلّم الأحاديث النبوية المأثورة وميّز صحتها ورواتها لزيادة نقاط معرفتك</Text>
-        </View>
+    <View style={{ flex: 1, backgroundColor: Colors.background }}>
+      {/* custom top header bar */}
+      <View style={styles.headerCustom}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <Text style={{ fontSize: 20, color: Colors.primary }}>➔</Text>
+        </TouchableOpacity>
+        
+        <Text style={styles.headerTitle}>تحدي الحديث الشريف</Text>
 
-        {completed ? (
-          <View style={styles.resultCard}>
-            <Text style={styles.resultEmoji}>💬</Text>
-            <Text style={styles.resultTitle}>أنهيت تحدي الحديث!</Text>
-            <Text style={styles.resultSubtitle}>أحسنت تعلماً وسيراً على خطى السنة النبوية</Text>
-            
-            <View style={styles.statBox}>
-              <Text style={styles.statVal}>{scoreEarned}</Text>
-              <Text style={styles.statLbl}>النقاط المكتسبة</Text>
-            </View>
-
-            <TouchableOpacity style={styles.primaryButton} onPress={() => navigation.goBack()} activeOpacity={0.85}>
-              <Text style={styles.primaryButtonText}>العودة لقائمة التحديات</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={styles.quizCard}>
-            {/* Authenticity Indicator Badge */}
-            <View style={styles.metaRow}>
-              <View style={styles.authBadge}>
-                <Text style={styles.authBadgeText}>درجة الصحة: {currentQuestion.authenticity}</Text>
-              </View>
-              <Text style={styles.progressText}>سؤال {currentIndex + 1} من {questions.length}</Text>
-            </View>
-
-            {/* Hadith Quote Box */}
-            <View style={styles.hadithQuoteBox}>
-              <Text style={styles.quoteMark}>«</Text>
-              <Text style={styles.hadithQuoteText}>{currentQuestion.hadithText}</Text>
-              <Text style={styles.quoteMark}>»</Text>
-            </View>
-
-            {/* Question Title */}
-            <Text style={styles.questionText}>{currentQuestion.question}</Text>
-
-            {/* Options List */}
-            <View style={styles.optionsContainer}>
-              {currentQuestion.options.map((option) => {
-                const isSelected = selectedAnswer === option;
-                const isCorrect = option === currentQuestion.answer;
-
-                let btnStyle: any = styles.optionButton;
-                let textStyle: any = styles.optionText;
-
-                if (answered) {
-                  if (isCorrect) {
-                    btnStyle = [styles.optionButton, styles.optionButtonCorrect];
-                    textStyle = [styles.optionText, styles.optionTextWhite];
-                  } else if (isSelected) {
-                    btnStyle = [styles.optionButton, styles.optionButtonIncorrect];
-                    textStyle = [styles.optionText, styles.optionTextWhite];
-                  } else {
-                    btnStyle = [styles.optionButton, styles.optionButtonDisabled];
-                    textStyle = [styles.optionText, styles.optionTextMuted];
-                  }
-                } else if (isSelected) {
-                  btnStyle = [styles.optionButton, styles.optionButtonSelected];
-                  textStyle = [styles.optionText, styles.optionTextSelected];
-                }
-
-                return (
-                  <TouchableOpacity
-                    key={option}
-                    style={btnStyle}
-                    onPress={() => !answered && setSelectedAnswer(option)}
-                    disabled={answered}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={textStyle}>{option}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {/* Feedback Detail */}
-            {answered && (
-              <View style={[
-                styles.feedbackBox,
-                selectedAnswer === currentQuestion.answer ? styles.feedbackBoxCorrect : styles.feedbackBoxIncorrect
-              ]}>
-                <Text style={styles.feedbackTitle}>{feedback}</Text>
-                {selectedAnswer !== currentQuestion.answer && (
-                  <Text style={styles.correctVal}>{currentQuestion.answer}</Text>
-                )}
-                <Text style={styles.explanationText}>{currentQuestion.explanation}</Text>
-              </View>
-            )}
-
-            {/* Primary Action Button */}
-            {answered ? (
-              <TouchableOpacity style={styles.primaryButton} onPress={handleNext} activeOpacity={0.85}>
-                <Text style={styles.primaryButtonText}>
-                  {currentIndex + 1 < questions.length ? 'السؤال التالي ➔' : 'إنهاء التحدي ✓'}
-                </Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity style={styles.primaryButton} onPress={handleSubmit} activeOpacity={0.85}>
-                <Text style={styles.primaryButtonText}>تأكيد الإجابة ✓</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
+        <Animated.View style={[styles.walletBadge, { transform: [{ scale: walletScale }] }]}>
+          <Text style={{ fontSize: 16, marginRight: 4 }}>🕯️</Text>
+          <Text style={styles.walletText}>
+            {profile?.sirajBalance ?? 50}
+          </Text>
+        </Animated.View>
       </View>
-    </ScrollView>
+
+      <ScrollView style={styles.outerContainer} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <Text style={styles.subtitle}>تعلّم الأحاديث النبوية المأثورة وميّز صحتها ورواتها لزيادة نقاط معرفتك</Text>
+          </View>
+
+          {completed ? (
+            <View style={styles.resultCard}>
+              <Text style={styles.resultEmoji}>💬</Text>
+              <Text style={styles.resultTitle}>أنهيت تحدي الحديث!</Text>
+              <Text style={styles.resultSubtitle}>أحسنت تعلماً وسيراً على خطى السنة النبوية</Text>
+              
+              <View style={styles.statBox}>
+                <Text style={styles.statVal}>{scoreEarned}</Text>
+                <Text style={styles.statLbl}>النقاط المكتسبة</Text>
+              </View>
+
+              <TouchableOpacity style={styles.primaryButton} onPress={() => navigation.goBack()} activeOpacity={0.85}>
+                <Text style={styles.primaryButtonText}>➔</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.quizCard}>
+              {/* Authenticity Indicator Badge */}
+              <View style={styles.metaRow}>
+                <View style={styles.authBadge}>
+                  <Text style={styles.authBadgeText}>درجة الصحة: {currentQuestion.authenticity}</Text>
+                </View>
+                <Text style={styles.progressText}>سؤال {currentIndex + 1} من {questions.length}</Text>
+              </View>
+
+              {/* Hadith Quote Box */}
+              <View style={styles.hadithQuoteBox}>
+                <Text style={styles.quoteMark}>«</Text>
+                <Text style={styles.hadithQuoteText}>{currentQuestion.hadithText}</Text>
+                <Text style={styles.quoteMark}>»</Text>
+              </View>
+
+              {/* Question Title */}
+              <Text style={styles.questionText}>{currentQuestion.question}</Text>
+
+              {/* Options List */}
+              <View style={styles.optionsContainer}>
+                {currentQuestion.options.map((option) => {
+                  const isSelected = selectedAnswer === option;
+                  const isCorrect = option === currentQuestion.answer;
+
+                  let btnStyle: any = styles.optionButton;
+                  let textStyle: any = styles.optionText;
+
+                  if (answered) {
+                    if (isCorrect) {
+                      btnStyle = [styles.optionButton, styles.optionButtonCorrect];
+                      textStyle = [styles.optionText, styles.optionTextWhite];
+                    } else if (isSelected) {
+                      btnStyle = [styles.optionButton, styles.optionButtonIncorrect];
+                      textStyle = [styles.optionText, styles.optionTextWhite];
+                    } else {
+                      btnStyle = [styles.optionButton, styles.optionButtonDisabled];
+                      textStyle = [styles.optionText, styles.optionTextMuted];
+                    }
+                  } else if (isSelected) {
+                    btnStyle = [styles.optionButton, styles.optionButtonSelected];
+                    textStyle = [styles.optionText, styles.optionTextSelected];
+                  }
+
+                  return (
+                    <TouchableOpacity
+                      key={option}
+                      style={btnStyle}
+                      onPress={() => !answered && setSelectedAnswer(option)}
+                      disabled={answered}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={textStyle}>{option}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* Feedback Detail */}
+              {answered && (
+                <View style={[
+                  styles.feedbackBox,
+                  selectedAnswer === currentQuestion.answer ? styles.feedbackBoxCorrect : styles.feedbackBoxIncorrect
+                ]}>
+                  <Text style={styles.feedbackTitle}>{feedback}</Text>
+                  {selectedAnswer !== currentQuestion.answer && (
+                    <Text style={styles.correctVal}>{currentQuestion.answer}</Text>
+                  )}
+                  <Text style={styles.explanationText}>{currentQuestion.explanation}</Text>
+                </View>
+              )}
+
+              {/* Primary Action Button */}
+              {answered ? (
+                <TouchableOpacity style={styles.primaryButton} onPress={handleNext} activeOpacity={0.85}>
+                  <Text style={styles.primaryButtonText}>
+                    {currentIndex + 1 < questions.length ? 'السؤال التالي ➔' : 'إنهاء التحدي ✓'}
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity style={styles.primaryButton} onPress={handleSubmit} activeOpacity={0.85}>
+                  <Text style={styles.primaryButtonText}>تأكيد الإجابة ✓</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+        </View>
+      </ScrollView>
+
+      {/* FLYING LANTERN REWARD CELEBRATION */}
+      {isFlying && (
+        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+          <Animated.View
+            style={[
+              styles.flyingFanoos,
+              {
+                transform: [
+                  { scale: lanternScale },
+                  { translateX: lanternPos.x },
+                  { translateY: lanternPos.y },
+                ],
+                opacity: lanternOpacity,
+              },
+            ]}
+          >
+            <Text style={{ fontSize: 32 }}>🕯️</Text>
+          </Animated.View>
+        </View>
+      )}
+      <AdBanner />
+    </View>
   );
 }
 
@@ -414,5 +533,47 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: Colors.textSecondary,
     marginTop: 40,
+  },
+  headerCustom: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 54,
+    paddingBottom: 16,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  backBtn: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1A202C',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+  walletBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E6F4EA',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  walletText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#137333',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+  flyingFanoos: {
+    position: 'absolute',
+    left: Dimensions.get('window').width / 2 - 24,
+    top: Dimensions.get('window').height / 2 - 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 9999,
   },
 });

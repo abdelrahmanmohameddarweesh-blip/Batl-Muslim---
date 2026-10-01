@@ -15,6 +15,7 @@ import {
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { GroupQuizSettings } from './GroupQuizLobbyScreen';
+import AdBanner from '../components/AdBanner';
 
 const { width } = Dimensions.get('window');
 
@@ -471,6 +472,7 @@ export default function GroupQuizWaitingScreen({ route, navigation }: any) {
           </TouchableOpacity>
         )}
       </View>
+      <AdBanner />
     </View>
   );
 }

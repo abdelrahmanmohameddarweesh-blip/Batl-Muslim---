@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Alert } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Alert, Animated, Dimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
-import { saveUserScore, getCurrentUserProfile } from '../firebase/auth';
+import { saveUserScore, getCurrentUserProfile, addSirajPoints, incrementCorrectAnswers } from '../firebase/auth';
 import { sirahCheckpoints, type SirahCheckpoint } from '../data/sirahQuests';
+import AdBanner from '../components/AdBanner';
 
 export default function SirahQuestScreen({ navigation }: any) {
   const { colors } = useTheme();
@@ -23,12 +24,23 @@ export default function SirahQuestScreen({ navigation }: any) {
   const [isAnswered, setIsAnswered] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
 
+  // Siraj and animation states
+  const [profile, setProfile] = useState<any>(null);
+  const [isFlying, setIsFlying] = useState(false);
+  const lanternScale = useRef(new Animated.Value(0)).current;
+  const lanternPos = useRef(new Animated.ValueXY({ x: 0, y: 150 })).current;
+  const lanternOpacity = useRef(new Animated.Value(1)).current;
+  const walletScale = useRef(new Animated.Value(1)).current;
+
+  const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
   const loadProgress = async () => {
     try {
-      // 1. Get user score
+      // 1. Get user score & profile details
       if (user?.uid) {
-        const profile = await getCurrentUserProfile(user.uid);
-        setCurrentScore(profile?.score ?? 0);
+        const data = await getCurrentUserProfile(user.uid);
+        setProfile(data);
+        setCurrentScore(data.score ?? 0);
       }
 
       // 2. Load completed checkpoints
@@ -93,12 +105,67 @@ export default function SirahQuestScreen({ navigation }: any) {
           // 1. Save checkpoint status
           await AsyncStorage.setItem(`completed-sirah-checkpoint-${selectedCheckpoint.id}`, 'true');
 
-          // 2. Award XP points
-          if (user?.uid) {
-            const nextScore = currentScore + selectedCheckpoint.xpReward;
-            await saveUserScore(user.uid, nextScore);
-            setCurrentScore(nextScore);
-          }
+          // Trigger flying lantern animation
+          setIsFlying(true);
+          lanternScale.setValue(0);
+          lanternPos.setValue({ x: 0, y: 120 });
+          lanternOpacity.setValue(1);
+
+          // 1. Pop scale in center
+          Animated.spring(lanternScale, {
+            toValue: 1.5,
+            friction: 5,
+            useNativeDriver: false,
+          }).start(() => {
+            // 2. Fly to top left wallet
+            Animated.delay(400).start(() => {
+              Animated.parallel([
+                Animated.timing(lanternPos.x, {
+                  toValue: -(SCREEN_WIDTH / 2 - 45),
+                  duration: 700,
+                  useNativeDriver: false,
+                }),
+                Animated.timing(lanternPos.y, {
+                  toValue: -SCREEN_HEIGHT / 2 + 100, // align with wallet y
+                  duration: 700,
+                  useNativeDriver: false,
+                }),
+                Animated.timing(lanternScale, {
+                  toValue: 0.3,
+                  duration: 700,
+                  useNativeDriver: false,
+                }),
+                Animated.timing(lanternOpacity, {
+                  toValue: 0,
+                  duration: 700,
+                  useNativeDriver: false,
+                })
+              ]).start(async () => {
+                setIsFlying(false);
+                
+                // Bounce wallet
+                Animated.sequence([
+                  Animated.timing(walletScale, { toValue: 1.3, duration: 100, useNativeDriver: false }),
+                  Animated.timing(walletScale, { toValue: 1.0, duration: 100, useNativeDriver: false })
+                ]).start();
+
+                // Sync user profile score and Siraj points
+                if (user?.uid) {
+                  try {
+                    // Add 50 Siraj Points
+                    const updated = await addSirajPoints(user.uid, 50);
+                    setProfile(updated);
+
+                    // Save score
+                    const currentScore = updated.score ?? 0;
+                    await saveUserScore(user.uid, currentScore + 50);
+                  } catch (err) {
+                    console.error(err);
+                  }
+                }
+              });
+            });
+          });
         }
         
         // Reload map progress
@@ -106,6 +173,11 @@ export default function SirahQuestScreen({ navigation }: any) {
       } catch (err) {
         console.error(err);
       }
+    } else {
+      Alert.alert(
+        language === 'ar' ? 'إجابة غير صحيحة ❌' : 'Incorrect Answer ❌',
+        language === 'ar' ? 'حاول مرة أخرى لترسيخ المعلومة في ذهنك.' : 'Try again to strengthen your knowledge.'
+      );
     }
   };
 
@@ -114,12 +186,27 @@ export default function SirahQuestScreen({ navigation }: any) {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      {/* custom top header bar */}
+      <View style={styles.headerCustom}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <Text style={{ fontSize: 20, color: colors.primary }}>➔</Text>
+        </TouchableOpacity>
+        
+        <Text style={styles.headerTitle}>
           {language === 'ar' ? 'خريطة السيرة النبوية 🗺️' : 'Prophet\'s Sirah Map 🗺️'}
         </Text>
+
+        <Animated.View style={[styles.walletBadge, { transform: [{ scale: walletScale }] }]}>
+          <Text style={{ fontSize: 16, marginRight: 4 }}>🕯️</Text>
+          <Text style={styles.walletText}>
+            {profile?.sirajBalance ?? 50}
+          </Text>
+        </Animated.View>
+      </View>
+
+      {/* Subheader info stats card */}
+      <View style={styles.subheaderCard}>
         <Text style={styles.subtitle}>
           {language === 'ar'
             ? 'تتبع محطات السيرة العطرة، تعلم مواقف الهداية، واكسب أوسمة ونقاط تميز'
@@ -306,6 +393,28 @@ export default function SirahQuestScreen({ navigation }: any) {
           </View>
         </View>
       </Modal>
+
+      {/* FLYING LANTERN REWARD CELEBRATION */}
+      {isFlying && (
+        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+          <Animated.View
+            style={[
+              styles.flyingFanoos,
+              {
+                transform: [
+                  { scale: lanternScale },
+                  { translateX: lanternPos.x },
+                  { translateY: lanternPos.y },
+                ],
+                opacity: lanternOpacity,
+              },
+            ]}
+          >
+            <Text style={{ fontSize: 32 }}>🕯️</Text>
+          </Animated.View>
+        </View>
+      )}
+      <AdBanner />
     </View>
   );
 }
@@ -313,9 +422,55 @@ export default function SirahQuestScreen({ navigation }: any) {
 const getStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 10,
+  },
+  headerCustom: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 54,
+    paddingBottom: 16,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  backBtn: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+  walletBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E6F4EA',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  walletText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#137333',
+    fontFamily: 'IBMPlexSansArabic-Bold',
+  },
+  subheaderCard: {
+    alignItems: 'center',
+    marginTop: 16,
+    marginBottom: 10,
+  },
+  flyingFanoos: {
+    position: 'absolute',
+    left: Dimensions.get('window').width / 2 - 24,
+    top: Dimensions.get('window').height / 2 - 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 9999,
   },
   header: {
     alignItems: 'center',

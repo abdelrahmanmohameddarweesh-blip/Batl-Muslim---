@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, FlatList, Dimensions, Image } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, { Path, Rect, Circle, G, Line } from 'react-native-svg';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -57,8 +58,6 @@ export default function HomeScreen({ navigation }: any) {
 
   useEffect(() => {
     loadData();
-
-
 
     const unsubscribe = navigation.addListener('focus', () => {
       loadData();
@@ -121,16 +120,18 @@ export default function HomeScreen({ navigation }: any) {
       route: 'LiveDuel',
       icon: '⚔️',
       color: '#044E3F',
+      gradientColors: ['#065F46', '#047857'],
     },
     {
       id: 'finish-ayah-camera',
       titleAr: 'فلتر أكمل الآية 📸',
       titleEn: 'Finish Ayah AR Camera Filter 📸',
-      descAr: 'افتح الكلميرا الأمامية، تظهر لك آية عشوائية فوق رأسك رتلها ثم اكشف الإجابة!',
+      descAr: 'افتح الكاميرا الأمامية، تظهر لك آية عشوائية فوق رأسك رتلها ثم اكشف الإجابة!',
       descEn: 'Open front camera with a floating Ayah card above your head! Recite & reveal!',
       route: 'FinishAyahCamera',
       icon: '📸',
       color: '#D97706',
+      gradientColors: ['#BE185D', '#9D174D'],
     },
     {
       id: 'finish-ayah',
@@ -141,6 +142,7 @@ export default function HomeScreen({ navigation }: any) {
       route: 'FinishAyah',
       icon: '🎧',
       color: '#059669',
+      gradientColors: ['#075985', '#0369A1'],
     },
     {
       id: 'rapid',
@@ -152,6 +154,7 @@ export default function HomeScreen({ navigation }: any) {
       params: { mode: 'hardcore' },
       icon: '⚡',
       color: '#D97706',
+      gradientColors: ['#92400E', '#B45309'],
     },
     {
       id: 'quran-assess',
@@ -162,6 +165,7 @@ export default function HomeScreen({ navigation }: any) {
       route: 'QuranAssessment',
       icon: '📖',
       color: '#1C64F2',
+      gradientColors: ['#1E3A8A', '#1E40AF'],
     },
     {
       id: 'hadith-verify',
@@ -172,6 +176,7 @@ export default function HomeScreen({ navigation }: any) {
       route: 'HadithChallenge',
       icon: '💬',
       color: '#6E11B0',
+      gradientColors: ['#581C87', '#6B21A8'],
     },
     {
       id: 'sirah-quest',
@@ -182,6 +187,7 @@ export default function HomeScreen({ navigation }: any) {
       route: 'SirahQuest',
       icon: '🗺️',
       color: '#78281F',
+      gradientColors: ['#7C2D12', '#451A03'],
     },
     {
       id: 'siraj-shop',
@@ -192,6 +198,7 @@ export default function HomeScreen({ navigation }: any) {
       route: 'Shop',
       icon: '🕯️',
       color: '#B45309',
+      gradientColors: ['#D97706', '#B45309'],
     }
   ];
 
@@ -441,73 +448,80 @@ export default function HomeScreen({ navigation }: any) {
             contentContainerStyle={styles.carouselContainer}
             renderItem={({ item }) => (
               <TouchableOpacity
-                style={[styles.carouselCard, { backgroundColor: item.color, borderColor: colors.border }]}
+                style={styles.carouselCardItem}
                 onPress={() => navigation.navigate(item.route, item.params)}
                 activeOpacity={0.9}
               >
-                {/* Background illustrations */}
-                <View style={styles.carouselCardVectorHolder}>
-                  {item.id === '1v1' && (
-                    <Svg viewBox="0 0 100 100" width="110" height="110" opacity="0.2">
-                      {/* Crossed Swords Vector */}
-                      <Path d="M15,85 L85,15 M85,85 L15,15" stroke="#FFFFFF" strokeWidth="6" strokeLinecap="round" />
-                      <Path d="M10,90 L20,80 M90,90 L80,80" stroke="#FFFFFF" strokeWidth="10" strokeLinecap="round" />
-                      <Circle cx="15" cy="85" r="4" fill="#FFFFFF" />
-                      <Circle cx="85" cy="85" r="4" fill="#FFFFFF" />
-                    </Svg>
-                  )}
-                  {item.id === 'rapid' && (
-                    <Svg viewBox="0 0 100 100" width="110" height="110" opacity="0.2">
-                      {/* Stopwatch on Fire Vector */}
-                      <Circle cx="50" cy="55" r="28" fill="none" stroke="#FFFFFF" strokeWidth="6" />
-                      <Path d="M50,15 L50,27 M40,18 L60,18" stroke="#FFFFFF" strokeWidth="8" strokeLinecap="round" />
-                      <Path d="M50,38 L50,55 L65,65" fill="none" stroke="#FFFFFF" strokeWidth="6" strokeLinecap="round" />
-                      <Path d="M35,28 Q50,0 65,28" fill="none" stroke="#FFFFFF" strokeWidth="4" />
-                    </Svg>
-                  )}
-                  {item.id === 'quran-assess' && (
-                    <Svg viewBox="0 0 24 24" width="110" height="110" opacity="0.2" fill="none" stroke="#FFFFFF" strokeWidth="2">
-                      {/* Book Open SVG */}
-                      <Path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20M4 19.5V3a1 1 0 0 1 1-1h15v18H6.5a2.5 2.5 0 0 0-2.5 2.5z" />
-                    </Svg>
-                  )}
-                  {item.id === 'hadith-verify' && (
-                    <Svg viewBox="0 0 24 24" width="110" height="110" opacity="0.2" fill="none" stroke="#FFFFFF" strokeWidth="2">
-                      {/* Speech Bubble SVG */}
-                      <Path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                    </Svg>
-                  )}
-                  {item.id === 'sirah-quest' && (
-                    <Svg viewBox="0 0 24 24" width="110" height="110" opacity="0.2" fill="none" stroke="#FFFFFF" strokeWidth="2">
-                      {/* Compass/Map SVG */}
-                      <Circle cx="12" cy="12" r="10" />
-                      <Path d="m16.24 7.76-2.12 6.36-6.36 2.12 2.12-6.36z" />
-                    </Svg>
-                  )}
-                  {item.id === 'siraj-shop' && (
-                    <Svg viewBox="0 0 24 24" width="110" height="110" opacity="0.2" fill="none" stroke="#FFFFFF" strokeWidth="2">
-                      {/* Lantern / Shop SVG */}
-                      <Path d="M12 2v3M9 5h6M9 5a4 4 0 0 0-4 4v7a4 4 0 0 0 4 4h6a4 4 0 0 0 4-4V9a4 4 0 0 0-4-4M9 5h6" />
-                      <Circle cx="12" cy="12" r="2" fill="#FFFFFF" />
-                    </Svg>
-                  )}
-                </View>
+                <LinearGradient
+                  colors={item.gradientColors ? [item.gradientColors[0], item.gradientColors[1]] : [item.color, item.color]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.carouselCardGradient}
+                >
+                  {/* Background illustrations */}
+                  <View style={styles.carouselCardVectorHolder}>
+                    {item.id === '1v1' && (
+                      <Svg viewBox="0 0 100 100" width="110" height="110" opacity="0.2">
+                        {/* Crossed Swords Vector */}
+                        <Path d="M15,85 L85,15 M85,85 L15,15" stroke="#FFFFFF" strokeWidth="6" strokeLinecap="round" />
+                        <Path d="M10,90 L20,80 M90,90 L80,80" stroke="#FFFFFF" strokeWidth="10" strokeLinecap="round" />
+                        <Circle cx="15" cy="85" r="4" fill="#FFFFFF" />
+                        <Circle cx="85" cy="85" r="4" fill="#FFFFFF" />
+                      </Svg>
+                    )}
+                    {item.id === 'rapid' && (
+                      <Svg viewBox="0 0 100 100" width="110" height="110" opacity="0.2">
+                        {/* Stopwatch on Fire Vector */}
+                        <Circle cx="50" cy="55" r="28" fill="none" stroke="#FFFFFF" strokeWidth="6" />
+                        <Path d="M50,15 L50,27 M40,18 L60,18" stroke="#FFFFFF" strokeWidth="8" strokeLinecap="round" />
+                        <Path d="M50,38 L50,55 L65,65" fill="none" stroke="#FFFFFF" strokeWidth="6" strokeLinecap="round" />
+                        <Path d="M35,28 Q50,0 65,28" fill="none" stroke="#FFFFFF" strokeWidth="4" />
+                      </Svg>
+                    )}
+                    {item.id === 'quran-assess' && (
+                      <Svg viewBox="0 0 24 24" width="110" height="110" opacity="0.2" fill="none" stroke="#FFFFFF" strokeWidth="2">
+                        {/* Book Open SVG */}
+                        <Path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20M4 19.5V3a1 1 0 0 1 1-1h15v18H6.5a2.5 2.5 0 0 0-2.5 2.5z" />
+                      </Svg>
+                    )}
+                    {item.id === 'hadith-verify' && (
+                      <Svg viewBox="0 0 24 24" width="110" height="110" opacity="0.2" fill="none" stroke="#FFFFFF" strokeWidth="2">
+                        {/* Speech Bubble SVG */}
+                        <Path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                      </Svg>
+                    )}
+                    {item.id === 'sirah-quest' && (
+                      <Svg viewBox="0 0 24 24" width="110" height="110" opacity="0.2" fill="none" stroke="#FFFFFF" strokeWidth="2">
+                        {/* Compass/Map SVG */}
+                        <Circle cx="12" cy="12" r="10" />
+                        <Path d="m16.24 7.76-2.12 6.36-6.36 2.12 2.12-6.36z" />
+                      </Svg>
+                    )}
+                    {item.id === 'siraj-shop' && (
+                      <Svg viewBox="0 0 24 24" width="110" height="110" opacity="0.2" fill="none" stroke="#FFFFFF" strokeWidth="2">
+                        {/* Lantern / Shop SVG */}
+                        <Path d="M12 2v3M9 5h6M9 5a4 4 0 0 0-4 4v7a4 4 0 0 0 4 4h6a4 4 0 0 0 4-4V9a4 4 0 0 0-4-4M9 5h6" />
+                        <Circle cx="12" cy="12" r="2" fill="#FFFFFF" />
+                      </Svg>
+                    )}
+                  </View>
 
-                <Text style={styles.carouselCardIcon}>{item.icon}</Text>
-                <Text style={styles.carouselCardTitle}>
-                  {language === 'ar' ? item.titleAr : item.titleEn}
-                </Text>
-                <Text style={styles.carouselCardDesc}>
-                  {language === 'ar' ? item.descAr : item.descEn}
-                </Text>
-
-                <View style={styles.carouselCardButton}>
-                  <Text style={[styles.carouselCardButtonText, { color: item.color }]}>
-                    {item.id === 'siraj-shop' 
-                      ? (language === 'ar' ? 'افتح المتجر ➔' : 'Open Shop ➔')
-                      : (language === 'ar' ? 'ابدأ المواجهة ➔' : 'Start Arena ➔')}
+                  <Text style={styles.carouselCardIcon}>{item.icon}</Text>
+                  <Text style={styles.carouselCardTitle}>
+                    {language === 'ar' ? item.titleAr : item.titleEn}
                   </Text>
-                </View>
+                  <Text style={styles.carouselCardDesc}>
+                    {language === 'ar' ? item.descAr : item.descEn}
+                  </Text>
+
+                  <View style={styles.carouselCardButton}>
+                    <Text style={[styles.carouselCardButtonText, { color: item.gradientColors?.[0] || item.color }]}>
+                      {item.id === 'siraj-shop' 
+                        ? (language === 'ar' ? 'افتح المتجر ➔' : 'Open Shop ➔')
+                        : (language === 'ar' ? 'ابدأ المواجهة ➔' : 'Start Arena ➔')}
+                    </Text>
+                  </View>
+                </LinearGradient>
               </TouchableOpacity>
             )}
           />
@@ -1044,14 +1058,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
     gap: 16,
   },
-  carouselCard: {
+  carouselCardItem: {
     width: CARD_WIDTH,
     height: 185,
     borderRadius: 20,
-    borderWidth: 1,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  carouselCardGradient: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 20,
     padding: 16,
     position: 'relative',
-    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
   },
   carouselCardVectorHolder: {
     position: 'absolute',
